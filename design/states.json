@@ -1,0 +1,72 @@
+{
+  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH`. 'mockup' names the shot in design/mockup-v2/shots. An entry may override 'state' (the app state to render) and 'size'.",
+  "size": "1440x900",
+  "states": {
+    "week": {
+      "mockup": "week"
+    },
+    "week-selected-event": {
+      "mockup": "inspector"
+    },
+    "command-menu": {
+      "mockup": "command"
+    },
+    "teammate-picker": {
+      "mockup": "teammate"
+    },
+    "teammate-overlay": {
+      "mockup": "teammate-overlay"
+    },
+    "go-to-date": {
+      "mockup": "goto"
+    },
+    "search-results": {
+      "mockup": "search"
+    },
+    "month": {
+      "mockup": "month"
+    },
+    "day": {
+      "mockup": "day"
+    },
+    "menubar-popover": {
+      "mockup": "menubar"
+    },
+    "sidebar-hidden": {
+      "mockup": "sidebar-hidden"
+    },
+    "all-day-collapsed": {
+      "mockup": "allday-collapsed"
+    },
+    "create-drag": {},
+    "shortcuts-sheet": {
+      "mockup": "shortcuts"
+    },
+    "settings": {
+      "mockup": "settings"
+    },
+    "light-week": {
+      "mockup": "light"
+    },
+    "delete-recurring": {},
+    "meet-with": {},
+    "week-reference-size": {
+      "state": "week",
+      "size": "1798x1126"
+    },
+    "readonly-event": {},
+    "month-light": {},
+    "empty-access": {
+      "mockup": "empty-access"
+    },
+    "toast": {
+      "mockup": "toast"
+    },
+    "search-empty": {
+      "mockup": "search-empty"
+    },
+    "menubar-empty": {
+      "mockup": "menubar-empty"
+    }
+  }
+}

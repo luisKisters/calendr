@@ -1,0 +1,7 @@
+.build/
+build/
+dist/
+artifacts/
+.DS_Store
+node_modules/
+.swiftpm/

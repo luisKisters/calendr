@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <mask id="gap"><rect width="1024" height="1024" fill="#fff"/><circle cx="753" cy="271" r="190" fill="#000"/></mask>
+  </defs>
+  <circle cx="512" cy="512" r="360" fill="none" stroke="#000" stroke-width="112" mask="url(#gap)"/>
+  <circle cx="753" cy="271" r="125" fill="#000"/>
+</svg>
