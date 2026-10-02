@@ -1,0 +1,10 @@
+== The week
+== Event detail
+== Create
+== Move and undo
+== Hour scale
+== Command menu
+== Views
+== Settings
+== Menu bar
+walkthrough: 48 checks, 0 failures, video -s, wall 22.6s

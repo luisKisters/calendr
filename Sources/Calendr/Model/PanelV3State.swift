@@ -9,7 +9,7 @@ struct PanelV3State: Equatable {
     /// Fields opened with an "add" chip, per event id, so an empty field can show while it is being filled in.
     var added: [String: Set<PanelField>] = [:]
     /// Times an event had before it was made all-day, so switching back restores them.
-    var timedBefore: [String: ClosedRange<Int>] = [:]
+    var timedBefore: [String: DateInterval] = [:]
     /// The title was edited since the last focus request: later focus nudges must not select what was typed.
     var titleTyped = false
 }
@@ -207,14 +207,15 @@ extension AppModel {
 
     func setSelectedAllDay(_ on: Bool) {
         guard let e = selectedEvent, e.isAllDay != on else { return }
-        if on { panelState.timedBefore[e.id] = math.minutesSinceMidnight(e.start)...max(math.minutesSinceMidnight(e.start), math.minutesSinceMidnight(e.end)) }
+        if on { panelState.timedBefore[e.id] = DateInterval(start: e.start, end: e.end) }
         let before = panelState.timedBefore[e.id]
         updateSelected { ev in
             ev.isAllDay = on
             let day = math.startOfDay(ev.start)
             if on { ev.start = day; ev.end = math.addDays(day, 1) }
-            else if let before, before.upperBound > before.lowerBound {
-                ev.start = math.date(on: day, minutes: before.lowerBound); ev.end = math.date(on: day, minutes: before.upperBound)
+            else if let before, before.duration > 0 {
+                let shift = math.daysBetween(before.start, day)
+                ev.start = math.addDays(before.start, shift); ev.end = math.addDays(before.end, shift)
             } else {
                 ev.start = math.date(on: day, minutes: 9 * 60); ev.end = ev.start.addingTimeInterval(Double(settings.defaultDurationMinutes) * 60)
             }

@@ -1,0 +1,39 @@
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Wall clock dates at DST boundaries" started.
+◇ Suite "DMG audit time boundaries" started.
+◇ Test noFreeTimeDoesNotCreateInThePast() started.
+◇ Test slotsKeepTheirWallClockTime(zone:month:day:) started.
+◇ Test normalizedOffsetsAndMissingHour() started.
+◇ Test allDayRoundTripPreservesMidnightAndOvernightTimes() started.
+◇ Test ongoingOvernightEventBlocksMorningSlots() started.
+◇ Test case passing 3 arguments zone → "Europe/Berlin", month → 10, day → 25 to slotsKeepTheirWallClockTime(zone:month:day:) started.
+◇ Test case passing 3 arguments zone → "America/New_York", month → 3, day → 8 to slotsKeepTheirWallClockTime(zone:month:day:) started.
+◇ Test case passing 3 arguments zone → "Europe/Berlin", month → 3, day → 29 to slotsKeepTheirWallClockTime(zone:month:day:) started.
+◇ Test case passing 3 arguments zone → "America/New_York", month → 11, day → 1 to slotsKeepTheirWallClockTime(zone:month:day:) started.
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "America/New_York", month → 11, day → 1 at TimeBoundaryTests.swift:13:9: Expectation failed: (math.minutesSinceMidnight(slot) → 510) == (9 * 60 + 30 → 570)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "Europe/Berlin", month → 10, day → 25 at TimeBoundaryTests.swift:13:9: Expectation failed: (math.minutesSinceMidnight(slot) → 510) == (9 * 60 + 30 → 570)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "Europe/Berlin", month → 3, day → 29 at TimeBoundaryTests.swift:13:9: Expectation failed: (math.minutesSinceMidnight(slot) → 630) == (9 * 60 + 30 → 570)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "America/New_York", month → 3, day → 8 at TimeBoundaryTests.swift:13:9: Expectation failed: (math.minutesSinceMidnight(slot) → 630) == (9 * 60 + 30 → 570)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "America/New_York", month → 11, day → 1 at TimeBoundaryTests.swift:15:9: Expectation failed: (math.date(on: date, minutes: 1440) → 2026-11-02 04:00:00 +0000) == (math.addDays(date, 1) → 2026-11-02 05:00:00 +0000)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "Europe/Berlin", month → 10, day → 25 at TimeBoundaryTests.swift:15:9: Expectation failed: (math.date(on: date, minutes: 1440) → 2026-10-25 22:00:00 +0000) == (math.addDays(date, 1) → 2026-10-25 23:00:00 +0000)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "Europe/Berlin", month → 3, day → 29 at TimeBoundaryTests.swift:15:9: Expectation failed: (math.date(on: date, minutes: 1440) → 2026-03-29 23:00:00 +0000) == (math.addDays(date, 1) → 2026-03-29 22:00:00 +0000)
+✘ Test normalizedOffsetsAndMissingHour() recorded an issue at TimeBoundaryTests.swift:21:9: Expectation failed: (math.date(on: spring, minutes: 150) → 2026-03-29 01:30:00 +0000) == (math.date(year: 2026, month: 3, day: 29, hour: 3) → 2026-03-29 01:00:00 +0000)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) recorded an issue with 3 arguments zone → "America/New_York", month → 3, day → 8 at TimeBoundaryTests.swift:15:9: Expectation failed: (math.date(on: date, minutes: 1440) → 2026-03-09 05:00:00 +0000) == (math.addDays(date, 1) → 2026-03-09 04:00:00 +0000)
+✘ Test normalizedOffsetsAndMissingHour() recorded an issue at TimeBoundaryTests.swift:23:9: Expectation failed: (math.date(on: spring, minutes: 1500) → 2026-03-30 00:00:00 +0000) == (math.date(year: 2026, month: 3, day: 30, hour: 1) → 2026-03-29 23:00:00 +0000)
+✘ Test slotsKeepTheirWallClockTime(zone:month:day:) with 4 test cases failed after 0.012 seconds with 8 issues.
+✘ Test normalizedOffsetsAndMissingHour() failed after 0.012 seconds with 2 issues.
+✘ Suite "Wall clock dates at DST boundaries" failed after 0.012 seconds with 10 issues.
+✘ Test allDayRoundTripPreservesMidnightAndOvernightTimes() recorded an issue at AuditTests.swift:17:13: Expectation failed: (m.selectedEvent?.start → 2026-10-01 07:00:00 +0000) == (start → 2026-10-01 20:00:00 +0000)
+✘ Test allDayRoundTripPreservesMidnightAndOvernightTimes() recorded an issue at AuditTests.swift:18:13: Expectation failed: (m.selectedEvent?.end → 2026-10-01 08:00:00 +0000) == (end → 2026-10-01 22:00:00 +0000)
+✘ Test allDayRoundTripPreservesMidnightAndOvernightTimes() recorded an issue at AuditTests.swift:17:13: Expectation failed: (m.selectedEvent?.start → 2026-10-01 07:00:00 +0000) == (start → 2026-10-01 20:00:00 +0000)
+✘ Test allDayRoundTripPreservesMidnightAndOvernightTimes() recorded an issue at AuditTests.swift:18:13: Expectation failed: (m.selectedEvent?.end → 2026-10-01 08:00:00 +0000) == (end → 2026-10-02 22:00:00 +0000)
+✘ Test ongoingOvernightEventBlocksMorningSlots() recorded an issue at AuditTests.swift:38:9: Expectation failed: (m.draft!.start → 2026-09-28 23:00:00 +0000) >= (shift.end → 2026-09-29 04:00:00 +0000)
+✘ Test noFreeTimeDoesNotCreateInThePast() recorded an issue at AuditTests.swift:26:9: Expectation failed: (m.draft → CalendarEvent(id: "2BB28A9B-38E3-461F-966C-8F3622A5EEB0", seriesID: nil, calendarID: "cal.personal", title: "", start: 2026-09-29 07:00:00 +0000, end: 2026-09-29 08:00:00 +0000, isAllDay: false, status: CalendrKit.ResponseStatus.confirmed, location: "", notes: "", recurrence: nil, participants: [], conferencing: "", reminderMinutes: Optional(10), availability: CalendrKit.Availability.busy, visibility: CalendrKit.EventVisibility.standard, timeZoneID: "Europe/Berlin", ownerEmail: nil, colorHex: nil, secondaryBarHex: nil)) == nil
+✘ Test noFreeTimeDoesNotCreateInThePast() recorded an issue at AuditTests.swift:27:9: Expectation failed: (m.toast?.text → nil) == "No free slot left today"
+✘ Test allDayRoundTripPreservesMidnightAndOvernightTimes() failed after 0.237 seconds with 4 issues.
+✘ Test ongoingOvernightEventBlocksMorningSlots() failed after 0.237 seconds with 1 issue.
+✘ Test noFreeTimeDoesNotCreateInThePast() failed after 0.237 seconds with 2 issues.
+✘ Suite "DMG audit time boundaries" failed after 0.237 seconds with 7 issues.
+✘ Test run with 5 tests in 2 suites failed after 0.237 seconds with 17 issues.

@@ -65,8 +65,18 @@ public struct CalendarMath: Sendable {
     }
 
     public func date(on day: Date, minutes: Int) -> Date {
-        let s = startOfDay(day)
-        return calendar.date(byAdding: .minute, value: minutes, to: s) ?? s.addingTimeInterval(Double(minutes) * 60)
+        // Grid minutes describe a wall clock, not elapsed time since midnight.
+        // Normalize whole days separately: 24:00 is the next midnight on 23/25-hour days too.
+        let dayOffset = Int(floor(Double(minutes) / 1440))
+        let minute = minutes - dayOffset * 1440
+        let target = dayOffset == 0 ? day : addDays(day, dayOffset)
+        var components = calendar.dateComponents([.year, .month, .day], from: target)
+        components.hour = minute / 60; components.minute = minute % 60; components.second = 0
+        let result = calendar.date(from: components) ?? startOfDay(target)
+        // Component construction is cheap. Only a nonexistent spring-forward time needs a matching search.
+        if minutesSinceMidnight(result) == minute { return result }
+        return calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: target,
+                             matchingPolicy: .nextTime, repeatedTimePolicy: .first) ?? result
     }
 
     public func date(year: Int, month: Int, day: Int, hour: Int = 0, minute: Int = 0) -> Date {

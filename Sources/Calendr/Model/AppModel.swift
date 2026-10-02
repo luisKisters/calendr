@@ -494,9 +494,12 @@ final class AppModel {
         let dur = settings.defaultDurationMinutes
         let dayEvents = store.events(in: DateInterval(start: day, end: math.addDays(day, 1)))
             .filter { !$0.isAllDay && !hiddenCalendars.contains($0.calendarID) }
-            .map { (start: max(0, math.minutesSinceMidnight($0.start)), end: math.isSameDay($0.end.addingTimeInterval(-1), day) ? math.minutesSinceMidnight($0.end) : 1440) }
+            .map { (start: $0.start < day ? 0 : math.minutesSinceMidnight($0.start),
+                    end: $0.end >= math.addDays(day, 1) ? 1440 : math.minutesSinceMidnight($0.end)) }
         let startMin: Int
-        if selectedSlot != nil { startMin = from } else { startMin = FreeSlot.next(from: from + 1, duration: dur, busy: dayEvents) ?? 9 * 60 }
+        if selectedSlot != nil { startMin = from }
+        else if let free = FreeSlot.next(from: from + 1, duration: dur, busy: dayEvents) { startMin = free }
+        else { showToast("No free slot left today"); return }
         if !visibleDays.contains(where: { math.isSameDay($0, day) }) { go(to: day) }
         let s = math.date(on: day, minutes: startMin)
         createEvent(start: s, end: s.addingTimeInterval(Double(dur) * 60))

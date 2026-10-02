@@ -1,0 +1,2 @@
+launch to interactive window: 457 ms
+first responder: AppKitWindow

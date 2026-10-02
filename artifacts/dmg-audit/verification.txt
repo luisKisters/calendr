@@ -1,0 +1,26 @@
+
+== grep gates (animations only through the Motion tokens, no third-party packages)
+ok
+
+== swift build
+[5/7] Linking Calendr
+[6/7] Applying Calendr
+Build complete! (1.15s)
+
+== swift test
+◇ Test run started.
+◇ Test runningEventCountsDown() started.
+◇ Test runningGivesWayInsideFifteenMinutes() started.
+✔ Test runningGivesWayInsideFifteenMinutes() passed after 0.008 seconds.
+✔ Test runningEventCountsDown() passed after 0.008 seconds.
+✔ Test run with 195 tests in 35 suites passed after 5.043 seconds.
+
+== build app bundle
+build/Calendr.app: replacing existing signature
+Built build/Calendr.app
+signature ok
+
+== snapshots (every state in design/states.json)
+rendered 29 snapshots into artifacts/snapshots
+
+== verify passed
