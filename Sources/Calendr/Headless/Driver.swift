@@ -138,9 +138,17 @@ final class Driver {
             if let prev = frames.last?.img, Self.same(prev, img) { unchanged += 1 } else { unchanged = 0 }
             frames.append((img, t))
         } while Date().timeIntervalSince(t0) / k < seconds && unchanged < 4
-        // The last frame sampled can be mid-animation (capturing a frame takes longer than the animation's last step): settle and take one more.
-        settle(4)
-        if let img = source.image(scale: scale) { frames.append((img, seconds)) }
+        // The last frame sampled can be mid-animation: a spring stretched by `k` is still settling when `seconds` is up, and `hold()` repeats
+        // whatever is captured here. Let it finish (until two captures match, at most another stretched `seconds`) and take that frame.
+        var settled = frames.last?.img
+        let cap = Date().addingTimeInterval(seconds * k)
+        repeat {
+            settle(4)
+            guard let img = source.image(scale: scale) else { break }
+            if let prev = settled, Self.same(prev, img) { break }
+            settled = img
+        } while unchanged < 4 && Date() < cap
+        if let settled { frames.append((settled, seconds)) }
         let fps = Double(recorder.fps)
         var written = 0
         for (i, f) in frames.enumerated() {
