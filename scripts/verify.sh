@@ -42,14 +42,14 @@ import re, json
 t = open("artifacts/tmp-videoinfo.txt").read()
 print(t.strip().splitlines()[0])
 d = float(re.search(r"dur ([0-9.]+)", t).group(1))
-assert "codec avc1" in t and "playable true" in t and "fps 30.0" in t, "video must be playable H.264 (avc1) at 30 fps"
+assert "codec avc1" in t and "playable true" in t and "fps 60.0" in t, "video must be playable H.264 (avc1) at 60 fps"
 assert "2880.0" in t and "1800.0" in t, "frames must be 2880x1800 (2x)"
 assert 50 <= d <= 90, f"video duration {d}s outside 50-90s"
 cur = json.load(open("artifacts/walkthrough-v3.mov.cursor.json"))
 assert cur["version"] == 1 and cur["samples"] and cur["clicks"], "cursor telemetry missing"
 caps = json.load(open("artifacts/walkthrough-v3.mov.captions.json"))
 assert len(caps) >= 25 and all(a["end"] <= b["start"] + 1e-6 for a, b in zip(caps, caps[1:])), "captions missing or overlapping"
-print(f"video duration {d:.1f}s ok, avc1 30 fps 2880x1800, {len(cur['clicks'])} clicks, {len(caps)} captions")
+print(f"video duration {d:.1f}s ok, avc1 60 fps 2880x1800, {len(cur['clicks'])} clicks, {len(caps)} captions")
 PY
   rm -f artifacts/tmp-videoinfo.txt
 

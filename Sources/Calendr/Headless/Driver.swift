@@ -110,8 +110,9 @@ final class Driver {
         emit(img, frames: max(1, Int((hold * Double(recorder.fps)).rounded())))
     }
 
-    /// Runs `body` (a key press, a click, a model call) and records `seconds` of real time while SwiftUI animates. Frames are captured
-    /// back to back and placed on the 30 fps timeline by their wall-clock timestamps, so the video plays the motion at true speed.
+    /// Runs `body` (a key press, a click, a model call) and records `seconds` of SwiftUI animation. Capturing a 2x frame takes longer than a
+    /// 60 fps frame, so the Motion tokens are stretched by `Motion.timeScale` while recording and each capture is placed on the timeline at
+    /// its wall-clock time divided by that factor: the video plays the motion at true speed with a frame for every 60 fps tick.
     func play(_ seconds: Double, _ body: () -> Void) {
         live = true
         body()
@@ -125,25 +126,67 @@ final class Driver {
             while Date().timeIntervalSince(t0) < seconds { RunLoop.main.run(until: Date().addingTimeInterval(0.005)) }
             return
         }
-        var frames: [(img: CGImage, t: Double)] = []
-        defer { lastAnimateFrames = frames.count }
+        let k = Motion.timeScale, fps = Double(recorder.fps)
+        // Frames are written as they arrive (a 2x capture is ~20 MB): each capture is shown from its own tick until the next one's, and
+        // captures closer together than a frame collapse onto one tick, the later one winning.
+        var pending: CGImage?, written = 0, captures = 0, unchanged = 0
+        defer { lastAnimateFrames = captures }
+        func add(_ img: CGImage, at t: Double) {
+            if let prev = pending {
+                let end = Int((t * fps).rounded())
+                if end > written { emit(prev, frames: end - written); written = end }
+                lastFrame = prev
+            }
+            pending = img; captures += 1
+        }
         repeat {
             RunLoop.main.run(until: Date().addingTimeInterval(0.001))
             source.host.layoutSubtreeIfNeeded()
-            let t = Date().timeIntervalSince(t0)
-            if let img = source.image(scale: scale) { frames.append((img, t)) }
-        } while Date().timeIntervalSince(t0) < seconds
-        // The last frame sampled can be mid-animation (capturing a frame takes longer than the animation's last step): settle and take one more.
-        settle(4)
-        if let img = source.image(scale: scale) { frames.append((img, seconds)) }
-        let fps = Double(recorder.fps)
-        for (i, f) in frames.enumerated() {
-            let start = Int((f.t * fps).rounded())
-            let end = i + 1 < frames.count ? Int((frames[i + 1].t * fps).rounded()) : max(start + 1, Int((seconds * fps).rounded()))
-            emit(f.img, frames: max(1, end - start))
-            lastFrame = f.img
+            let t = Date().timeIntervalSince(t0) / k
+            guard let img = source.image(scale: scale) else { continue }
+            // Once the picture has stopped changing the animation is over: hold it for the rest of `seconds` instead of re-capturing.
+            if let prev = pending, Self.same(prev, img) { unchanged += 1 } else { unchanged = 0 }
+            add(img, at: t)
+        } while Date().timeIntervalSince(t0) / k < seconds && unchanged < 4
+        // The last frame sampled can be mid-animation: a spring stretched by `k` is still settling when `seconds` is up, and `hold()` repeats
+        // whatever is captured here. Let it finish (two matching captures in a row, at most another stretched `seconds`) and take that frame.
+        var settled = pending, quiet = 0
+        let cap = Date().addingTimeInterval(seconds * k)
+        while quiet < 2 && Date() < cap {
+            settle(4)
+            guard let img = source.image(scale: scale) else { break }
+            if let prev = settled, Self.same(prev, img) { quiet += 1 } else { quiet = 0 }
+            settled = img
+        }
+        if let settled { add(settled, at: seconds) }
+        if let last = pending {
+            emit(last, frames: max(written + 1, Int((seconds * fps).rounded())) - written)
+            lastFrame = last
         }
         settle(2)
+    }
+
+    /// A 2x capture of a changing window takes up to ~400 ms (the material behind sheets is the slowest), far longer than a 60 fps tick.
+    /// Recording stretches the Motion tokens by this factor so every tick of an animation gets its own capture.
+    static let recordingTimeScale = 24.0
+
+    static func same(_ a: CGImage, _ b: CGImage) -> Bool {
+        guard let x = a.dataProvider?.data, let y = b.dataProvider?.data else { return false }
+        return (x as Data) == (y as Data)
+    }
+
+    /// A gesture that is stepped by the driver (a drag, a gutter zoom, a scroll): `step` gets the eased progress for every video frame of
+    /// `duration`, and each frame is captured after it. Frames are paced on the stretched clock, so animations the gesture starts (selecting
+    /// the dragged event opens the right panel) play at true speed alongside it.
+    func gesture(_ duration: Double, _ step: (Double) -> Void) {
+        let fps = Double(recorder?.fps ?? 60), n = max(2, Int((duration * fps).rounded())), t0 = Date()
+        for i in 1...n {
+            let t = Double(i) / Double(n)
+            step(t * t * (3 - 2 * t))
+            settle(1)
+            if recorder != nil { RunLoop.main.run(until: t0.addingTimeInterval(Double(i) * Motion.timeScale / fps)) }
+            frame()
+        }
     }
 
     /// Re-captures the source for the frame the cursor is moving over (the menu bar highlight changed under it).
@@ -279,8 +322,7 @@ final class Driver {
     func click(at p: CGPoint, double: Bool = false, then action: () -> Void) {
         moveCursor(to: p)
         recordClick(double: double)
-        action()
-        settle(3); frame()
+        play(0.3, action)
     }
 
     /// A click on the grid whose consequences animate (selection ring, the panel swapping): recorded in real time.
@@ -292,18 +334,16 @@ final class Driver {
         play(seconds) { model.gridMouseUp(g) }
     }
 
-    /// Press, drag along a straight line of `steps` dragged events (a frame for each), release.
-    func drag(from a: CGPoint, to b: CGPoint, steps: Int = 16) {
+    /// Press, drag along a straight line over `duration` seconds (a frame for each video tick), release.
+    func drag(from a: CGPoint, to b: CGPoint, duration: Double = 0.5) {
         moveCursor(to: windowPoint(fromGrid: a))
         recordClick()
         model.gridMouseDown(a)
         settle(2); frame()
-        for i in 1...steps {
-            let t = Double(i) / Double(steps), e = t * t * (3 - 2 * t)
+        gesture(duration) { e in
             let p = CGPoint(x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e)
             cursor = windowPoint(fromGrid: p)
             model.gridMouseDragged(p)
-            settle(2); frame()
         }
         play(0.3) { model.gridMouseUp(b) }      // the drop settles in 120 ms
     }

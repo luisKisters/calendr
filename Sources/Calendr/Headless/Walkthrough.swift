@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import CalendrKit
 
-/// The v3 tour: a fast scripted walk through the demo week, recorded at 2x / 30 fps with no overlays. Next to the video it writes the cursor
+/// The v3 tour: a fast scripted walk through the demo week, recorded at 2x / 60 fps with no overlays. Next to the video it writes the cursor
 /// telemetry and the captions (`<file>.cursor.json`, `<file>.captions.json`) that Glide and scripts/caption-video.py use afterwards.
 /// Keyboard shortcuts are real NSEvents through the key router; pointer gestures call the model functions the SwiftUI gestures forward to;
 /// buttons call the same model methods their actions call. Every step asserts that it worked.
@@ -11,15 +11,16 @@ enum Walkthrough {
     static func run(_ o: LaunchOptions) -> Int32 {
         Motion.forcedInstant = false          // the video shows the real animations
         let model = HeadlessRunner.makeModel(o)
-        let rec = o.record.flatMap { VideoRecorder(url: URL(fileURLWithPath: $0), width: Int(o.size.width * 2), height: Int(o.size.height * 2)) }
+        let rec = o.record.flatMap { VideoRecorder(url: URL(fileURLWithPath: $0), width: Int(o.size.width * 2), height: Int(o.size.height * 2), fps: 60) }
         if o.record != nil && rec == nil { print("could not open recorder"); return 2 }
         let d = Driver(model: model, size: o.size, recorder: rec)
         let started = Date()
+        if rec != nil { Motion.timeScale = Driver.recordingTimeScale }
         tour(d, model)
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }
         let secs = rec.map { String(format: "%.1f", $0.seconds) } ?? "-"
-        print("walkthrough: \(d.checks) checks, \(d.failures.count) failures, video \(secs)s, wall \(String(format: "%.1f", Date().timeIntervalSince(started)))s")
+        print("walkthrough: \(d.checks) checks, \(d.failures.count) failures, video \(secs)s, animations stretched \(Int(Motion.timeScale))x, wall \(String(format: "%.1f", Date().timeIntervalSince(started)))s")
         if !d.failures.isEmpty { d.failures.forEach { print(" - \($0)") } }
         return d.failures.isEmpty ? 0 : 1
     }
@@ -124,11 +125,9 @@ enum Walkthrough {
         d.moveCursor(to: gutterPoint(y: gy))
         d.recordClick()
         m.gutterZoomBegan(y: gy)
-        for i in 1...16 {
-            let t = Double(i) / 16, e = t * t * (3 - 2 * t)
+        d.gesture(0.55) { e in
             d.cursor = gutterPoint(y: gy + 150 * e)
             m.gutterZoomChanged(y: gy + 150 * e)
-            d.settle(2); d.frame()
         }
         m.gutterZoomEnded()
         d.settle(4); d.frame()
@@ -137,11 +136,9 @@ enum Walkthrough {
         d.say("Scroll to see the night")
         let startY = Double(m.gridScrollY), endY = max(startY, m.gridGeometry.totalHeight - Double(m.gridViewport.height))
         d.moveCursor(to: CGPoint(x: m.gridViewport.minX + 300, y: m.gridViewport.minY + 300))
-        for i in 1...18 {
-            let t = Double(i) / 18, e = t * t * (3 - 2 * t)
+        d.gesture(0.6) { e in
             m.gridState.scrollTarget = startY + (endY - startY) * e
             m.gridState.scrollTick += 1
-            d.settle(2); d.frame()
         }
         d.check(Double(m.gridScrollY) > startY + 100, "grid scrolled to the night (\(Int(startY)) -> \(Int(m.gridScrollY)))")
         d.hold(0.8)
