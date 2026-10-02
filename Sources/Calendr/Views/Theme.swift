@@ -99,13 +99,16 @@ enum Motion {
     /// Snapshots and perf runs render settled frames.
     static var forcedInstant = false
     static var reduced: Bool { forcedInstant || override || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    /// The walkthrough recorder stretches every animation by this factor so slow offscreen captures still sample it at 60 fps;
+    /// it maps the frames back to real time, so the video plays at true speed.
+    static var timeScale = 1.0
 
-    static func curve(_ d: Double) -> Animation? { reduced ? nil : Animation.timingCurve(0.22, 0.61, 0.36, 1, duration: d) }
+    static func curve(_ d: Double) -> Animation? { reduced ? nil : Animation.timingCurve(0.22, 0.61, 0.36, 1, duration: d * timeScale) }
     static var fast: Animation? { curve(0.12) }
     static var base: Animation? { curve(0.18) }
     static var slow: Animation? { curve(0.26) }
     static var sheet: Animation? { curve(0.30) }
-    static var spring: Animation? { reduced ? nil : .spring(response: 0.3, dampingFraction: 0.7) }
+    static var spring: Animation? { reduced ? nil : .spring(response: 0.3 * timeScale, dampingFraction: 0.7) }
 }
 
 /// Period change: content slides 36 pt in the direction of travel while fading in (180 ms). The old content is removed at once,

@@ -1,5 +1,5 @@
 #!/bin/bash
-# The polished walkthrough: the app records itself (2x, 30 fps, no overlays) with cursor telemetry and captions,
+# The polished walkthrough: the app records itself (2x, 60 fps, no overlays) with cursor telemetry and captions,
 # Glide renders it (backdrop, rounded window, cursor, auto-zoom), scripts/caption-video.py burns the caption chips.
 # Usage: scripts/walkthrough-video.sh [--skip-build]     Output: artifacts/walkthrough-v3.mp4
 set -euo pipefail
@@ -33,7 +33,7 @@ glide render "$REC" -o "$TMP" \
   "${ZOOM_ARGS[@]}" \
   --background gradient:#17161d,#0b0b0e,155 --padding 10 --radius 16 --shadow 0.6 \
   --resolution 1080p --quality high --zoom-scale 1.45 \
-  --cursor-motion fast --cursor-size 3 --click-effect on \
+  --fps 60 --cursor-motion fast --cursor-size 3 --click-effect on \
   ${GLIDE_EXTRA:-}
 
 python3 scripts/caption-video.py "$TMP" "$REC.captions.json" artifacts/walkthrough-v3.mp4
