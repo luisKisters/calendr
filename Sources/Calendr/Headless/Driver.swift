@@ -126,36 +126,42 @@ final class Driver {
             while Date().timeIntervalSince(t0) < seconds { RunLoop.main.run(until: Date().addingTimeInterval(0.005)) }
             return
         }
-        let k = Motion.timeScale
-        var frames: [(img: CGImage, t: Double)] = [], unchanged = 0
-        defer { lastAnimateFrames = frames.count }
+        let k = Motion.timeScale, fps = Double(recorder.fps)
+        // Frames are written as they arrive (a 2x capture is ~20 MB): each capture is shown from its own tick until the next one's, and
+        // captures closer together than a frame collapse onto one tick, the later one winning.
+        var pending: CGImage?, written = 0, captures = 0, unchanged = 0
+        defer { lastAnimateFrames = captures }
+        func add(_ img: CGImage, at t: Double) {
+            if let prev = pending {
+                let end = Int((t * fps).rounded())
+                if end > written { emit(prev, frames: end - written); written = end }
+                lastFrame = prev
+            }
+            pending = img; captures += 1
+        }
         repeat {
             RunLoop.main.run(until: Date().addingTimeInterval(0.001))
             source.host.layoutSubtreeIfNeeded()
             let t = Date().timeIntervalSince(t0) / k
             guard let img = source.image(scale: scale) else { continue }
             // Once the picture has stopped changing the animation is over: hold it for the rest of `seconds` instead of re-capturing.
-            if let prev = frames.last?.img, Self.same(prev, img) { unchanged += 1 } else { unchanged = 0 }
-            frames.append((img, t))
+            if let prev = pending, Self.same(prev, img) { unchanged += 1 } else { unchanged = 0 }
+            add(img, at: t)
         } while Date().timeIntervalSince(t0) / k < seconds && unchanged < 4
         // The last frame sampled can be mid-animation: a spring stretched by `k` is still settling when `seconds` is up, and `hold()` repeats
-        // whatever is captured here. Let it finish (until two captures match, at most another stretched `seconds`) and take that frame.
-        var settled = frames.last?.img
+        // whatever is captured here. Let it finish (two matching captures in a row, at most another stretched `seconds`) and take that frame.
+        var settled = pending, quiet = 0
         let cap = Date().addingTimeInterval(seconds * k)
-        repeat {
+        while quiet < 2 && Date() < cap {
             settle(4)
             guard let img = source.image(scale: scale) else { break }
-            if let prev = settled, Self.same(prev, img) { break }
+            if let prev = settled, Self.same(prev, img) { quiet += 1 } else { quiet = 0 }
             settled = img
-        } while unchanged < 4 && Date() < cap
-        if let settled { frames.append((settled, seconds)) }
-        let fps = Double(recorder.fps)
-        var written = 0
-        for (i, f) in frames.enumerated() {
-            // Captures closer together than a frame collapse onto one tick; the later one wins.
-            let end = i + 1 < frames.count ? Int((frames[i + 1].t * fps).rounded()) : max(written + 1, Int((seconds * fps).rounded()))
-            if end > written { emit(f.img, frames: end - written); written = end }
-            lastFrame = f.img
+        }
+        if let settled { add(settled, at: seconds) }
+        if let last = pending {
+            emit(last, frames: max(written + 1, Int((seconds * fps).rounded())) - written)
+            lastFrame = last
         }
         settle(2)
     }
@@ -170,13 +176,16 @@ final class Driver {
     }
 
     /// A gesture that is stepped by the driver (a drag, a gutter zoom, a scroll): `step` gets the eased progress for every video frame of
-    /// `duration`, and each frame is captured after it.
+    /// `duration`, and each frame is captured after it. Frames are paced on the stretched clock, so animations the gesture starts (selecting
+    /// the dragged event opens the right panel) play at true speed alongside it.
     func gesture(_ duration: Double, _ step: (Double) -> Void) {
-        let n = max(2, Int((duration * Double(recorder?.fps ?? 60)).rounded()))
+        let fps = Double(recorder?.fps ?? 60), n = max(2, Int((duration * fps).rounded())), t0 = Date()
         for i in 1...n {
             let t = Double(i) / Double(n)
             step(t * t * (3 - 2 * t))
-            settle(1); frame()
+            settle(1)
+            if recorder != nil { RunLoop.main.run(until: t0.addingTimeInterval(Double(i) * Motion.timeScale / fps)) }
+            frame()
         }
     }
 
