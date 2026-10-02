@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import CalendrKit
 
-/// Process-wide singletons for the real app (the model is shared by the main window and the menu bar popover).
+/// Process-wide singletons for the real app (the model is shared by the main window and the menu bar item).
 @MainActor
 enum AppContext {
     static let model: AppModel = {
@@ -21,6 +21,7 @@ struct CalendrApp: App {
                 .environment(model)
                 .frame(minWidth: 1100, minHeight: 700)
                 .background(WindowConfigurator(model: model))
+                .background(MainWindowOpener())
                 .onAppear {
                     guard launchOptions.printLaunch else { return }
                     // Two run-loop turns later the first frame has been laid out and committed.
@@ -37,14 +38,6 @@ struct CalendrApp: App {
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
         .commands { AppCommands(model: model) }
-
-        MenuBarExtra {
-            MenuBarPopover()
-                .environment(model)
-        } label: {
-            MenuBarLabel().environment(model)
-        }
-        .menuBarExtraStyle(.window)
     }
 }
 
@@ -52,11 +45,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
             KeyRouter.shared.install(model: AppContext.model)
+            let bar = MenuBarController(model: AppContext.model)
+            MenuBarController.shared = bar
+            MenuBarHotKey.register()
+            if CommandLine.arguments.contains("--dump-menubar") {
+                print(bar.dump())
+                fflush(stdout)
+                exit(0)
+            }
             if launchOptions.demo { NSApp.activate(ignoringOtherApps: true) }
             if CommandLine.arguments.contains("--open-menubar") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { _ = MenuBarControl.open() }
             }
         }
+    }
+    func applicationWillTerminate(_ notification: Notification) {
+        MainActor.assumeIsolated { MenuBarHotKey.unregister() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }

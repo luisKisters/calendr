@@ -9,17 +9,13 @@ public struct UpcomingSection: Identifiable, Equatable, Sendable {
 }
 
 public struct UpcomingSummary: Equatable, Sendable {
-    public init(next: CalendarEvent?, untilNext: String, label: String, sections: [UpcomingSection]) { self.next = next; self.untilNext = untilNext; self.label = label; self.sections = sections }
+    public init(next: CalendarEvent?, sections: [UpcomingSection]) { self.next = next; self.sections = sections }
     public var next: CalendarEvent?
-    /// "4h 58min"
-    public var untilNext: String
-    /// "in 4h 58m"
-    public var label: String
     public var sections: [UpcomingSection]
 }
 
 public enum Upcoming {
-    /// Groups upcoming timed events for the menu bar. The next event is lifted out of its day section.
+    /// Groups upcoming timed events. The next event is lifted out of its day section.
     public static func summarize(events: [CalendarEvent], now: Date, days: Int = 7, fmt: Fmt) -> UpcomingSummary {
         let math = fmt.math
         let today = math.startOfDay(now)
@@ -36,15 +32,7 @@ public enum Upcoming {
                 sections.append(UpcomingSection(title: sectionTitle(day, today: today, fmt: fmt), day: day, events: [ev]))
             }
         }
-        var until = "", label = ""
-        if let n = next {
-            if n.start <= now { until = "now"; label = "now" } else {
-                let mins = Int((n.start.timeIntervalSince(now) / 60).rounded(.up))
-                until = DurationText.minutes(mins)
-                label = "in " + DurationText.short(mins)
-            }
-        }
-        return UpcomingSummary(next: next, untilNext: until, label: label, sections: sections)
+        return UpcomingSummary(next: next, sections: sections)
     }
 
     public static func sectionTitle(_ day: Date, today: Date, fmt: Fmt) -> String {
@@ -53,11 +41,5 @@ public enum Upcoming {
         case 1: "Tomorrow"
         default: fmt.sectionDate(day)
         }
-    }
-
-    /// "Meal Prep \u{00B7} in 4h 58m"
-    public static func menuBarLabel(_ s: UpcomingSummary) -> String {
-        guard let n = s.next else { return "No upcoming events" }
-        return "\(n.title) \u{00B7} \(s.label)"
     }
 }

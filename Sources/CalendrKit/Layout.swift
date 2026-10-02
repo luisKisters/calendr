@@ -1,134 +1,104 @@
 import Foundation
 
-// MARK: - Overlap layout (Notion-style cascade)
+// MARK: - Overlap layout (cascade)
 
 public struct TimeSpan: Sendable {
     public var id: String
     public var startMinute: Int
     public var endMinute: Int
-    /// Short task-style items. They float over blocks that started well before them instead of squeezing them.
-    public var isPill: Bool
-    public init(id: String, startMinute: Int, endMinute: Int, isPill: Bool = false) {
-        self.id = id; self.startMinute = startMinute; self.endMinute = endMinute; self.isPill = isPill
+    public init(id: String, startMinute: Int, endMinute: Int) {
+        self.id = id; self.startMinute = startMinute; self.endMinute = endMinute
     }
 }
 
 public struct Placement: Equatable, Sendable {
-    public init(id: String, column: Int, columns: Int, left: Double, width: Double, z: Int, shiftMinutes: Int = 0, chip: Bool = false) { self.id = id; self.column = column; self.columns = columns; self.left = left; self.width = width; self.z = z; self.shiftMinutes = shiftMinutes; self.chip = chip }
+    public init(id: String, column: Int, columns: Int, span: Int = 1, over: Bool = false) {
+        self.id = id; self.column = column; self.columns = columns; self.span = span; self.over = over
+    }
     public var id: String
     public var column: Int
     public var columns: Int
+    /// Columns this event reaches across, starting at `column`.
+    public var span: Int
+    /// Laid over an earlier event: drawn with a window-coloured outline so it reads as cut out.
+    public var over: Bool
     /// 0...1 of the day column width.
-    public var left: Double
-    public var width: Double
-    public var z: Int
-    /// Task capsules are moved off their start time to a free slot (minutes, negative = up).
-    public var shiftMinutes: Int = 0
-    /// No free slot near the task's time: drawn as a 19pt checkbox-only chip at the trailing edge.
-    public var chip: Bool = false
+    public var left: Double { Double(column) / Double(columns) }
+    public var width: Double { Double(span) / Double(columns) }
+    /// Paint order: later columns on top.
+    public var z: Int { column }
 }
 
 public enum OverlapLayout {
-    /// Events shorter than this still occupy this much room when deciding whether they collide (they render as pills).
-    public static let minLayoutMinutes = 15
-    /// Cascade offsets measured from the reference: a later block starts ~37% into the column, a later short item ~53%.
-    static let blockStep = 0.37
-    static let shortStep = 0.53
-    static let maxLastStart = 0.73
-    static let maxCascadeWidth = 0.82
-    /// A pill starting at least this long after a block did floats over it; earlier than that it shares columns.
-    static let floatAfterMinutes = 60
-    /// Left offset of a floating pill relative to the block it covers (8pt in a ~177pt column).
-    static let floatInset = 0.045
+    /// Every block is at least this tall (points), so short events still collide when they would touch.
+    public static let minHeight = 19.0
+    /// The head of a block (title and time): an event only gives up the columns to its right when something there starts inside it.
+    static let head = 36.0
+    /// A short neighbour's last points may touch the corner of the head.
+    static let touch = 8.0
 
-    static func end(_ s: TimeSpan) -> Int { max(s.endMinute, s.startMinute + minLayoutMinutes) }
-    static func overlaps(_ a: TimeSpan, _ b: TimeSpan) -> Bool { a.startMinute < end(b) && b.startMinute < end(a) }
-
-    /// Height of a task capsule in minutes (17pt at 0.8pt per minute, plus a 1pt gap).
-    public static let capsuleMinutes = 22
-    /// A capsule looks for a free slot this far from its own time before it degrades to a chip.
-    public static let slotSearchMinutes = 35
-
-    /// Blocks (events) cascade into columns. Task capsules never squeeze a block: they float on top at full width, stack
-    /// under each other, and keep clear of blocks that start near them (v2 design: capsules find a free slot within 35 min,
-    /// otherwise they become a checkbox-only chip).
-    public static func layout(_ spans: [TimeSpan]) -> [Placement] {
-        let blocks = spans.filter { !$0.isPill }
-        var result = cascade(blocks)
-        var placed: [(a: Int, b: Int)] = []
-        let pills = spans.filter(\.isPill).sorted { $0.startMinute != $1.startMinute ? $0.startMinute < $1.startMinute : $0.id < $1.id }
-        for p in pills {
-            let s0 = p.startMinute
-            // Blocks that started well before the capsule may be floated over; nearer ones are avoided.
-            let obstacles = blocks.filter { $0.startMinute > s0 - slotSearchMinutes }
-            func free(_ s: Int) -> Bool {
-                guard s >= 0, s + capsuleMinutes <= 1440 else { return false }
-                if placed.contains(where: { s < $0.b && $0.a < s + capsuleMinutes }) { return false }
-                return !obstacles.contains { s < end($0) && $0.startMinute < s + capsuleMinutes }
-            }
-            var chosen: Int?
-            if free(s0) { chosen = s0 } else {
-                var d = 5
-                while d <= slotSearchMinutes && chosen == nil {
-                    if free(s0 + d) { chosen = s0 + d } else if free(s0 - d) { chosen = s0 - d }
-                    d += 5
-                }
-            }
-            if let c = chosen {
-                placed.append((c, c + capsuleMinutes))
-                result.append(Placement(id: p.id, column: 0, columns: 1, left: 0, width: 1, z: 100, shiftMinutes: c - s0))
-            } else {
-                result.append(Placement(id: p.id, column: 0, columns: 1, left: 1, width: 0, z: 101, chip: true))
-            }
-        }
-        return result
+    /// Lays out one day's spans at `pointsPerHour` (the cascade works in points, as the blocks are drawn).
+    public static func layout(_ spans: [TimeSpan], pointsPerHour: Double = 56) -> [Placement] {
+        let k = pointsPerHour / 60
+        return pack(spans.map { s in
+            let y0 = Double(s.startMinute) * k
+            return (s.id, y0, max(Double(s.endMinute) * k, y0 + minHeight))
+        })
     }
 
-    static func cascade(_ spans: [TimeSpan]) -> [Placement] {
-        // A short pill never claims the first column from a longer block it overlaps, even when it starts a few minutes
-        // earlier (showcase week: the 09:45 brunch is the wide left block, the 09:40 task cascades on top).
-        let blocks = spans.filter { !$0.isPill }
-        let items = spans.enumerated().map { (i, s) -> (index: Int, span: TimeSpan, end: Int, key: Int) in
-            var key = s.startMinute
-            if s.isPill { for b in blocks where overlaps(s, b) && b.startMinute > key { key = b.startMinute } }
-            return (i, s, end(s), key)
-        }.sorted {
-            if $0.key != $1.key { return $0.key < $1.key }
-            if $0.span.isPill != $1.span.isPill { return !$0.span.isPill }
-            if $0.end != $1.end { return $0.end > $1.end }
-            return $0.index < $1.index
+    /// `pack()` of design/mockup-v3/app-core.js: columns per overlap cluster, then each event reaches right across later columns
+    /// unless one of them has an event starting inside this event's head. Events that start together split the column.
+    public static func pack(_ input: [(id: String, y0: Double, y1: Double)]) -> [Placement] {
+        let items = input.indices.sorted {
+            let a = input[$0], b = input[$1]
+            if a.y0 != b.y0 { return a.y0 < b.y0 }
+            if a.y1 != b.y1 { return a.y1 > b.y1 }
+            return $0 < $1
         }
-        var result: [Placement] = []
-        result.reserveCapacity(items.count)
-        var cluster: [(span: TimeSpan, end: Int, col: Int)] = []
-        var clusterEnd = Int.min
-        var columnEnds: [Int] = []
+        var out: [Placement] = []
+        out.reserveCapacity(input.count)
+        var cluster: [(i: Int, col: Int)] = []
+        var end = -Double.infinity
+        var cols: [Double] = []
 
         func flush() {
             guard !cluster.isEmpty else { return }
-            let n = columnEnds.count
-            let laterAreShort = cluster.filter { $0.col > 0 }.allSatisfy { $0.span.isPill || $0.span.endMinute - $0.span.startMinute < 30 }
-            let step = n > 1 ? min(laterAreShort ? shortStep : blockStep, maxLastStart / Double(n - 1)) : 0
-            for c in cluster {
-                let left = Double(c.col) * step
-                let isLast = c.col == n - 1
-                let width = n == 1 ? 1.0 : (isLast ? 1 - left : min(1 - left, laterAreShort ? step + 0.2 : maxCascadeWidth))
-                result.append(Placement(id: c.span.id, column: c.col, columns: n, left: left, width: width, z: c.col))
+            let n = cols.count
+            var spans = [Int](repeating: 1, count: cluster.count)
+            for (j, it) in cluster.enumerated() {
+                let a = input[it.i]
+                let h = min(a.y1 - a.y0, head)
+                var span = 1
+                for c in (it.col + 1)..<max(it.col + 1, n) {
+                    if cluster.contains(where: { o in o.col == c && input[o.i].y0 < a.y0 + h && input[o.i].y1 > a.y0 + touch }) { break }
+                    span += 1
+                }
+                spans[j] = span
+            }
+            for (j, it) in cluster.enumerated() {
+                let a = input[it.i]
+                let over = cluster.indices.contains { k in
+                    let o = cluster[k], b = input[o.i]
+                    return k != j && o.col < it.col && o.col + spans[k] > it.col && b.y0 < a.y1 - 0.5 && b.y1 > a.y0 + 0.5
+                }
+                out.append(Placement(id: a.id, column: it.col, columns: n, span: spans[j], over: over))
             }
             cluster.removeAll(keepingCapacity: true)
-            columnEnds.removeAll(keepingCapacity: true)
-            clusterEnd = Int.min
+            cols.removeAll(keepingCapacity: true)
+            end = -Double.infinity
         }
 
-        for it in items {
-            if it.span.startMinute >= clusterEnd { flush() }
-            var col = columnEnds.firstIndex { $0 <= it.span.startMinute } ?? -1
-            if col < 0 { columnEnds.append(it.end); col = columnEnds.count - 1 } else { columnEnds[col] = it.end }
-            cluster.append((it.span, it.end, col))
-            clusterEnd = max(clusterEnd, it.end)
+        for i in items {
+            let it = input[i]
+            if !cluster.isEmpty && it.y0 >= end - 0.5 { flush() }
+            var c = cols.firstIndex { $0 <= it.y0 + 0.5 } ?? -1
+            if c < 0 { c = cols.count; cols.append(0) }
+            cols[c] = it.y1
+            cluster.append((i, c))
+            end = max(end, it.y1)
         }
         flush()
-        return result
+        return out
     }
 }
 
@@ -150,6 +120,9 @@ public struct AllDayPlacement: Equatable, Sendable {
     public var clippedLeft: Bool
     public var clippedRight: Bool
     public var span: Int { lastDay - firstDay + 1 }
+    public init(id: String, lane: Int, firstDay: Int, lastDay: Int, clippedLeft: Bool, clippedRight: Bool) {
+        self.id = id; self.lane = lane; self.firstDay = firstDay; self.lastDay = lastDay; self.clippedLeft = clippedLeft; self.clippedRight = clippedRight
+    }
 }
 
 public struct AllDayLayout: Equatable, Sendable {
@@ -206,9 +179,11 @@ public struct PlacedEvent: Identifiable, Equatable, Sendable {
     public var placement: Placement
     public var continuesFromPrevious: Bool
     public var continuesToNext: Bool
-    public var isPill: Bool { endMinute - startMinute < 30 }
-    /// Start minute as drawn (task capsules can be shifted to a free slot).
-    public var displayStart: Int { startMinute + placement.shiftMinutes }
+    public init(id: String, event: CalendarEvent, dayIndex: Int, startMinute: Int, endMinute: Int, placement: Placement,
+                continuesFromPrevious: Bool = false, continuesToNext: Bool = false) {
+        self.id = id; self.event = event; self.dayIndex = dayIndex; self.startMinute = startMinute; self.endMinute = endMinute
+        self.placement = placement; self.continuesFromPrevious = continuesFromPrevious; self.continuesToNext = continuesToNext
+    }
 }
 
 public struct RangeLayout: Sendable {
@@ -216,9 +191,20 @@ public struct RangeLayout: Sendable {
     public var timed: [[PlacedEvent]]         // per day
     public var allDay: AllDayLayout
     public var allDayEvents: [String: CalendarEvent]
+    /// Hour height the overlap cascade was computed for.
+    public var pointsPerHour: Double = 56
     public static let empty = RangeLayout(days: [], timed: [], allDay: .empty, allDayEvents: [:])
 
     public var timedCount: Int { timed.reduce(0) { $0 + $1.count } }
+
+    /// The same events cascaded for another hour height (the cascade is measured in points).
+    public func repacked(pointsPerHour pph: Double) -> RangeLayout {
+        guard pph != pointsPerHour else { return self }
+        var r = self
+        r.pointsPerHour = pph
+        r.timed = timed.map { RangeLayoutBuilder.pack($0, pointsPerHour: pph) }
+        return r
+    }
 }
 
 public enum RangeLayoutBuilder {
@@ -229,7 +215,20 @@ public enum RangeLayoutBuilder {
         return lo - 1      // -1 before the range, starts.count - 1 at/after the last start
     }
 
-    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath) -> RangeLayout {
+    /// Cascades one day's events and sorts them into paint order (lower columns first, so cascaded events sit on top).
+    public static func pack(_ day: [PlacedEvent], pointsPerHour: Double) -> [PlacedEvent] {
+        var placed = day
+        let placements = OverlapLayout.layout(placed.indices.map {
+            TimeSpan(id: String($0), startMinute: placed[$0].startMinute, endMinute: placed[$0].endMinute)
+        }, pointsPerHour: pointsPerHour)
+        for p in placements { if let i = Int(p.id) { placed[i].placement = p } }
+        // Sort small integer keys, not the (large) PlacedEvent values.
+        let keys = placed.map { $0.placement.z * 100_000 + $0.startMinute }
+        let order = (0..<placed.count).sorted { keys[$0] != keys[$1] ? keys[$0] < keys[$1] : $0 < $1 }
+        return order.map { placed[$0] }
+    }
+
+    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56) -> RangeLayout {
         let dayCount = days.count
         guard dayCount > 0 else { return .empty }
         let rangeEnd = math.addDays(days[dayCount - 1], 1)
@@ -273,27 +272,14 @@ public enum RangeLayoutBuilder {
         var timed: [[PlacedEvent]] = []
         timed.reserveCapacity(dayCount)
         for d in 0..<dayCount {
-            let spans = perDaySpans[d]
-            let placements = OverlapLayout.layout(spans.enumerated().map {
-                TimeSpan(id: String($0.offset), startMinute: $0.element.s, endMinute: $0.element.e,
-                         isPill: $0.element.event.kind == .task && $0.element.e - $0.element.s < 30)
-            })
-            var byIdx = [Placement?](repeating: nil, count: spans.count)
-            for p in placements { if let i = Int(p.id) { byIdx[i] = p } }
-            var placed: [PlacedEvent] = []
-            placed.reserveCapacity(spans.count)
-            for (i, sp) in spans.enumerated() {
-                guard let p = byIdx[i] else { continue }
-                placed.append(PlacedEvent(id: "\(sp.event.id)|\(d)", event: sp.event, dayIndex: d, startMinute: sp.s,
-                                          endMinute: sp.e, placement: p, continuesFromPrevious: sp.from, continuesToNext: sp.to))
+            let placed = perDaySpans[d].map { sp in
+                PlacedEvent(id: "\(sp.event.id)|\(d)", event: sp.event, dayIndex: d, startMinute: sp.s, endMinute: sp.e,
+                            placement: Placement(id: "", column: 0, columns: 1), continuesFromPrevious: sp.from, continuesToNext: sp.to)
             }
-            // Paint order: lower z first so cascaded events sit on top.
-            // Sort small integer keys, not the (large) PlacedEvent values.
-            let keys = placed.map { $0.placement.z * 100_000 + $0.startMinute }
-            let order = (0..<placed.count).sorted { keys[$0] != keys[$1] ? keys[$0] < keys[$1] : $0 < $1 }
-            timed.append(order.map { placed[$0] })
+            timed.append(pack(placed, pointsPerHour: pointsPerHour))
         }
-        return RangeLayout(days: days, timed: timed, allDay: AllDayPacker.pack(allDayItems, dayCount: dayCount), allDayEvents: allDayMap)
+        return RangeLayout(days: days, timed: timed, allDay: AllDayPacker.pack(allDayItems, dayCount: dayCount), allDayEvents: allDayMap,
+                           pointsPerHour: pointsPerHour)
     }
 }
 

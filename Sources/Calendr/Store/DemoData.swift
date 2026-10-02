@@ -2,8 +2,9 @@ import Foundation
 import CalendrKit
 
 /// Fictional seed data (Alex Rivera, a design student with a freelance studio and a part-time job at Northwind). The week of Mon Sep 28 -
-/// Sun Oct 4 2026 is the showcase week; other weeks
+/// Sun Oct 4 2026 is the showcase week and matches the v3 mockup fixture (design/mockup-v3/data.js); other weeks
 /// get the same recurring rhythm plus deterministic one-off appointments so month view and search have content.
+/// The Tasks calendar is an ordinary calendar: its entries are plain events with their titles as they arrive ("[P1] ...").
 enum DemoData {
     static let math = CalendarMath(timeZone: TimeZone(identifier: "Europe/Berlin")!)
     static let refWeekStart = math.date(year: 2026, month: 9, day: 28)
@@ -24,35 +25,32 @@ enum DemoData {
             CalendarInfo(id: personal, accountID: acc1, title: "Personal", colorHex: "#6F97F0", isDefault: true),
             CalendarInfo(id: family, accountID: acc1, title: "Family", colorHex: "#EF8452"),
             CalendarInfo(id: tasks, accountID: acc1, title: "Tasks", colorHex: "#B9B6C9"),
-            CalendarInfo(id: study, accountID: acc1, title: "Study Group", colorHex: "#F1C55D"),
+            CalendarInfo(id: study, accountID: acc1, title: "Study Group", colorHex: "#E3B341"),
             CalendarInfo(id: feiertage, accountID: acc1, title: "Feiertage in Deutschland", colorHex: "#DD6FAE", icon: .feed, isWritable: false),
-            CalendarInfo(id: holidays, accountID: acc1, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isWritable: false),
-            CalendarInfo(id: ferien, accountID: acc1, title: "Ferien Berlin", colorHex: "#80CF93", icon: .feed, isWritable: false),
+            CalendarInfo(id: holidays, accountID: acc1, title: "Holidays in Germany", colorHex: "#6CC48A", icon: .feed, isWritable: false),
+            CalendarInfo(id: ferien, accountID: acc1, title: "Ferien Berlin", colorHex: "#6CC48A", icon: .feed, isWritable: false),
         ]),
         CalendarAccount(id: acc2, name: "alex.rivera.studio@mail.example.com", calendars: [
-            CalendarInfo(id: services, accountID: acc2, title: "alex.rivera.studio@mail.example.com", colorHex: "#69A9DD"),
-            CalendarInfo(id: svcFeiertage, accountID: acc2, title: "Feiertage in Deutschland", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
-            CalendarInfo(id: svcHolidays, accountID: acc2, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
-            CalendarInfo(id: svcItaly, accountID: acc2, title: "Holidays in Italy", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
+            CalendarInfo(id: services, accountID: acc2, title: "Studio", colorHex: "#69A9DD"),
+            CalendarInfo(id: svcFeiertage, accountID: acc2, title: "Feiertage in Deutschland", colorHex: "#6CC48A", icon: .feed, isVisibleByDefault: false, isWritable: false),
+            CalendarInfo(id: svcHolidays, accountID: acc2, title: "Holidays in Germany", colorHex: "#6CC48A", icon: .feed, isVisibleByDefault: false, isWritable: false),
+            CalendarInfo(id: svcItaly, accountID: acc2, title: "Holidays in Italy", colorHex: "#6CC48A", icon: .feed, isVisibleByDefault: false, isWritable: false),
         ]),
         CalendarAccount(id: acc3, name: "alex.rivera@northwind.example.com", calendars: [
-            CalendarInfo(id: work, accountID: acc3, title: "alex.rivera@northwind.example.com", colorHex: "#F1C55D"),
-            CalendarInfo(id: workHolidays, accountID: acc3, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isWritable: false),
+            CalendarInfo(id: work, accountID: acc3, title: "Northwind", colorHex: "#C58AF9"),
+            CalendarInfo(id: workHolidays, accountID: acc3, title: "Holidays in Germany", colorHex: "#6CC48A", icon: .feed, isVisibleByDefault: false, isWritable: false),
         ]),
     ]
 
     static let teammates: [Teammate] = [
         Teammate(name: "Mateo Alvarez", email: "mateo.alvarez@northwind.example.com"),
-        Teammate(name: "Chair Office", email: "chair.office@northwind.example.com"),
-        Teammate(name: "IT Department", email: "it@northwind.example.com"),
         Teammate(name: "Maya Sterling", email: "maya.sterling@northwind.example.com"),
         Teammate(name: "Tina Tester", email: "tina.tester@northwind.example.com"),
         Teammate(name: "Lucas Marlowe", email: "lucas.marlowe@northwind.example.com"),
-        Teammate(name: "Payments Test", email: "payments.test@northwind.example.com"),
-        Teammate(name: "Payments", email: "payments@northwind.example.com"),
         Teammate(name: "Tom Fielding", email: "tom.fielding@northwind.example.com"),
+        Teammate(name: "Chair Office", email: "chair.office@northwind.example.com"),
+        Teammate(name: "IT Department", email: "it@northwind.example.com"),
         Teammate(name: "Social Media Team", email: "social@northwind.example.com"),
-        Teammate(name: "Berlin Chapter", email: "berlin@northwind.example.com"),
     ]
 
     // MARK: Helpers
@@ -68,8 +66,9 @@ enum DemoData {
         var calendar: String
         var weekdays: [Int]              // Calendar weekday numbers, Sunday = 1
         var start: String, end: String
-        var kind: EventKind = .event
         var location = "", notes = ""
+        var participants: [String] = []
+        var conferencing = ""
         var colorHex: String?
         var until: Date?
         var skipHolidays = false
@@ -101,14 +100,13 @@ enum DemoData {
             school("Composition", [5], "14:35", "16:10"),
             school("World History", [4, 6], "14:35", "16:10"),
             school("Statistics", [6], "12:00", "13:40"),
-            Series(title: "Sam / Alex", calendar: personal, weekdays: [3], start: "14:00", end: "15:00"),
+            Series(title: "Sam / Alex", calendar: personal, weekdays: [3], start: "14:00", end: "15:00", participants: ["Sam Okafor"], conferencing: "meet.example.com/sam-alex"),
             Series(title: "Piano lesson", calendar: personal, weekdays: [5], start: "13:00", end: "14:00"),
             Series(title: "Call with Jamie", calendar: personal, weekdays: [2, 3, 5, 6, 7, 1], start: "22:00", end: "22:30"),
-            Series(title: "Meal Prep", calendar: tasks, weekdays: [2, 3, 4, 5, 6], start: "07:30", end: "07:45", kind: .task),
-            Series(title: "Gym bag", calendar: tasks, weekdays: [3, 4, 6], start: "07:30", end: "07:45", kind: .task),
-            Series(title: "[P1] Water the plants - every day until done", calendar: tasks, weekdays: all, start: "18:00", end: "18:15", kind: .task),
-            Series(title: "Evening journal", calendar: tasks, weekdays: all, start: "22:49", end: "23:00", kind: .task),
-            Series(title: "[P0] Stretch for ten minutes", calendar: tasks, weekdays: all, start: "23:00", end: "23:15", kind: .task),
+            Series(title: "Meal prep", calendar: tasks, weekdays: [2, 3, 4, 5, 6], start: "07:30", end: "07:45"),
+            Series(title: "Gym bag", calendar: tasks, weekdays: [3, 4, 6], start: "07:45", end: "08:00"),
+            Series(title: "[P1] Water the plants", calendar: tasks, weekdays: all, start: "18:00", end: "18:15"),
+            Series(title: "Evening journal", calendar: tasks, weekdays: all, start: "22:45", end: "23:00"),
         ]
     }
 
@@ -168,64 +166,60 @@ enum DemoData {
                 var r = rule
                 if s.weekdays.count == 7 { r = Recurrence(frequency: .daily, until: s.until) }
                 out.append(CalendarEvent(id: "\(sid)@\(Int(d.timeIntervalSince1970))", seriesID: sid, calendarID: s.calendar, title: s.title,
-                                         start: at(d, s.start), end: at(d, s.end), kind: s.kind, location: s.location, notes: s.notes,
-                                         recurrence: r, reminderMinutes: s.reminder, colorHex: s.colorHex))
+                                         start: at(d, s.start), end: at(d, s.end), location: s.location, notes: s.notes,
+                                         recurrence: r, participants: s.participants, conferencing: s.conferencing, reminderMinutes: s.reminder, colorHex: s.colorHex))
             }
         }
         return out
     }
 
-    static func ev(_ id: String, _ cal: String, _ title: String, _ d: Date, _ s: String, _ e: String, kind: EventKind = .event,
-                   status: ResponseStatus = .confirmed, color: String? = nil, bar2: String? = nil, location: String = "", notes: String = "") -> CalendarEvent {
-        CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: at(d, s), end: at(d, e), kind: kind, status: status,
-                      location: location, notes: notes, reminderMinutes: kind == .task ? nil : 1, colorHex: color, secondaryBarHex: bar2)
+    static func ev(_ id: String, _ cal: String, _ title: String, _ d: Date, _ s: String, _ e: String, status: ResponseStatus = .confirmed,
+                   location: String = "", notes: String = "", guests: [String] = [], video: String = "") -> CalendarEvent {
+        CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: at(d, s), end: at(d, e), status: status,
+                      location: location, notes: notes, participants: guests, conferencing: video, reminderMinutes: 1)
     }
-    static func allDay(_ id: String, _ cal: String, _ title: String, _ from: Date, days: Int = 1, kind: EventKind = .event, notes: String = "") -> CalendarEvent {
-        CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: from, end: math.addDays(from, days), isAllDay: true, kind: kind, notes: notes)
+    static func allDay(_ id: String, _ cal: String, _ title: String, _ from: Date, days: Int = 1, status: ResponseStatus = .confirmed, notes: String = "") -> CalendarEvent {
+        CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: from, end: math.addDays(from, days), isAllDay: true, status: status, notes: notes)
     }
 
-    static let green = "#EF8452"      // orange override tint (mockup v2: brunch, dinner with Dad, ...)
-    static let brown: String? = nil
-
+    /// The showcase week, as in design/mockup-v3/data.js.
     static func referenceWeekOneOffs() -> [CalendarEvent] {
         let mon = refWeekStart, tue = day(9, 29), wed = day(9, 30), thu = day(10, 1), fri = day(10, 2), sat = day(10, 3), sun = day(10, 4)
         return [
-            allDay("domain", tasks, "[P1] Renew domain when online...", mon, kind: .task),
-            ev("landlord", tasks, "[P2] Call the landlord about heating", mon, "09:00", "09:15", kind: .task),
-            ev("car-service", tasks, "[P3] Book the car service", mon, "10:00", "10:15", kind: .task),
-            ev("dinner-dad", personal, "Dinner with Dad", mon, "18:00", "19:00", color: green),
-            ev("roadmap", tasks, "[P1] Ask Sam: confirm roadmap slot", mon, "20:00", "20:15", kind: .task),
-            ev("climb-plan", tasks, "[P0] Plan climbing + family dinner", mon, "20:10", "20:25", kind: .task),
-            ev("hold", personal, "Hold: workshop", mon, "21:00", "22:00"),
-            ev("riley", tasks, "[P2] Call cousin Riley", mon, "21:40", "21:55", kind: .task),
+            allDay("domain", tasks, "[P1] Renew domain", mon),
+            ev("landlord", tasks, "[P2] Call the landlord about heating", mon, "09:00", "09:15"),
+            ev("car-service", tasks, "[P3] Book the car service", mon, "10:00", "10:15"),
+            ev("dinner-dad", family, "Dinner with Dad", mon, "18:00", "19:00", location: "Trattoria Example, Kreuzberg"),
+            ev("roadmap", tasks, "[P1] Ask Sam: confirm roadmap slot", mon, "20:00", "20:15"),
+            ev("hold", personal, "Hold: workshop", mon, "21:00", "22:00", status: .tentative),
 
-            ev("haircut", tasks, "[P1] Book a haircut", tue, "16:00", "16:15", kind: .task),
-            ev("weekend-trip", tasks, "[P1] Plan the weekend trip with Jamie", tue, "20:00", "20:15", kind: .task),
+            ev("haircut", tasks, "[P1] Book a haircut", tue, "16:00", "16:15"),
+            ev("weekend-trip", tasks, "[P1] Plan the weekend trip with Jamie", tue, "20:00", "20:15"),
 
             allDay("half-year", personal, "Half-year review", wed),
-            ev("half-year-notes", personal, "SEND HALF-YEAR NOTES", wed, "07:30", "08:00"),
-            CalendarEvent(id: "ref.climbing", calendarID: personal, title: "Climbing", start: at(wed, "16:30"), end: at(wed, "18:30"), status: .declined),
-            ev("family-dinner", personal, "Family dinner", wed, "16:30", "18:30", color: green),
-            ev("game-night", personal, "Board game night", wed, "19:00", "22:30"),
+            ev("half-year-notes", personal, "Send half-year notes", wed, "07:30", "08:00"),
+            ev("climbing", personal, "Climbing", wed, "16:30", "18:30", status: .declined, location: "Climbing Hall Example"),
+            ev("family-dinner", family, "Family dinner", wed, "16:30", "18:30", location: "Zuhause", guests: ["Dad", "Riley Rivera"]),
+            ev("game-night", personal, "Board game night", wed, "19:00", "22:30", guests: ["Jamie Lin", "Sam Okafor", "Casey Moreau"]),
 
-            ev("flat-cleaning", personal, "Flat Cleaning Time", thu, "18:00", "19:00"),
-            ev("grants", study, "How to GRANTS", thu, "19:00", "19:30", status: .tentative),
-            ev("ops", study, "Ops Meeting", thu, "19:00", "20:00"),
-            ev("thursday", study, "Thursday sync", thu, "20:00", "21:30"),
+            ev("flat-cleaning", personal, "Flat cleaning", thu, "18:00", "19:00"),
+            ev("grants", study, "How to grants", thu, "19:00", "19:30", status: .tentative, video: "meet.example.com/grants"),
+            ev("ops", study, "Ops meeting", thu, "19:00", "20:00", guests: ["Maya Sterling", "Tom Fielding"], video: "meet.example.com/ops"),
+            ev("thursday", study, "Thursday sync", thu, "20:00", "21:30", guests: ["Maya Sterling", "Lucas Marlowe", "Tina Tester"], video: "meet.example.com/thursday"),
 
-            allDay("offsite", personal, "OFFSITE?? (maybe, see desc)", fri, days: 3, notes: "maybe, see the invite"),
+            allDay("offsite", work, "Offsite (maybe, see description)", fri, days: 3, status: .tentative, notes: "Maybe. See the invite for the final dates."),
             allDay("sam-away", personal, "Sam away", fri, days: 3),
-            allDay("saas", tasks, "[P3] Renew SaaS plan 249,90 E...", fri, kind: .task),
-            ev("taxform", tasks, "[P2] Fill in the tax form", fri, "16:00", "16:15", kind: .task),
+            allDay("saas", tasks, "[P3] Renew SaaS plan", fri),
+            ev("taxform", tasks, "[P2] Fill in the tax form", fri, "16:00", "16:15"),
 
             allDay("a-casey", personal, "Casey's birthday", sat),
-            ev("casey-wishes", tasks, "Congratulate Casey", sat, "09:00", "09:15", kind: .task),
-            ev("library", tasks, "[P3] Return the library book", sat, "18:00", "18:15", kind: .task),
+            ev("casey-wishes", tasks, "Congratulate Casey", sat, "09:00", "09:15"),
+            ev("library", tasks, "[P3] Return the library book", sat, "18:30", "18:45"),
 
-            ev("brunch", personal, "Farmers market + brunch", sun, "09:45", "11:30", status: .tentative, color: green),
-            ev("dana", tasks, "[P1] Reply to Dana", sun, "09:40", "09:55", kind: .task),
-            ev("weekly-review", tasks, "[P0?] Sundays: weekly review", sun, "17:15", "17:30", kind: .task),
-            ev("game-night-sun", personal, "Flat game night", sun, "19:00", "20:00", color: green),
+            ev("brunch", family, "Farmers market + brunch", sun, "09:45", "11:30", status: .tentative, location: "Markthalle Neun"),
+            ev("dana", tasks, "[P1] Reply to Dana", sun, "09:30", "09:45"),
+            ev("weekly-review", tasks, "[P0] Weekly review", sun, "17:15", "17:30"),
+            ev("game-night-sun", family, "Flat game night", sun, "19:00", "20:00"),
         ]
     }
 
@@ -336,7 +330,7 @@ enum DemoData {
                 let d = math.addDays(week, rnd(7))
                 let start = rnd(23 * 4) * 15
                 out.append(CalendarEvent(id: "dense.\(w).\(k)", calendarID: cals[rnd(cals.count)], title: "Dense event \(k)", start: math.date(on: d, minutes: start),
-                                         end: math.date(on: d, minutes: start + [15, 30, 45, 60, 90, 120][rnd(6)]), kind: rnd(6) == 0 ? .task : .event))
+                                         end: math.date(on: d, minutes: start + [15, 30, 45, 60, 90, 120][rnd(6)])))
             }
             week = math.addDays(week, 7)
         }

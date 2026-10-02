@@ -13,7 +13,7 @@ func after(_ delay: TimeInterval, _ block: @escaping @MainActor () -> Void) {
 }
 
 enum Overlay: Equatable {
-    case command, teammate, goToDate, shortcuts, settings
+    case command, shortcuts, settings
     case deleteRecurring(String)   // event id
 }
 
@@ -27,13 +27,11 @@ final class AppModel {
     private let persist: Bool
     private(set) var math: CalendarMath
     var settings: AppSettings { didSet { settingsChanged(old: oldValue) } }
-    /// Completed task ids (local marker).
-    private(set) var completedTasks: Set<String>
-    /// Last task whose checkbox was toggled on, for the checkbox pop.
-    private(set) var taskPop: (id: String, tick: Int)?
     /// -1 / 0 / +1: direction of the last period change (drives the slide).
     private(set) var navDirection = 0
-    var fmt: Fmt { Fmt(math: math, use24h: settings.use24h) }
+    var fmt: Fmt { Fmt(math: math, use24h: use24h) }
+    /// From the system locale; demo mode pins 24-hour time (and a Monday week start) so snapshots are deterministic.
+    var use24h: Bool
 
     // MARK: Time
     private(set) var now: Date
@@ -49,12 +47,11 @@ final class AppModel {
     // MARK: Visibility
     var hiddenCalendars: Set<String>
     var shownTeammates: [Teammate] = []
-    private(set) var teammatesTick = 0
 
     // MARK: Selection
-    var selectedEventID: String?
+    /// Selecting anything else settles the draft, so a draft is always the selected event.
+    var selectedEventID: String? { didSet { if let d = draft, selectedEventID != d.id { settleDraft() } } }
     var selectedSlot: Date?
-    private var untitledNewEventID: String?
     private(set) var pendingEdit: (event: CalendarEvent, span: EditSpan)?
     private var editTimer: Timer?
     var focusTitleTick = 0
@@ -62,34 +59,37 @@ final class AppModel {
 
     // MARK: Chrome
     var sidebarVisible = true
-    var rightPanelVisible = true
-    var allDayCollapsed = false
     var overlay: Overlay? {
         didSet {
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
+            if oldValue == .command && overlay != .command { searchText = "" }
             if overlay == nil && oldValue != nil {
                 // Submitting with Return re-focuses the field after the action returns, so resign now and again once the event is done.
                 resignTextFocus()
-                for d in [0.02, 0.08, 0.2, 0.3] { after(d) { [weak self] in if self?.overlay == nil { self?.resignTextFocus() } } }
+                for d in [0.02, 0.08] { after(d) { [weak self] in if self?.overlay == nil { self?.resignTextFocus() } } }
             }
         }
     }
     var searchText = "" { didSet { if searchText != oldValue { runSearch() } } }
     struct ToastState: Equatable { var id = UUID(); var text: String; var undo = false }
     var toast: ToastState?
-    var notionPopoverVisible = false
-    var focusSearchTick = 0
     var scrollToHourTick = 0
     var secondTimeZoneVisible = false
 
-    // MARK: Overlay panel state
-    var commandQuery = "" { didSet { commandIndex = 0 } }
-    var commandIndex = 0
-    var teammateQuery = "" { didSet { teammateIndex = 0 } }
-    var teammateIndex = 0
-    var goToText = ""
-    var meetQuery = "" { didSet { meetIndex = 0 } }
-    var meetIndex = 0
+    // MARK: v3 area state (each area owns its struct and file)
+    /// The event being created (drag, double-click, C): drawn dashed on the grid, shown with Save / Discard in the panel.
+    /// It lives only here until it is saved (`saveDraft`, `settleDraft`); set by `createEvent`, cleared by the draft functions in PanelV3State.swift.
+    var draft: CalendarEvent?
+    /// Setting nil settles the draft (kept with a title, dropped without).
+    var draftEventID: String? {
+        get { draft?.id }
+        set { if newValue == nil { settleDraft() } }
+    }
+    var gridState = GridV3State()
+    var chromeState = ChromeV3State()
+    var panelState = PanelV3State()
+    /// Bumped on every store change, for observers that read the store directly (the menu bar item).
+    private(set) var storeVersion = 0
 
     // MARK: Derived (cached)
     private(set) var visibleStart: Date
@@ -113,8 +113,6 @@ final class AppModel {
 
     // MARK: Interaction
     var dragPreview: DragPreview?
-    /// Set on drop: the ghost's last rect, so the grid can settle it into the final event in 120 ms.
-    var dropSettle: (dayIndex: Int, startMinute: Int, endMinute: Int, tick: Int)?
     var undoStack = UndoStack()
     var gridGeometry = GridGeometry(dayWidth: 180, hourHeight: 48, dayCount: 7)
     /// Frame of the scrolling grid in window coordinates (top-left origin) and its scroll offset. Published by the view; used by the walkthrough to aim real mouse events.
@@ -138,10 +136,9 @@ final class AppModel {
         self.persist = persist
         let s = persist ? AppSettings.load() : AppSettings()
         settings = s
-        completedTasks = persist ? TaskStore.load() : []
         Motion.override = s.reduceMotion
-        let tz = options.demo ? DemoData.math.timeZone : TimeZone.current
-        let m = CalendarMath(timeZone: tz, weekStartsOnMonday: s.weekStartsOnMonday)
+        let m = options.demo ? DemoData.math : CalendarMath.system
+        use24h = options.demo || Fmt.uses24h()
         math = m
         let n = options.now ?? Date()
         now = n
@@ -149,7 +146,7 @@ final class AppModel {
         visibleStart = m.startOfWeek(n)
         miniMonth = m.startOfMonth(n)
         hiddenCalendars = Set(store.allCalendars.filter { !$0.isVisibleByDefault }.map(\.id))
-        upcoming = UpcomingSummary(next: nil, untilNext: "", label: "", sections: [])
+        upcoming = UpcomingSummary(next: nil, sections: [])
         authState = store.authorization
         store.onChange = { [weak self] in self?.storeChanged() }
         reload()
@@ -172,7 +169,19 @@ final class AppModel {
             NotificationCenter.default.addObserver(forName: .NSSystemClockDidChange, object: nil, queue: .main, using: refresh),
             NotificationCenter.default.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main, using: refresh),
             NotificationCenter.default.addObserver(forName: NSNotification.Name.NSSystemTimeZoneDidChange, object: nil, queue: .main, using: refresh),
+            NotificationCenter.default.addObserver(forName: NSLocale.currentLocaleDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.localeChanged() }
+            },
         ]
+    }
+
+    /// Language and Region changed: re-read the clock style and the first weekday.
+    private func localeChanged() {
+        guard !options.demo else { return }
+        use24h = Fmt.uses24h()
+        math = .system
+        windowRange = DateInterval(start: .distantPast, end: .distantPast)
+        reload()
     }
 
     private func tick() {
@@ -199,6 +208,7 @@ final class AppModel {
         windowRange = DateInterval(start: .distantPast, end: .distantPast)
         corpus = nil
         corpusGeneration += 1
+        storeVersion += 1
         reload()
         refreshUpcoming()
         if !searchText.isEmpty { runSearch() }
@@ -217,28 +227,26 @@ final class AppModel {
 
     static let teammatePalette = ["#C58AF9", "#5EC0C9", "#F28B82", "#8AB4F8", "#F6AE4C", "#7BD88F", "#E78FD0", "#A3B1C2", "#D9B26F", "#87C7A2", "#C9A0DC"]
     func teammateColor(_ email: String?) -> String {
-        guard let email, let i = shownTeammates.firstIndex(where: { $0.email == email }) else { return "#8A8A8A" }
+        guard let email, let i = store.teammates.firstIndex(where: { $0.email == email }) else { return "#8A8A8A" }
         return Self.teammatePalette[i % Self.teammatePalette.count]
     }
 
     var defaultCalendarHex: String {
-        (settings.defaultCalendarID.flatMap { store.calendar($0) } ?? store.defaultCalendarID.flatMap { store.calendar($0) } ?? store.allCalendars.first)?.colorHex ?? "#5c88e4"
+        (settings.defaultCalendarID.flatMap { store.calendar($0) } ?? store.defaultCalendarID.flatMap { store.calendar($0) } ?? store.allCalendars.first)?.colorHex ?? "#B9B6C9"
     }
 
-    private struct StyleKey: Hashable { var cal: String; var fill: String?; var bar2: String?; var task: Bool; var dark: Bool; var owner: String? }
-    private var styleCache: [StyleKey: (EventPalette, RGB?)] = [:]
+    private struct StyleKey: Hashable { var cal: String; var fill: String?; var dark: Bool; var owner: String? }
+    private var styleCache: [StyleKey: EventPalette] = [:]
 
     /// Palette lookups are cached per (calendar, override colors, appearance): the grid asks for hundreds per frame.
-    func style(for e: CalendarEvent, dark: Bool, now: Date, selected: Bool, faded: Bool, overlapping: Bool) -> EventStyle {
-        let key = StyleKey(cal: e.calendarID, fill: e.colorHex, bar2: e.secondaryBarHex, task: e.kind == .task, dark: dark, owner: e.ownerEmail)
-        let base: (EventPalette, RGB?)
-        if let hit = styleCache[key] { base = hit } else {
-            let pal = e.kind == .task ? Palettes.gray(dark) : Palettes.palette(barHex: calendarColorHex(of: e), fillHex: e.colorHex, dark: dark)
-            base = (pal, e.secondaryBarHex.map { RGB(hex: $0) })
-            styleCache[key] = base
+    func style(for e: CalendarEvent, dark: Bool, now: Date, selected: Bool, overlapping: Bool) -> EventStyle {
+        let key = StyleKey(cal: e.calendarID, fill: e.colorHex, dark: dark, owner: e.ownerEmail)
+        let pal: EventPalette
+        if let hit = styleCache[key] { pal = hit } else {
+            pal = Palettes.palette(barHex: calendarColorHex(of: e), fillHex: e.colorHex, dark: dark)
+            styleCache[key] = pal
         }
-        return EventStyle(palette: base.0, secondaryBarRGB: base.1, past: e.end <= now && !(e.end == e.start && e.start > now),
-                          selected: selected, faded: faded, overlapping: overlapping, done: completedTasks.contains(e.id))
+        return EventStyle(palette: pal, past: e.end <= now && !(e.end == e.start && e.start > now), selected: selected, overlapping: overlapping)
     }
 
     func isWritable(_ e: CalendarEvent) -> Bool {
@@ -278,11 +286,11 @@ final class AppModel {
             monthGrid = math.monthGrid(for: start)
             let starts = visibleDays          // 42 day starts
             var cells = [[CalendarEvent]](repeating: [], count: 42)
-            // Sort once (all-day, then timed, then tasks; by start) and bucket stably instead of sorting 42 lists.
+            // Sort once (all-day, then timed; by start) and bucket stably instead of sorting 42 lists.
             let ordered: [Int] = windowEvents.withUnsafeBufferPointer { buf in
                 var keyed: [(key: Double, idx: Int)] = visibleIdx.map { i in
                     let e = buf[i]
-                    let cls: Double = e.isAllDay ? 0 : (e.kind == .task ? 2 : 1)
+                    let cls: Double = e.isAllDay ? 0 : 1
                     return (cls * 1e11 + e.start.timeIntervalSince1970, i)
                 }
                 keyed.sort { $0.key != $1.key ? $0.key < $1.key : $0.idx < $1.idx }
@@ -295,10 +303,22 @@ final class AppModel {
                 let last = min(41, RangeLayoutBuilder.dayIndex(lastInstant, starts: starts))
                 if last >= first { for d in first...last { cells[d].append(e) } }
             }
+            if let d = draft {
+                let first = max(0, RangeLayoutBuilder.dayIndex(d.start, starts: starts))
+                let last = min(41, RangeLayoutBuilder.dayIndex(d.end > d.start ? d.end.addingTimeInterval(-1) : d.end, starts: starts))
+                if last >= first {
+                    for i in first...last {
+                        let at = cells[i].firstIndex { d.isAllDay ? !$0.isAllDay : (!$0.isAllDay && $0.start > d.start) } ?? cells[i].count
+                        cells[i].insert(d, at: at)
+                    }
+                }
+            }
             monthEvents = cells
             layout = .empty
         } else {
-            layout = RangeLayoutBuilder.build(events: visibleIdx.map { windowEvents[$0] }, days: visibleDays, math: math)
+            var shown = visibleIdx.map { windowEvents[$0] }
+            if let d = draft { shown.append(d) }
+            layout = gridLayout(RangeLayoutBuilder.build(events: shown, days: visibleDays, math: math))
         }
 
         var teamEvents: [CalendarEvent] = []
@@ -308,7 +328,21 @@ final class AppModel {
         overlayLayout = viewMode == .month ? .empty : RangeLayoutBuilder.build(events: teamEvents, days: visibleDays, math: math)
         flatTimed = layout.timed.flatMap { $0 }
         flatOverlay = overlayLayout.timed.flatMap { $0 }
-        if let p = pendingEdit { eventsByID[p.event.id] = p.event }
+        layoutGeneration += 1
+        if let p = pendingEdit { patchLayout(p.event) }
+    }
+
+    /// Puts an edited event into the drawn layout without rebuilding it (text edits: title, place, notes).
+    private func patchLayout(_ e: CalendarEvent) {
+        if draft?.id != e.id { eventsByID[e.id] = e }
+        for d in layout.timed.indices {
+            for i in layout.timed[d].indices where layout.timed[d][i].event.id == e.id { layout.timed[d][i].event = e }
+        }
+        if layout.allDayEvents[e.id] != nil { layout.allDayEvents[e.id] = e }
+        for c in monthEvents.indices {
+            for i in monthEvents[c].indices where monthEvents[c][i].id == e.id { monthEvents[c][i] = e }
+        }
+        flatTimed = layout.timed.flatMap { $0 }
         layoutGeneration += 1
     }
 
@@ -317,16 +351,14 @@ final class AppModel {
         let evs = store.events(in: DateInterval(start: math.addDays(today, -1), end: math.addDays(today, 8)))
             .filter { !hiddenCalendars.contains($0.calendarID) }
         upcoming = Upcoming.summarize(events: evs, now: now, fmt: fmt)
+        refreshPanelToday(evs)
         for e in evs { eventsByID[e.id] = eventsByID[e.id] ?? e }
     }
 
     private func settingsChanged(old: AppSettings) {
         if old.reduceMotion != settings.reduceMotion { Motion.override = settings.reduceMotion }
         if persist { settings.save() }
-        if old.weekStartsOnMonday != settings.weekStartsOnMonday {
-            math = CalendarMath(timeZone: math.timeZone, weekStartsOnMonday: settings.weekStartsOnMonday)
-        }
-        if old.showDeclined != settings.showDeclined || old.weekStartsOnMonday != settings.weekStartsOnMonday {
+        if old.showDeclined != settings.showDeclined {
             windowRange = DateInterval(start: .distantPast, end: .distantPast)
             reload()
         }
@@ -334,25 +366,33 @@ final class AppModel {
 
     // MARK: Lookup
 
-    func event(id: String?) -> CalendarEvent? { id.flatMap { eventsByID[$0] } }
+    func event(id: String?) -> CalendarEvent? {
+        guard let id else { return nil }
+        if let d = draft, d.id == id { return d }
+        return eventsByID[id]
+    }
     var selectedEvent: CalendarEvent? { event(id: selectedEventID) }
 
     // MARK: Navigation
 
-    func goToToday() { setDirection(to: math.startOfDay(now)); anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
+    func goToToday() { settleDraft(); setDirection(to: math.startOfDay(now)); anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
     private func setDirection(to d: Date) { navDirection = d > anchor ? 1 : (d < anchor ? -1 : 0) }
     func leftAlignToday() {
+        settleDraft()
         anchor = math.startOfDay(now); leftAligned = true
         if viewMode == .month { viewMode = .week }
         reload()
     }
-    func go(to date: Date) {
+    /// Navigation settles the draft, except when the draft itself moves to another day (`settling: false`).
+    func go(to date: Date, settling: Bool = true) {
+        if settling { settleDraft() }
         setDirection(to: math.startOfDay(date))
         anchor = math.startOfDay(date)
         leftAligned = false
         reload()
     }
     func step(_ direction: Int) {
+        settleDraft()
         navDirection = direction
         let mode = viewMode
         if mode == .week && leftAligned { anchor = math.addDays(anchor, 7 * direction) }
@@ -363,6 +403,7 @@ final class AppModel {
     func previous() { step(-1) }
     func setMode(_ m: ViewMode) {
         guard m != viewMode else { return }
+        settleDraft()
         navDirection = 0
         viewMode = m
         if m != .week { leftAligned = false }
@@ -384,7 +425,6 @@ final class AppModel {
 
     /// The reference shows "September 2026" for Mon Sep 28 - Sun Oct 4, so the title follows the first visible day.
     var headerTitle: String { fmt.monthTitle(visibleStart) }
-    var headerParts: (month: String, year: String) { (fmt.monthLong(visibleStart), String(math.year(visibleStart))) }
 
     // MARK: Teammates
 
@@ -396,7 +436,6 @@ final class AppModel {
     func removeTeammate(_ t: Teammate) { shownTeammates.removeAll { $0 == t }; reload() }
 
     func filteredTeammates(_ q: String) -> [Teammate] {
-        _ = teammatesTick
         let query = q.trimmingCharacters(in: .whitespaces)
         return FuzzyMatcher.filter(store.teammates, query: query) { "\($0.name) \($0.email)" }
     }
@@ -405,9 +444,8 @@ final class AppModel {
 
     func select(eventID: String?, focusTitle: Bool = false) {
         if eventID != selectedEventID { flushPendingEdit() }
-        discardUntitledIfNeeded(except: eventID)
         selectedEventID = eventID
-        if eventID != nil { selectedSlot = nil; rightPanelVisible = true }
+        if eventID != nil { selectedSlot = nil }
         if focusTitle && eventID != nil { requestTitleFocus() }
     }
 
@@ -418,45 +456,38 @@ final class AppModel {
     }
 
     /// The inspector may still be sliding in when a new event is created: nudge the title field a few times, then give up.
+    /// The nudges stop once the user has typed, so focusing again cannot select (and replace) what was typed.
     func requestTitleFocus() {
-        titleFocusPending = true; focusTitleTick += 1
-        for delay in [0.03, 0.08, 0.16] { after(delay) { [weak self] in if self?.titleFocusPending == true { self?.focusTitleTick += 1 } } }
+        titleFocusPending = true; panelState.titleTyped = false; focusTitleTick += 1
+        for delay in [0.03, 0.08, 0.16] {
+            after(delay) { [weak self] in if let self, self.titleFocusPending, !self.panelState.titleTyped { self.focusTitleTick += 1 } }
+        }
         after(0.25) { [weak self] in self?.titleFocusPending = false }
     }
 
     func deselect() {
         flushPendingEdit()
-        discardUntitledIfNeeded(except: nil)
+        settleDraft()
         selectedEventID = nil
         selectedSlot = nil
     }
 
-    private func discardUntitledIfNeeded(except keep: String?) {
-        guard let id = untitledNewEventID, id != keep else { return }
-        untitledNewEventID = nil
-        if let e = event(id: id), e.title.isEmpty {
-            try? store.delete(e, span: .this)
-            if case .created(let c)? = undoStack.changes.last, c.id == id { _ = undoStack.pop() }
-        }
-    }
-
+    /// Starts a draft: nothing is written to the store until it is saved. An open draft is settled first.
     @discardableResult
     func createEvent(start: Date, end: Date, allDay: Bool = false) -> CalendarEvent? {
+        settleDraft()
         let cal = settings.defaultCalendarID.flatMap { store.calendar($0) }?.id ?? store.defaultCalendarID
             ?? store.allCalendars.first(where: { $0.isWritable })?.id ?? ""
-        var e = CalendarEvent(calendarID: cal, title: "", start: start, end: end, isAllDay: allDay, reminderMinutes: 10, timeZoneID: math.timeZone.identifier)
-        do { e = try store.create(e) } catch { showToast("Could not create event"); return nil }
-        undoStack.push(.created(e))
-        untitledNewEventID = nil
+        let e = CalendarEvent(calendarID: cal, title: "", start: start, end: end, isAllDay: allDay, reminderMinutes: 10, timeZoneID: math.timeZone.identifier)
+        draft = e
         select(eventID: e.id, focusTitle: true)
-        untitledNewEventID = e.id
-        // store.create triggered a reload before selection; make sure the new event is resolvable.
-        eventsByID[e.id] = eventsByID[e.id] ?? e
+        reload()
         return e
     }
 
     /// `C`: next free half hour on the selected slot's day, or today.
     func createAtNextFreeSlot() {
+        settleDraft()
         let day: Date = selectedSlot.map { math.startOfDay($0) } ?? math.startOfDay(now)
         var from = selectedSlot.map { math.minutesSinceMidnight($0) } ?? math.minutesSinceMidnight(now)
         if selectedSlot == nil, !math.isSameDay(day, now) { from = 9 * 60 }
@@ -478,11 +509,17 @@ final class AppModel {
         change(&e)
         if e.end < e.start { e.end = e.start }
         if e == before { return }
-        // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
+        if e.title != before.title && !panelState.titleTyped { panelState.titleTyped = true }
         let textOnly = e.start == before.start && e.end == before.end && e.isAllDay == before.isAllDay && e.calendarID == before.calendarID
+        if draft?.id == e.id {
+            draft = e
+            if textOnly { patchLayout(e) } else { reload() }
+            return
+        }
+        // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
         if store.coalescesTextEdits && textOnly {
-            eventsByID[e.id] = e
             pendingEdit = (e, span)
+            patchLayout(e)
             editTimer?.invalidate()
             let t = Timer(timeInterval: 0.6, repeats: false) { [weak self] _ in MainActor.assumeIsolated { self?.flushPendingEdit() } }
             RunLoop.main.add(t, forMode: .common)
@@ -505,30 +542,14 @@ final class AppModel {
         do {
             let saved = try store.update(e, span: span)
             eventsByID[saved.id] = saved
-            if let old { undoStack.push(.updated(old: old, new: saved)) }
-            if untitledNewEventID == saved.id, !saved.title.isEmpty { untitledNewEventID = nil }
+            if let old { undoStack.push(.updated(old: old, new: saved)); showToast(undoToastText(old: old, new: saved), undo: true) }
             selectedEventID = saved.id
         } catch { showToast("Could not save event") }
     }
 
-    func duplicateSelected() {
-        guard var e = selectedEvent else { return }
-        e.id = UUID().uuidString; e.seriesID = nil; e.recurrence = nil; e.title += " (copy)"
-        if let saved = try? store.create(e) { undoStack.push(.created(saved)); select(eventID: saved.id) }
-    }
-
-    func copySelectedDetails() {
-        guard let e = selectedEvent else { return }
-        var s = "\(e.title)\n\(fmt.inspectorDate(e.start)) \(e.isAllDay ? "All-day" : fmt.timeRange(e.start, e.end))"
-        if !e.location.isEmpty { s += "\n\(e.location)" }
-        if !e.notes.isEmpty { s += "\n\(e.notes)" }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(s, forType: .string)
-        showToast("Event details copied")
-    }
-
     func requestDeleteSelected() {
         guard let e = selectedEvent, isWritable(e) else { return }
+        if isDraftOpen { discardDraft(); return }
         if e.isRecurring && store.series(of: e).count > 1 { overlay = .deleteRecurring(e.id) } else { delete(e, span: .this) }
     }
 
@@ -543,7 +564,6 @@ final class AppModel {
         do {
             try store.delete(e, span: span)
             undoStack.push(.deleted(removed))
-            if untitledNewEventID == e.id { untitledNewEventID = nil }
             selectedEventID = nil
             overlay = nil
             showToast("Deleted \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}", undo: true)
@@ -614,19 +634,11 @@ final class AppModel {
         let t = ToastState(text: text, undo: undo)
         toast = t
         if options.freezeClock { return }
-        after(3) { [weak self] in
+        after(6) { [weak self] in
             if self?.toast?.id == t.id { self?.toast = nil }
         }
     }
     func dismissToast() { toast = nil }
-
-    // MARK: Tasks
-
-    func isDone(_ id: String) -> Bool { completedTasks.contains(id) }
-    func toggleTask(_ id: String) {
-        if completedTasks.contains(id) { completedTasks.remove(id) } else { completedTasks.insert(id); taskPop = (id, (taskPop?.tick ?? 0) + 1) }
-        if persist { TaskStore.save(completedTasks) }
-    }
 
     private var isoCalendar = Calendar(identifier: .iso8601)
     /// ISO week number of the first visible day ("W40").
@@ -638,110 +650,11 @@ final class AppModel {
     // MARK: Commands
 
     func toggleSidebar() { sidebarVisible.toggle() }
-    func toggleRightPanel() { rightPanelVisible.toggle() }
 
-    func openCommandMenu() { commandQuery = ""; commandIndex = 0; overlay = .command }
-    func openTeammatePicker() {
-        if store.teammates.isEmpty {   // EventKit derives teammates from attendees; load them off the main thread
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                _ = await self.store.loadSearchCorpus(around: self.now)
-                self.teammatesTick += 1
-            }
-        }
-        teammateQuery = ""; teammateIndex = 0; overlay = .teammate }
-    func openGoToDate() { goToText = ""; overlay = .goToDate }
     func closeOverlay() { overlay = nil }
 
-    var commandSections: [CommandSection] { CommandRegistry.sections(matching: commandQuery) }
-    var goToPreview: Date? { GoToDateParser.parse(goToText, now: now, math: math) }
-
-    func submitGoToDate() {
-        guard let d = goToPreview else { return }
-        overlay = nil
-        go(to: d)
-        selectedSlot = math.date(on: d, minutes: 9 * 60)
-    }
-
-    func perform(_ id: CommandID) {
-        overlay = nil
-        switch id {
-        case .createEvent: createAtNextFreeSlot()
-        case .meetWith: sidebarVisible = true; focusMeetField()
-        case .showTeammate: openTeammatePicker()
-        case .recurringLink: copyLink("recurring")
-        case .oneOffLink: copyLink("one-off")
-        case .addNotionDatabase: notionPopoverVisible = true; sidebarVisible = true
-        case .goToDate: openGoToDate()
-        case .goToToday: goToToday()
-        case .leftAlignToday: leftAlignToday()
-        case .nextPeriod: next()
-        case .previousPeriod: previous()
-        case .viewDay: setMode(.day)
-        case .viewWeek: setMode(.week)
-        case .viewMonth: setMode(.month)
-        case .toggleSidebar: toggleSidebar()
-        case .toggleRightPanel: toggleRightPanel()
-        case .settings: overlay = .settings
-        }
-    }
-
-    var focusMeetTick = 0
     /// Bumped to make every focus-owning field resign (Esc while typing).
     var blurTick = 0
-    func focusMeetField() { focusMeetTick += 1 }
-
-    func copyLink(_ kind: String) {
-        let link = "https://calendr.example/alex/\(kind == "recurring" ? "meet" : "once-\(Int(now.timeIntervalSince1970) % 100000)")"
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(link, forType: .string)
-        showToast("Scheduling link copied")
-    }
-
-    /// Returns true when the key was consumed.
-    @discardableResult
-    func handle(_ action: ShortcutAction) -> Bool {
-        switch action {
-        case .escape:
-            if overlay != nil { overlay = nil }
-            else if notionPopoverVisible { notionPopoverVisible = false }
-            else if !searchText.isEmpty && rightPanelVisible && selectedEventID == nil { searchText = "" }
-            else if selectedEventID != nil || selectedSlot != nil { deselect() }
-            else { return false }
-        case .commandMenu: overlay == .command ? (overlay = nil) : openCommandMenu()
-        case .today: goToToday()
-        case .leftAlignToday: leftAlignToday()
-        case .nextPeriod: next()
-        case .previousPeriod: previous()
-        case .createEvent: createAtNextFreeSlot()
-        case .meetWith: perform(.meetWith)
-        case .showTeammate: openTeammatePicker()
-        case .goToDate: openGoToDate()
-        case .showShortcuts: overlay = .shortcuts
-        case .schedulingLink: copyLink("one-off")
-        case .addNotionDatabase: perform(.addNotionDatabase)
-        case .viewDay: setMode(.day)
-        case .viewWeek: setMode(.week)
-        case .viewMonth: setMode(.month)
-        case .toggleSidebar: toggleSidebar()
-        case .toggleRightPanel: toggleRightPanel()
-        case .settings: overlay = .settings
-        case .menuBarCalendar: if !MenuBarControl.open() { showToast("Menu bar calendar: click the menu bar item") }
-        case .mainWindow: NSApp.activate(ignoringOtherApps: true)
-        case .focusSearch: rightPanelVisible = true; selectedEventID = nil; focusSearchTick += 1
-        case .undo: undo()
-        case .refresh: store.refresh(); showToast("Refreshed")
-        case .deleteSelection: requestDeleteSelected()
-        }
-        return true
-    }
-
-    var isTypingOverlayOpen: Bool { overlay != nil }
-
-    func addCalendarAccount() {
-        if options.isHeadless { showToast("Opens System Settings > Internet Accounts"); return }
-        if let url = URL(string: "x-apple.systempreferences:com.apple.Internet-Accounts-Settings.extension") { NSWorkspace.shared.open(url) }
-    }
 }
 
 extension AppModel {
@@ -753,15 +666,6 @@ extension AppModel {
         let j = i + dir
         guard all.indices.contains(j) else { return }
         openSearchResult(all[j])
-    }
-
-    func openInMaps(_ location: String) {
-        let q = location.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return }
-        if options.isHeadless { showToast("Opens Maps"); return }
-        var c = URLComponents(string: "https://maps.apple.com/")!
-        c.queryItems = [URLQueryItem(name: "q", value: q)]
-        if let u = c.url { NSWorkspace.shared.open(u) }
     }
 }
 

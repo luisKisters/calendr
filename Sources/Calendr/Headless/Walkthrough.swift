@@ -2,19 +2,22 @@ import AppKit
 import SwiftUI
 import CalendrKit
 
-/// Scripted tour of every feature. Keyboard shortcuts are real NSEvents; grid pointer gestures call the model functions the SwiftUI DragGesture forwards to. Inspector fields that are pickers/menus (calendar, reminder, all-day) call the same
-/// `AppModel.updateSelected` setter their bindings call; sidebar/toolbar buttons call the same model methods their actions call.
+/// The v3 tour: a fast scripted walk through the demo week, recorded at 2x / 30 fps with no overlays. Next to the video it writes the cursor
+/// telemetry and the captions (`<file>.cursor.json`, `<file>.captions.json`) that Glide and scripts/caption-video.py use afterwards.
+/// Keyboard shortcuts are real NSEvents through the key router; pointer gestures call the model functions the SwiftUI gestures forward to;
+/// buttons call the same model methods their actions call. Every step asserts that it worked.
 @MainActor
 enum Walkthrough {
     static func run(_ o: LaunchOptions) -> Int32 {
         Motion.forcedInstant = false          // the video shows the real animations
         let model = HeadlessRunner.makeModel(o)
-        let rec = o.record.flatMap { VideoRecorder(url: URL(fileURLWithPath: $0), width: Int(o.size.width), height: Int(o.size.height)) }
+        let rec = o.record.flatMap { VideoRecorder(url: URL(fileURLWithPath: $0), width: Int(o.size.width * 2), height: Int(o.size.height * 2)) }
         if o.record != nil && rec == nil { print("could not open recorder"); return 2 }
         let d = Driver(model: model, size: o.size, recorder: rec)
         let started = Date()
         tour(d, model)
         rec?.finish()
+        if let path = o.record { d.writeTelemetry(to: path) }
         let secs = rec.map { String(format: "%.1f", $0.seconds) } ?? "-"
         print("walkthrough: \(d.checks) checks, \(d.failures.count) failures, video \(secs)s, wall \(String(format: "%.1f", Date().timeIntervalSince(started)))s")
         if !d.failures.isEmpty { d.failures.forEach { print(" - \($0)") } }
@@ -30,269 +33,273 @@ enum Walkthrough {
 
     static func tour(_ d: Driver, _ m: AppModel) {
         let math = m.math
-        func day(_ mo: Int, _ dd: Int) -> Date { math.date(year: 2026, month: mo, day: dd) }
         func startDay() -> Int { math.day(m.visibleStart) }
+        func hhmm(_ date: Date) -> String { m.fmt.time(date) }
+        /// Window point of the hour gutter at a y inside the grid viewport.
+        func gutterPoint(y: Double) -> CGPoint { CGPoint(x: m.gridViewport.minX + Theme.gutterWidth / 2, y: m.gridViewport.minY + y) }
 
-        // 1. Overview
-        d.section("Calendr v2: week view, tasks as capsules, now line, Up Next")
-        d.check(m.headerTitle == "September 2026" && m.weekLabel == "W40", "header title and week chip (\(m.weekLabel))")
-        d.check(m.visibleDays.count == 7 && m.viewMode == .week, "seven day columns")
-        d.check(m.layout.allDay.laneCount == 5, "five all-day lanes")
-        d.check(m.layout.timedCount > 70, "timed events laid out (\(m.layout.timedCount))")
-        d.check(m.todayIndex == 1, "today is column 2")
-        d.check(m.upcoming.next?.title == "Calculus", "Up Next card shows Calculus")
+        // 1. The week
+        d.section("The week")
+        d.check(m.headerTitle == "September 2026" && m.weekLabel == "W40" && m.viewMode == .week && m.visibleDays.count == 7, "week view of W40")
+        d.check(m.layout.timedCount > 60, "timed events laid out (\(m.layout.timedCount))")
+        d.check(m.todayIndex == 1 && m.gridState.fit != nil && m.gridHandHeight == nil, "Today is column 2, hours are fitted")
+        d.check(m.panelState.today.next?.title == "Calculus" && m.upcoming.next?.title == "Calculus", "Up next is Calculus")
         d.check(!Motion.reduced || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, "motion is on")
-        d.frame(hold: 3.5)
+        d.say("The week, fitted to your day")
+        d.frame(hold: 2.4)
+        d.say("Today counts down: Calculus in 12 min")
+        d.check(PanelText.until(Int(m.panelState.today.next!.start.timeIntervalSince(m.now) / 60)) == "in 12 min", "countdown reads in 12 min")
+        d.hold(2.2)
 
-        // 2. Navigation with the 180 ms slide
-        d.section("Next / previous / today: the grid slides 36 pt and fades in")
-        d.play(0.6) { d.key("j") }
-        d.check(startDay() == 5 && math.month(m.visibleStart) == 10, "J goes to next week"); d.check(d.lastAnimateFrames >= 4, "slide sampled in real time (\(d.lastAnimateFrames) frames)")
-        d.frame(hold: 0.6)
-        d.play(0.6) { d.key("k") }; d.check(startDay() == 28, "K goes back"); d.frame(hold: 0.4)
-        d.play(0.6) { d.special("right") }; d.check(startDay() == 5, "right arrow next week")
-        d.play(0.6) { d.special("left") }; d.check(startDay() == 28, "left arrow previous week")
-        d.key("j"); d.key("j"); d.frame(hold: 0.4)
-        d.play(0.6) { d.key("t") }; d.check(startDay() == 28 && m.todayIndex == 1, "T returns to today"); d.frame(hold: 0.6)
-        d.section("Left-align today in view (option T)")
-        d.play(0.6) { d.key("t", opt: true) }; d.check(startDay() == 29 && m.leftAligned, "option+T left-aligns today"); d.frame(hold: 1.6)
-        d.play(0.5) { d.key("t") }; d.check(!m.leftAligned && startDay() == 28, "T restores Monday week")
-
-        // 3. Sidebar
-        d.section("Mini calendar: week band in act purple, today marker; calendar checkboxes")
-        m.stepMiniMonth(1); d.frame(hold: 0.8)
-        d.check(m.math.month(m.miniMonth) == 10, "mini month chevron")
-        m.stepMiniMonth(-1)
-        d.play(0.6) { m.go(to: day(10, 12)) }; d.check(startDay() == 12, "mini calendar click navigates"); d.frame(hold: 0.8)
-        d.play(0.5) { d.key("t") }
-        d.section("Calendars: click a row to hide or show it")
-        let before = m.layout.timedCount
-        d.play(0.5) { m.toggleCalendar(DemoData.tasks) }
-        d.check(m.layout.timedCount < before && m.hiddenCalendars.contains(DemoData.tasks), "hide Tasks calendar"); d.frame(hold: 1.4)
-        d.play(0.5) { m.toggleCalendar(DemoData.tasks) }; d.check(m.layout.timedCount == before, "show Tasks calendar again"); d.frame(hold: 0.5)
-        m.toggleCalendar(DemoData.svcHolidays); d.frame(hold: 0.4); m.toggleCalendar(DemoData.svcHolidays)
-        d.section("All-day area: collapse to one lane with +N more")
-        d.play(0.5) { m.allDayCollapsed = true }
-        d.check(m.layout.allDay.collapsed(maxLanes: 1).hiddenPerDay.contains { $0 > 0 }, "collapsed shows hidden counts"); d.frame(hold: 1.4)
-        d.play(0.5) { m.allDayCollapsed = false }
-
-        // 4. View modes
-        d.section("Day / Week / Month: D, W, M (the segmented thumb slides)")
-        d.play(0.6) { d.key("d") }; d.check(m.viewMode == .day && m.visibleDays.count == 1, "D day view"); d.frame(hold: 1.4)
-        d.play(0.6) { d.key("m") }; d.check(m.viewMode == .month && m.monthEvents.count == 42, "M month view"); d.frame(hold: 1.8)
-        d.play(0.6) { d.key("j") }; d.check(m.headerTitle == "October 2026", "month next (title crossfades)"); d.frame(hold: 0.5)
-        d.key("t")
-        d.play(0.6) { d.key("w") }; d.check(m.viewMode == .week, "W week view"); d.frame(hold: 0.8)
-        m.setMode(.custom(3)); d.check(m.visibleDays.count == 3, "custom 3-day view"); d.section("Custom 2-7 day views (view menu)"); d.frame(hold: 1.2)
-        m.setMode(.week); d.frame()
-
-        // 5. Panels
-        d.section("Toggle sidebar (`) and right panel (cmd /)")
-        d.play(0.5) { d.key("`") }; d.check(!m.sidebarVisible, "backtick hides sidebar"); d.frame(hold: 1.0)
-        d.play(0.5) { d.key("`") }; d.check(m.sidebarVisible, "backtick shows sidebar")
-        d.play(0.5) { d.key("/", cmd: true) }; d.check(!m.rightPanelVisible, "cmd-/ hides right panel"); d.frame(hold: 1.0)
-        d.play(0.5) { d.key("/", cmd: true) }; d.check(m.rightPanelVisible, "cmd-/ shows right panel")
-
-        // 6. Select + inspector
-        d.section("Click an event: act selection ring, inspector slides in")
-        guard let policy = placed(m, "Public Policy", day: 2) else { d.check(false, "Public Policy exists"); return }
-        d.clickAnimated(grid: centerOf(d, policy))
-        d.check(m.selectedEvent?.title == "Public Policy", "real click selects Public Policy")
-        d.frame(hold: 2.5)
-        d.section("Inspector: title, mono time fields, recurrence, location, calendar, reminder")
-        d.click(grid: centerOf(d, policy), clickCount: 2)
-        d.settle(6)
-        d.type(" LF1")
-        d.check(m.selectedEvent?.title.hasSuffix("LF1") == true, "typed into the focused title field (\(m.selectedEvent?.title ?? "nil"))")
-        d.frame(hold: 1.0)
-        d.special("esc")
-        m.updateSelected { $0.title = "Public Policy" }
-        let orig = m.selectedEvent!
-        m.updateSelected { $0.location = "Room 204\nBuilding 2" }; d.check(m.selectedEvent?.location.hasPrefix("Room") == true, "location write-through"); d.frame(hold: 0.8)
-        m.updateSelected { $0.location = orig.location }
-        m.updateSelected { $0.calendarID = DemoData.family }; d.check(m.selectedEvent?.calendarID == DemoData.family, "calendar picker write-through"); d.frame(hold: 1.0)
-        m.updateSelected { $0.calendarID = DemoData.personal }
-        m.updateSelected { $0.reminderMinutes = 15 }; d.check(m.selectedEvent?.reminderMinutes == 15, "reminder write-through"); d.frame(hold: 0.8)
-        m.updateSelected { $0.reminderMinutes = 1 }
-        m.updateSelected { $0.participants.append("max@example.com") }; d.check(m.selectedEvent?.participants.contains("max@example.com") == true, "participant added"); d.frame(hold: 1.0)
-        m.updateSelected { $0.participants.removeAll() }
-        let ev0 = m.selectedEvent!
-        d.play(0.5) { m.updateSelected { $0.isAllDay = true; $0.start = math.startOfDay($0.start); $0.end = math.addDays($0.start, 1) } }
-        d.check(m.selectedEvent?.isAllDay == true && m.layout.allDay.placements.count > 5, "all-day toggle (knob springs) moves event to all-day lane"); d.frame(hold: 1.2)
-        d.play(0.5) { m.updateSelected { $0.isAllDay = false; $0.start = ev0.start; $0.end = ev0.end } }
-        d.check(m.selectedEvent?.isAllDay == false, "all-day off restores timed event")
-        d.section("Recurrence chevrons: the inspector swaps with an 8 pt slide")
-        let s0 = m.selectedEvent!.start
-        d.play(0.5) { m.selectOccurrence(1) }; d.check(m.selectedEvent.map { math.daysBetween(s0, $0.start) } == 7, "next occurrence is +7 days"); d.frame(hold: 1.0)
-        d.play(0.5) { m.selectOccurrence(-1) }; d.check(m.selectedEvent?.start == s0, "previous occurrence"); d.frame(hold: 0.4)
-
-        // 7. Tasks
-        d.section("Tasks are capsules: click the checkbox to complete (spring pop)")
-        d.play(0.3) { m.deselect() }
-        guard let task = placed(m, "[P1] Book a haircut", day: 1) else { d.check(false, "task exists"); return }
-        let cb = EventPainter.checkboxRect(in: m.gridGeometry.rect(for: task))
-        d.clickAnimated(grid: CGPoint(x: cb.midX, y: cb.midY), seconds: 0.6)
-        d.check(m.isDone(task.event.id) && m.selectedEventID == nil, "checkbox completes the task without selecting it")
-        d.frame(hold: 1.6)
-        d.clickAnimated(grid: CGPoint(x: cb.midX, y: cb.midY), seconds: 0.4)
-        d.check(!m.isDone(task.event.id), "checkbox toggles back")
-
-        // 8. Delete + undo toast
-        d.section("Delete: a toast with Undo and cmd Z arrives with a spring")
-        guard let sam = placed(m, "Thursday sync", day: 3) else { d.check(false, "Thursday sync exists"); return }
-        d.clickAnimated(grid: centerOf(d, sam), seconds: 0.5)
-        let n0 = m.layout.timedCount
-        d.play(0.7) { d.special("delete") }
-        d.check(m.layout.timedCount == n0 - 1 && m.toast?.undo == true, "delete removes the event and shows an undo toast"); d.frame(hold: 1.6)
-        d.play(0.7) { d.key("z", cmd: true) }
-        d.check(m.layout.timedCount == n0, "cmd-Z restores it"); d.play(0.4) { m.dismissToast() }
-        d.section("Delete a recurring event: This event / All events")
-        d.clickAnimated(grid: centerOf(d, policy), seconds: 0.4)
-        let count = m.layout.timedCount
-        d.play(0.5) { d.special("delete") }
-        d.check({ if case .deleteRecurring = m.overlay { return true } else { return false } }(), "delete key asks about recurrence"); d.frame(hold: 1.8)
-        d.play(0.6) { if let e = m.selectedEvent { m.delete(e, span: .this) } }
-        d.check(m.layout.timedCount == count - 1, "This event removes one occurrence"); d.frame(hold: 1.0)
-        d.play(0.6) { d.key("z", cmd: true) }; d.check(m.layout.timedCount == count, "cmd-Z restores it"); d.frame(hold: 0.6)
-        m.dismissToast(); d.special("esc")
-
-        // 9. Drag create / move / resize
-        d.section("Drag on the empty grid to create (15 minute snap, no animation while dragging)")
-        let created0 = m.layout.timedCount
-        d.drag(from: d.gridPoint(day: 5, minute: 14 * 60 + 3), to: d.gridPoint(day: 5, minute: 15 * 60 + 40))
-        let newEv = m.selectedEvent
-        d.check(newEv != nil && m.fmt.time(newEv!.start) == "14:00" && m.fmt.time(newEv!.end) == "15:45", "drag-create snapped 14:00-15:45 (got \(newEv.map { m.fmt.timeRange($0.start, $0.end) } ?? "nil"))")
-        d.check(m.layout.timedCount == created0 + 1, "created event appears in the grid")
-        d.settle(6)
-        d.type("Design review")
-        d.check(m.selectedEvent?.title.hasSuffix("review") == true, "title typed into inspector (\(m.selectedEvent?.title ?? "nil"))")
-        d.frame(hold: 1.2)
-        d.special("esc"); d.special("esc")
-        d.section("Drag an event to move it across days; drag the bottom edge to resize (the drop settles in 120 ms)")
-        guard let mine = m.layout.timed[5].first(where: { $0.event.title.hasSuffix("review") }) else { d.check(false, "created event findable"); return }
-        let eid = mine.event.id
-        d.drag(from: d.gridPoint(day: 5, minute: 14 * 60 + 25), to: d.gridPoint(day: 6, minute: 11 * 60 + 25))
-        d.check(m.event(id: eid).map { math.weekdayIndex($0.start) == 6 && m.fmt.time($0.start) == "11:00" } == true, "moved to Sunday 11:00 (got \(m.event(id: eid).map { m.fmt.timeRange($0.start, $0.end) } ?? "nil"))")
-        if let moved = m.flatTimed.first(where: { $0.event.id == eid }) {
-            let r = m.gridGeometry.rect(for: moved)
-            d.drag(from: CGPoint(x: r.midX, y: r.maxY - 3), to: CGPoint(x: r.midX, y: r.maxY + 48))
-            d.check(m.event(id: eid).map { m.fmt.time($0.end) == "13:45" } == true, "resized to 13:45 (got \(m.event(id: eid).map { m.fmt.time($0.end) } ?? "nil"))")
-        }
-        d.frame(hold: 0.8)
-        d.section("Undo: cmd Z reverts resize, move and create")
-        d.key("z", cmd: true); d.check(m.event(id: eid).map { m.fmt.time($0.end) == "12:45" } == true, "undo resize"); d.frame(hold: 0.8)
-        d.key("z", cmd: true); d.check(m.event(id: eid).map { math.weekdayIndex($0.start) == 5 } == true, "undo move"); d.frame(hold: 0.8)
-        d.key("z", cmd: true); d.check(m.layout.timedCount == created0, "undo create"); d.frame(hold: 0.8)
-        d.section("C: create at the next free half hour")
-        d.play(0.6) { d.key("c") }; let c = m.selectedEvent
-        d.check(c != nil && m.fmt.time(c!.start) == "15:00" && c!.durationMinutes == 60, "C creates 15:00 (\(c.map { m.fmt.time($0.start) } ?? "nil"))")
-        d.frame(hold: 1.2)
-        d.special("esc"); d.special("esc"); d.check(m.layout.timedCount == created0, "untitled draft discarded on deselect")
-
-        // 10. Search
-        d.section("Search: cmd F, results grouped by date, then an empty result")
-        d.key("f", cmd: true); d.frame(hold: 0.4)
-        d.type("calculus")
-        d.check(!m.searchGroups.isEmpty && m.searchGroups.count > 3, "search groups (\(m.searchGroups.count))")
-        d.frame(hold: 1.8)
-        d.play(0.5) { d.special("return") }
-        d.check(m.selectedEvent?.title == "Calculus", "Return opens the first result")
-        d.frame(hold: 1.0)
-        d.special("esc"); m.searchText = ""
-        d.key("/"); d.type("Quokka")
-        d.check(m.searchGroups.isEmpty, "no results for Quokka"); d.frame(hold: 2.0)
-        d.special("esc"); m.searchText = ""; d.key("t")
-
-        // 11. Command menu
-        d.section("Command menu: cmd K arrives (scale 0.98, fade), fuzzy filter, Return")
-        d.play(0.6) { d.key("k", cmd: true) }; d.check(m.overlay == .command, "cmd-K opens command menu"); d.frame(hold: 1.6)
-        d.special("down"); d.special("down"); d.special("down"); d.check(m.commandIndex == 3, "arrow down moves selection"); d.frame(hold: 0.8)
-        d.type("mont")
-        d.check(CommandRegistry.flat(m.commandSections).first?.id == .viewMonth, "fuzzy filter finds Month view")
-        d.frame(hold: 0.8)
-        d.play(0.6) { d.special("return") }; d.check(m.viewMode == .month && m.overlay == nil, "Return runs the command"); d.frame(hold: 1.0)
-        d.play(0.5) { d.key("w") }
-
-        // 12. Teammates
-        d.section("Show teammate calendar: P, filter, Return overlays their events")
-        d.play(0.6) { d.key("p") }; d.check(m.overlay == .teammate, "P opens teammate picker"); d.frame(hold: 1.6)
-        d.type("maya")
-        d.check(m.filteredTeammates(m.teammateQuery).first?.name == "Maya Sterling", "filter finds Max")
-        d.play(0.6) { d.special("return") }
-        d.check(m.shownTeammates.count == 1 && m.overlayLayout.timedCount > 0, "overlay events shown"); d.frame(hold: 2.0)
-        d.key("p"); d.type("mateo"); d.special("return"); d.check(m.shownTeammates.count == 2, "second teammate"); d.frame(hold: 1.2)
-        d.section("Meet with...: F focuses the sidebar field")
-        d.key("f"); d.type("to", frames: false); d.check(!m.filteredTeammates(m.meetQuery).isEmpty, "meet field filters teammates"); d.frame(hold: 1.4)
-        d.special("esc")
-        m.shownTeammates.forEach { m.removeTeammate($0) }; d.check(m.overlayLayout.timedCount == 0, "teammates removed"); d.frame(hold: 0.4)
-
-        // 13. Go to date
-        d.section("Go to date: . then natural input")
-        d.play(0.5) { d.key(".") }; d.check(m.overlay == .goToDate, "period opens go to date"); d.frame(hold: 0.6)
-        d.type("next friday")
-        d.check(m.goToPreview.map { math.day($0) == 9 && math.month($0) == 10 } == true, "preview resolves next friday")
-        d.frame(hold: 1.2)
-        d.play(0.7) { d.special("return") }; d.check(m.overlay == nil && math.day(m.visibleStart) == 5 && math.month(m.visibleStart) == 10, "Return navigates"); d.frame(hold: 0.8)
-        d.key("."); d.type("12.10."); d.special("return"); d.check(math.day(m.visibleStart) == 12, "German date format"); d.frame(hold: 0.6)
-        d.play(0.6) { d.key("t") }; d.check(startDay() == 28 && math.month(m.visibleStart) == 9, "T returns to today after go to date (start \(startDay()))")
-
-        // 14. Shortcuts sheet
-        d.section("All keyboard shortcuts: ? (sheet drops in over 300 ms)")
-        d.play(0.7) { d.key("?") }; d.check(m.overlay == .shortcuts, "? opens shortcuts sheet"); d.frame(hold: 2.4)
-        d.play(0.5) { d.special("esc") }; d.check(m.overlay == nil, "esc closes it")
-
-        // 15. Settings + reduce motion
-        d.section("Settings: cmd comma. Reduce motion makes everything instant")
-        d.play(0.7) { d.key(",", cmd: true) }; d.check(m.overlay == .settings, "cmd-, opens settings"); d.frame(hold: 1.4)
-        m.settings.use24h = false; d.settle(); d.check(m.fmt.time(m.now).contains("AM") || m.fmt.time(m.now).contains("PM"), "12-hour format applies"); d.frame(hold: 1.0)
-        m.settings.use24h = true
-        d.play(0.4) { m.settings.reduceMotion = true }; d.check(Motion.reduced, "Reduce motion override turns animations off"); d.frame(hold: 0.8)
-        d.special("esc"); d.settle(6)
-        d.play(0.5) { d.key("j") }; d.check(startDay() == 5 && Motion.reduced, "with Reduce motion the week changes instantly (start \(startDay()), overlay \(String(describing: m.overlay)), mode \(m.viewMode))")
-        d.play(0.4) { d.key("k") }
-        d.key(",", cmd: true); d.settle(8)
-        m.settings.reduceMotion = false; d.settle(4); d.check(!Motion.reduced, "Reduce motion off again"); d.frame(hold: 0.6)
-        m.settings.showDeclined = false; d.settle(); d.check(!m.layout.timed[2].contains { $0.event.status == .declined }, "hide declined events"); d.frame(hold: 0.8)
-        m.settings.showDeclined = true
+        // 2. An event opens in the right column
+        d.section("Event detail")
+        guard let sam = placed(m, "Sam / Alex", day: 1) else { d.check(false, "Sam / Alex exists"); return }
+        d.say("Click an event to see it")
+        d.zoomIn(on: CGPoint(x: 900, y: 430))
+        d.clickGrid(centerOf(d, sam))
+        d.check(m.selectedEvent?.title == "Sam / Alex" && !m.isDraftOpen, "click selects Sam / Alex")
+        d.check(m.selectedEvent?.participants.isEmpty == false && m.selectedEvent?.conferencing.isEmpty == false, "detail has guests and a call")
+        d.hold(2.0)
+        d.say("Answer Going? in place")
+        d.click(at: CGPoint(x: 1239, y: 276)) { m.updateSelected { $0.status = .tentative } }
+        d.check(m.selectedEvent?.status == .tentative, "Going? Maybe is written")
+        d.hold(1.2)
+        d.say("Esc closes it", keys: ["esc"])
         d.play(0.5) { d.special("esc") }
+        d.check(m.selectedEventID == nil, "Esc deselects, the panel returns to Today")
+        d.hold(0.5)
+        d.zoomOut()
+        d.hold(0.5)
 
-        // 16. Menu bar
-        d.section("Menu bar calendar: live label, Up Next card, later today")
-        let label = Upcoming.menuBarLabel(m.upcoming)
-        d.check(label == "Calculus \u{00B7} in 12m", "menu bar label: \(label)")
-        d.check(m.upcoming.sections.first?.title == "Today" && m.upcoming.sections.dropFirst().first?.title == "Tomorrow", "popover sections")
-        let pop = OffscreenWindow(MenuBarPopover().environment(m).environment(\.colorScheme, .dark), size: CGSize(width: 392, height: 1000), chrome: false)
-        pop.resize(CGSize(width: 392, height: min(820, max(200, pop.host.fittingSize.height))))
-        d.popover = pop.image(scale: 2); d.menuBarLabel = label
-        d.frame(hold: 3.5)
-        d.popover = nil; pop.close()
-        d.section("Menu bar with nothing left today: explanation and a primary action")
-        m.setNow(math.date(year: 2026, month: 9, day: 29, hour: 23, minute: 40))
-        let pop2 = OffscreenWindow(MenuBarPopover().environment(m).environment(\.colorScheme, .dark), size: CGSize(width: 392, height: 1000), chrome: false)
-        pop2.resize(CGSize(width: 392, height: min(820, max(200, pop2.host.fittingSize.height))))
-        d.popover = pop2.image(scale: 2); d.menuBarLabel = Upcoming.menuBarLabel(m.upcoming)
-        d.frame(hold: 2.5)
-        d.popover = nil; d.menuBarLabel = nil; pop2.close()
-        m.setNow(DemoData.defaultNow)
-        if let next = m.upcoming.next { m.open(event: next) }
-        d.check(m.selectedEvent?.title == "Calculus", "clicking the Up Next card opens it in the main window"); d.frame(hold: 1.2)
-        m.deselect(); m.goToToday()
+        // 3. Create by dragging
+        d.section("Create")
+        d.say("Drag to create an event")
+        d.zoomIn(on: CGPoint(x: 900, y: 430))
+        let before = m.layout.timedCount
+        d.drag(from: d.gridPoint(day: 3, minute: 12 * 60), to: d.gridPoint(day: 3, minute: 13 * 60))
+        d.check(m.draft != nil && m.isDraftOpen, "drag opens a draft")
+        d.check(m.draft.map { hhmm($0.start) == "12:00" && hhmm($0.end) == "13:00" && math.weekdayIndex($0.start) == 3 } == true, "draft is Thu 12:00-13:00 (got \(m.draft.map { m.fmt.timeRange($0.start, $0.end) } ?? "nil"))")
+        d.check(m.layout.timedCount == before + 1, "the draft shows on the grid")
+        d.settle(6)
+        d.say("Type a title")
+        d.moveCursor(to: CGPoint(x: 1150, y: 110))      // the hand moves to the panel; the camera follows it there
+        d.type("Lunch with Maya")
+        d.check(m.draft?.title == "Lunch with Maya", "title typed into the draft (\(m.draft?.title ?? "nil"))")
+        d.hold(0.4)
+        d.say("Return saves it", keys: ["\u{21A9}"])
+        d.play(0.6) { d.special("return") }
+        d.check(m.draft == nil && m.selectedEventID == nil, "Return saves; the panel returns to Today")
+        d.check(m.layout.timed[3].contains { $0.event.title == "Lunch with Maya" }, "the saved event is on Thursday")
+        d.hold(1.2)
+        d.zoomOut()
+        d.hold(0.4)
 
-        // 17. Light
-        d.section("Light appearance: warm paper, lavender selection")
-        m.settings.appearance = .light; d.win.setDark(false); d.settle(8); d.frame(hold: 2.4)
-        d.clickAnimated(grid: centerOf(d, placed(m, "Public Policy", day: 2) ?? mine), seconds: 0.5); d.frame(hold: 1.6)
-        d.special("esc")
-        m.settings.appearance = .dark; d.win.setDark(true); d.settle(8)
+        // 4. Move, undo
+        d.section("Move and undo")
+        guard let piano = placed(m, "Piano lesson", day: 3) else { d.check(false, "Piano lesson exists"); return }
+        let pid = piano.event.id, pc = centerOf(d, piano)
+        d.say("Drag an event to move it")
+        d.zoomIn(on: CGPoint(x: 780, y: 640))
+        d.drag(from: pc, to: CGPoint(x: pc.x + 2 * m.gridGeometry.dayWidth, y: pc.y))
+        d.check(m.event(id: pid).map { math.weekdayIndex($0.start) == 5 && hhmm($0.start) == "13:00" } == true, "Piano lesson moved to Sat 13:00 (got \(m.event(id: pid).map { m.fmt.timeRange($0.start, $0.end) } ?? "nil"))")
+        d.check(m.toast?.undo == true, "the undo pill appears")
+        d.say("The undo pill appears")
+        d.moveCursor(to: CGPoint(x: 735, y: 861), duration: 0.45)      // the camera follows the hand down to the pill
+        d.hold(1.0)
+        d.say("Click Undo")
+        d.click(at: CGPoint(x: 719, y: 861)) { m.dismissToast(); m.undo() }
+        d.play(0.4) {}
+        d.check(m.event(id: pid).map { math.weekdayIndex($0.start) == 3 } == true, "Undo moves it back")
+        d.hold(1.0)
+        d.zoomOut()
+        d.play(0.4) { d.special("esc") }
+        d.check(m.selectedEventID == nil, "Esc closes the restored event")
 
-        // 18. Empty state
-        d.section("No calendar access: an empty state with one primary action")
-        (m.store as? DemoStore)?.authorization = .notDetermined
-        d.play(0.5) { m.storeChanged() }
-        d.check(m.authState == .notDetermined, "access state shows the empty screen"); d.frame(hold: 3)
-        (m.store as? DemoStore)?.authorization = .authorized; m.storeChanged(); d.settle(6)
+        // 5. The hour gutter
+        d.section("Hour scale")
+        d.say("Drag the gutter to zoom the hours")
+        d.zoomIn(on: CGPoint(x: 520, y: 470))
+        let fitted = m.gridHourHeight
+        let gy = Double(m.gridViewport.height) * 0.45
+        d.moveCursor(to: gutterPoint(y: gy))
+        d.recordClick()
+        m.gutterZoomBegan(y: gy)
+        for i in 1...16 {
+            let t = Double(i) / 16, e = t * t * (3 - 2 * t)
+            d.cursor = gutterPoint(y: gy + 150 * e)
+            m.gutterZoomChanged(y: gy + 150 * e)
+            d.settle(2); d.frame()
+        }
+        m.gutterZoomEnded()
+        d.settle(4); d.frame()
+        d.check(m.gridHourHeight > fitted * 1.5 && m.settings.hourHeight != nil, "gutter drag zooms (\(Int(fitted)) -> \(Int(m.gridHourHeight)) pt per hour)")
+        d.hold(0.8)
+        d.say("Scroll to see the night")
+        let startY = Double(m.gridScrollY), endY = max(startY, m.gridGeometry.totalHeight - Double(m.gridViewport.height))
+        d.moveCursor(to: CGPoint(x: m.gridViewport.minX + 300, y: m.gridViewport.minY + 300))
+        for i in 1...18 {
+            let t = Double(i) / 18, e = t * t * (3 - 2 * t)
+            m.gridState.scrollTarget = startY + (endY - startY) * e
+            m.gridState.scrollTick += 1
+            d.settle(2); d.frame()
+        }
+        d.check(Double(m.gridScrollY) > startY + 100, "grid scrolled to the night (\(Int(startY)) -> \(Int(m.gridScrollY)))")
+        d.hold(0.8)
+        d.say("Double-click the gutter to fit again")
+        d.moveCursor(to: gutterPoint(y: gy))
+        d.recordClick()
+        d.frame(hold: 0.12)
+        d.recordClick(double: true)
+        d.play(0.6) { m.fitHourScale() }
+        d.check(m.settings.hourHeight == nil && abs(m.gridHourHeight - fitted) < 1, "double-click fits the hours again")
+        d.hold(0.9)
+        d.zoomOut()
+        d.hold(0.4)
 
-        d.section("Calendr: native SwiftUI, EventKit + demo store")
+        // 6. Command menu
+        d.section("Command menu")
+        d.say("Command menu", keys: ["\u{2318}", "K"])
+        d.zoomIn(on: CGPoint(x: 720, y: 330))
+        d.moveCursor(to: CGPoint(x: 800, y: 120))
+        d.play(0.5) { d.key("k", cmd: true) }
+        d.check(m.overlay == .command, "Cmd-K opens the command menu")
+        d.hold(0.9)
+        d.say("Type a date: next fri")
+        d.type("next fri")
+        d.check({ if case .date(let x)? = m.paletteRows.first?.kind { return math.day(x) == 9 && math.month(x) == 10 }; return false }(), "first row resolves next fri")
+        d.hold(0.3)
+        d.say("Return goes there", keys: ["\u{21A9}"])
+        d.play(0.7) { d.special("return") }
+        d.check(m.overlay == nil && startDay() == 5 && math.month(m.visibleStart) == 10, "Return navigates to the week of 5 Oct")
+        d.hold(0.8)
+        d.say("T comes back to today", keys: ["T"])
+        d.play(0.6) { d.key("t") }
+        d.check(startDay() == 28 && m.todayIndex == 1, "T returns to today")
+        d.hold(0.6)
+        d.say("Search events", keys: ["/"])
+        d.play(0.4) { d.key("/") }
+        d.check(m.overlay == .command && m.chromeState.paletteMode == .search, "/ opens event search")
+        d.type("calc")
+        d.check(m.paletteRows.contains { if case .event = $0.kind { return true }; return false }, "search finds events")
+        d.hold(0.6)
+        d.say("Return opens the first result", keys: ["\u{21A9}"])
+        d.play(0.7) { d.special("return") }
+        d.check(m.selectedEvent?.title == "Calculus", "Return opens Calculus")
+        d.hold(1.0)
+        d.play(0.4) { d.special("esc") }
+        d.check(m.selectedEventID == nil, "Esc closes the detail")
+        d.say("Meet with overlays a teammate", keys: ["F"])
+        d.play(0.4) { d.key("f") }
+        d.check(m.overlay == .command && m.chromeState.paletteMode == .meet, "F opens Meet with")
+        d.hold(0.5)
+        d.type("maya")
+        d.check(m.paletteRows.first?.title == "Maya Sterling", "filter finds Maya Sterling")
+        d.play(0.6) { d.special("return") }
+        d.check(m.shownTeammates.count == 1 && m.overlayLayout.timedCount > 0, "Maya's calendar is overlaid")
+        d.hold(1.8)
+        d.say("Click the chip to remove it")
+        d.click(at: CGPoint(x: 535, y: 30)) { if let t = m.shownTeammates.first { m.toggleMate(t) } }
+        d.check(m.shownTeammates.isEmpty && m.overlayLayout.timedCount == 0, "the header chip removes the overlay")
+        d.hold(1.0)
+        d.zoomOut()
+
+        // 7. Views
+        d.section("Views")
+        d.say("M for month", keys: ["M"])
+        d.play(0.6) { d.key("m") }
+        d.check(m.viewMode == .month && m.monthEvents.count == 42, "M shows the month")
+        d.hold(1.3)
+        d.say("D for day", keys: ["D"])
+        d.play(0.6) { d.key("d") }
+        d.check(m.viewMode == .day && m.visibleDays.count == 1, "D shows the day")
+        d.hold(1.3)
+        d.say("W for week", keys: ["W"])
+        d.play(0.6) { d.key("w") }
+        d.check(m.viewMode == .week && m.visibleDays.count == 7, "W shows the week")
+        d.hold(0.8)
+
+        // 8. Settings
+        d.section("Settings")
+        d.say("Settings", keys: ["\u{2318}", ","])
+        d.zoomIn(on: CGPoint(x: 720, y: 330))
+        d.moveCursor(to: CGPoint(x: 800, y: 300))
+        d.play(0.6) { d.key(",", cmd: true) }
+        d.check(m.overlay == .settings, "Cmd-, opens Settings")
+        d.hold(0.8)
+        d.say("Turn on week numbers")
+        d.click(at: CGPoint(x: 982, y: 411)) { m.settings.showWeekNumbers = true }
+        d.check(m.settings.showWeekNumbers, "week numbers are on")
+        d.hold(1.0)
+        d.say("Switch to Paper")
+        d.click(at: CGPoint(x: 966, y: 333)) { m.settings.appearance = .light; d.win.setDark(false) }
+        d.settle(8); d.frame()
+        d.check(m.isPaper, "appearance is Paper")
+        d.hold(1.2)
+        d.say("And back to Ink")
+        d.click(at: CGPoint(x: 919, y: 333)) { m.settings.appearance = .dark; d.win.setDark(true) }
+        d.settle(8); d.frame()
+        d.check(!m.isPaper, "appearance is Ink")
+        d.hold(0.6)
+        d.say("Esc closes Settings", keys: ["esc"])
+        d.play(0.5) { d.special("esc") }
+        d.check(m.overlay == nil, "Esc closes Settings")
+        d.hold(0.5)
+        d.zoomOut()
+        d.say("The mini month shows week numbers")
+        d.check(m.settings.showWeekNumbers, "week numbers stay on in the mini month")
+        d.hold(1.7)
+
+        // 9. Menu bar (the real NSMenu cannot be captured offscreen; the preview draws the same model)
+        d.section("Menu bar")
+        func itemLabel() -> String { m.menuBarMenu.focus.map { "\(m.menuBarMenu.itemTitle ?? "") \u{00B7} \($0.text)" } ?? "" }
+        d.check(itemLabel() == "Calculus \u{00B7} in 12 min", "menu bar item reads \(itemLabel())")
+        let backdrop = d.win.image(scale: 2).map { NSImage(cgImage: $0, size: NSSize(width: 1440, height: 900)) }
+        let menu = m.menuBarMenu
+        let f = m.fmt
+        let clock = "\(f.weekdayShort(m.now)) \(math.day(m.now)) \(f.monthShort(m.now))  \(f.time(m.now))"
+        func screen(open: Bool, highlight: Int?, submenu: [MenuBarSubItem]?) -> AnyView {
+            AnyView(MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock, backdrop: backdrop, highlight: highlight, submenu: submenu, open: open))
+        }
+        let bar = OffscreenWindow(screen(open: false, highlight: nil, submenu: nil), size: CGSize(width: 1440, height: 900), chrome: false)
+        bar.settle(6)
+        d.say("The menu bar says what is next")
+        d.source = bar
+        d.frame(hold: 1.6)
+        d.say("Click it to open the day")
+        d.zoomIn(on: CGPoint(x: 1100, y: 300))
+        let item = CGPoint(x: 1110, y: 15)
+        d.moveCursor(to: item)
+        d.recordClick()
+        bar.host.rootView = screen(open: true, highlight: 0, submenu: nil)
+        bar.settle(6)
+        d.play(0.3) {}
+        d.check(menu.rows.first?.title == "Calculus", "the open menu lists Calculus first")
+        d.hold(0.9)
+        d.say("Hover an event for its menu")
+        guard let samIdx = menu.rows.firstIndex(where: { $0.title == "Sam / Alex" }) else { d.check(false, "Sam / Alex is in the menu"); return }
+        func rowY(_ i: Int) -> Double { 32 + Double(MenuBarMenuPreview.rowTop(i, in: menu)) + 11 }
+        let sub = m.menuBarSubmenu(for: menu.rows[samIdx].event)
+        d.moveCursor(to: CGPoint(x: 1180, y: rowY(0)), duration: 0.3)
+        var lastHL = 0
+        d.moveCursor(to: CGPoint(x: 1180, y: rowY(samIdx)), duration: 0.55) { p in
+            let hl = menu.rows.indices.min { abs(rowY($0) - p.y) < abs(rowY($1) - p.y) } ?? 0
+            if hl != lastHL { lastHL = hl; bar.host.rootView = screen(open: true, highlight: hl, submenu: nil); bar.settle(2); d.refreshFrame() }
+        }
+        bar.host.rootView = screen(open: true, highlight: samIdx, submenu: sub)
+        bar.settle(6)
+        d.play(0.3) {}
+        let titles = sub.map(\.title)
+        d.check(titles.contains("Join call") && titles.contains("Show in Calendr") && titles.contains("Going?"), "Sam / Alex submenu: \(titles)")
+        d.hold(1.8)
+        d.zoomOut()
+
+        // 10. End on the week
+        d.source = d.win
+        d.cursor = CGPoint(x: 700, y: 400)
+        d.say("Calendr: your week, on one screen")
+        d.settle(4)
+        d.check(m.viewMode == .week && m.overlay == nil && m.selectedEventID == nil, "ends on the week")
         d.frame(hold: 2.0)
+        d.endCaption()
     }
 }

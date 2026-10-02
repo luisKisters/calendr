@@ -6,6 +6,15 @@ public struct Fmt: Sendable {
     public var use24h: Bool
     public init(math: CalendarMath, use24h: Bool = true) { self.math = math; self.use24h = use24h }
 
+    /// Whether the locale shows a 24-hour clock (follows the System Settings override through `Locale.current`).
+    public static func uses24h(_ locale: Locale = .current) -> Bool {
+        switch locale.hourCycle {
+        case .zeroToEleven, .oneToTwelve: false
+        case .zeroToTwentyThree, .oneToTwentyFour: true
+        @unknown default: true
+        }
+    }
+
     public static let weekdayShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     public static let weekdayLong = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     public static let monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -122,35 +131,17 @@ public enum RecurrenceDescriber {
 }
 
 public enum TimeParser {
-    /// "9", "930", "9:30", "09:30", "9.30", "9:30 pm" -> minutes since midnight.
+    /// "9", "930", "0930", "9:30", "9.30", "9h30", "9:30 pm", "24" (end of day) -> minutes since midnight, 0...1440.
+    /// Minutes take two digits ("9:5" is refused), as in the mockup's `parseTime`.
     public static func parse(_ raw: String) -> Int? {
-        var s = raw.lowercased().trimmingCharacters(in: .whitespaces)
-        var pm: Bool?
-        if s.hasSuffix("pm") { pm = true; s = String(s.dropLast(2)).trimmingCharacters(in: .whitespaces) }
-        else if s.hasSuffix("am") { pm = false; s = String(s.dropLast(2)).trimmingCharacters(in: .whitespaces) }
-        s = s.replacingOccurrences(of: ".", with: ":")
-        var h: Int, m = 0
-        if s.contains(":") {
-            let p = s.split(separator: ":", omittingEmptySubsequences: false)
-            guard p.count == 2, let hh = Int(p[0]), let mm = Int(p[1]) else { return nil }
-            h = hh; m = mm
-        } else if let v = Int(s) {
-            if s.count <= 2 { h = v } else if s.count <= 4 { h = v / 100; m = v % 100 } else { return nil }
-        } else { return nil }
-        if let pm { if h < 1 || h > 12 { return nil }; h = h % 12 + (pm ? 12 : 0) }
-        guard (0...23).contains(h), (0...59).contains(m) else { return nil }
-        return h * 60 + m
-    }
-}
-
-/// Tasks are events whose title starts with "[P1]" ... "[P9]" (or "[P0?]"): the priority is shown apart from the title.
-public enum TaskTitle {
-    /// ("P1", "Water the plants") for "[P1] Water the plants"; (nil, title) otherwise.
-    public static func split(_ title: String) -> (priority: String?, text: String) {
-        guard title.hasPrefix("[P"), let close = title.firstIndex(of: "]") else { return (nil, title) }
-        let pr = String(title[title.index(after: title.startIndex)..<close])
-        guard pr.count <= 4 else { return (nil, title) }
-        let rest = title[title.index(after: close)...].trimmingCharacters(in: .whitespaces)
-        return (pr, rest.isEmpty ? title : rest)
+        let s = raw.trimmingCharacters(in: .whitespaces).lowercased()
+        guard let m = s.wholeMatch(of: /(\d{1,2})(?:[:.h]?(\d{2}))?\s*(am|pm)?/), var h = Int(m.1) else { return nil }
+        let mi = m.2.flatMap { Int($0) } ?? 0
+        if let ap = m.3 {
+            guard (1...12).contains(h) else { return nil }
+            h = h % 12 + (ap == "pm" ? 12 : 0)
+        }
+        guard mi <= 59, h * 60 + mi <= 1440 else { return nil }
+        return h * 60 + mi
     }
 }

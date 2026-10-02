@@ -36,4 +36,23 @@ public enum EventSearch {
         }
         return groups
     }
+
+    /// Command menu matches: the query appears in the title or the place. Nearest day to `today` first (a past day just
+    /// before the same distance ahead), then by start.
+    public static func nearest(_ events: [CalendarEvent], query: String, today: Date, math: CalendarMath, limit: Int) -> [CalendarEvent] {
+        let q = fold(query.trimmingCharacters(in: .whitespaces))
+        guard !q.isEmpty else { return [] }
+        let day0 = math.startOfDay(today)
+        func distance(_ e: CalendarEvent) -> Double {
+            let d = Double(math.daysBetween(day0, math.startOfDay(e.start)))
+            return abs(d < 0 ? d + 0.5 : d)
+        }
+        var seen = Set<String>()
+        var hits: [(event: CalendarEvent, distance: Double)] = []
+        for e in events where fold(e.title).contains(q) || fold(e.location).contains(q) {
+            if seen.insert(e.id).inserted { hits.append((e, distance(e))) }
+        }
+        hits.sort { a, b in a.distance != b.distance ? a.distance < b.distance : a.event.start < b.event.start }
+        return hits.prefix(limit).map(\.event)
+    }
 }

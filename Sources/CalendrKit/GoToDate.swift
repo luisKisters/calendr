@@ -2,24 +2,17 @@ import Foundation
 
 /// Natural-language date input for the "Go to date" panel.
 public enum GoToDateParser {
-    static let months: [String: Int] = {
-        var m: [String: Int] = [:]
-        for (i, n) in Fmt.monthLong.enumerated() {
-            m[n.lowercased()] = i + 1
-            m[String(n.lowercased().prefix(3))] = i + 1
-        }
-        m["sept"] = 9
-        return m
-    }()
-    static let weekdays: [String: Int] = {   // Calendar weekday numbers, Sunday = 1
-        var m: [String: Int] = [:]
-        for (i, n) in Fmt.weekdayLong.enumerated() {
-            m[n.lowercased()] = i + 1
-            m[String(n.lowercased().prefix(3))] = i + 1
-        }
-        m["tues"] = 3; m["wednes"] = 4; m["thur"] = 5; m["thurs"] = 5
-        return m
-    }()
+    /// A month from three or more letters of its name, as typed: "oct", "octob", "sept".
+    static func month(_ s: String) -> Int? {
+        guard s.count >= 3 else { return nil }
+        return Fmt.monthLong.firstIndex { $0.lowercased().hasPrefix(s) }.map { $0 + 1 }
+    }
+
+    /// A Calendar weekday (Sunday = 1) from two or more letters of its name: "fr", "thurs".
+    static func weekday(_ s: String) -> Int? {
+        guard s.count >= 2 else { return nil }
+        return Fmt.weekdayLong.firstIndex { $0.lowercased().hasPrefix(s) }.map { $0 + 1 }
+    }
 
     public static func parse(_ raw: String, now: Date, math: CalendarMath) -> Date? {
         let s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -35,6 +28,20 @@ public enum GoToDateParser {
         case "next month": return math.startOfMonth(math.addMonths(today, 1))
         case "last month", "previous month": return math.startOfMonth(math.addMonths(today, -1))
         default: break
+        }
+        // the start of a keyword, as typed into the command menu: "to", "tom", "y"
+        if s.count >= 2 && "today".hasPrefix(s) { return today }
+        if s.count >= 3 && "tomorrow".hasPrefix(s) { return math.addDays(today, 1) }
+        if "yesterday".hasPrefix(s) { return math.addDays(today, -1) }
+
+        // ISO week of this year: w42, week 42, kw 42
+        if let m = match(s, #"^(?:w|week |kw ?)(\d{1,2})$"#), let w = Int(m[0]) {
+            guard (1...53).contains(w) else { return nil }
+            var iso = Calendar(identifier: .iso8601)
+            iso.timeZone = math.timeZone
+            var c = DateComponents()
+            c.weekOfYear = w; c.yearForWeekOfYear = iso.component(.yearForWeekOfYear, from: today); c.weekday = 2
+            return iso.date(from: c).map { math.startOfDay($0) }
         }
 
         // ISO: 2026-12-24
@@ -56,13 +63,15 @@ public enum GoToDateParser {
         let parts = cleaned.split(separator: " ").map(String.init)
         if parts.count >= 2 && parts.count <= 3 {
             var mon: Int?, day: Int?, year: Int?
-            for p in parts {
-                if let mm = months[p], mon == nil { mon = mm }
+            for raw in parts {
+                let p = raw.hasSuffix(".") && raw.count > 1 && !raw.dropLast().allSatisfy(\.isNumber) ? String(raw.dropLast()) : raw
+                if mon == nil, let mm = month(p) { mon = mm }
                 else if let n = Int(stripOrdinal(p)) {
                     if stripOrdinal(p).count == 4 { year = n } else if day == nil { day = n } else if year == nil { year = expandYear(n) }
                 } else { mon = nil; day = nil; break }
             }
             if let mon, let day { return resolve(day: day, month: mon, year: year, now: today, math: math) }
+            if let mon, let year, parts.count == 2 { return build(year, mon, 1, math) }
         }
 
         // "in 3 days", "in 2 weeks", "3 days ago"
@@ -73,29 +82,27 @@ public enum GoToDateParser {
             return offset(-(Int(m[0]) ?? 0), unit: m[1], today: today, math: math)
         }
 
-        // weekday names: "friday" (next occurrence, today counts), "next friday" (strictly after today, next week semantics), "last friday"
-        var name = s, mode = 0
-        if s.hasPrefix("next ") { name = String(s.dropFirst(5)); mode = 1 }
-        else if s.hasPrefix("last ") { name = String(s.dropFirst(5)); mode = -1 }
-        else if s.hasPrefix("this ") { name = String(s.dropFirst(5)); mode = 0 }
-        if let wd = weekdays[name] {
+        // a bare month name: the first of that month
+        if let mon = month(s) { return resolve(day: 1, month: mon, year: nil, now: today, math: math) }
+
+        // weekday names: "friday" is the next one (a week ahead on a Friday), "this friday" the one of this week,
+        // "next friday" the one of the following week, "last friday" the one before today
+        var name = s, mode = ""
+        for p in ["next ", "last ", "this "] where s.hasPrefix(p) { name = String(s.dropFirst(p.count)); mode = p }
+        if let wd = weekday(name) {
             let cur = math.calendar.component(.weekday, from: today)
+            let idx = (wd - math.calendar.firstWeekday + 7) % 7
             switch mode {
-            case -1:
+            case "last ":
                 let back = (cur - wd + 7) % 7
                 return math.addDays(today, -(back == 0 ? 7 : back))
-            case 1:
-                // "next friday" = that weekday in the following calendar week.
-                let nextWeekStart = math.addDays(math.startOfWeek(today), 7)
-                let idx = (wd - math.calendar.firstWeekday + 7) % 7
-                return math.addDays(nextWeekStart, idx)
+            case "next ": return math.addDays(math.addDays(math.startOfWeek(today), 7), idx)
+            case "this ": return math.addDays(math.startOfWeek(today), idx)
             default:
-                let fwd = (wd - cur + 7) % 7
-                return math.addDays(today, fwd)
+                let ahead = (wd - cur + 7) % 7
+                return math.addDays(today, ahead == 0 ? 7 : ahead)
             }
         }
-        // a bare month name: first of that month
-        if let mon = months[s] { return resolve(day: 1, month: mon, year: nil, now: today, math: math) }
         return nil
     }
 
@@ -127,7 +134,7 @@ public enum GoToDateParser {
         return c.year == y && c.month == m && c.day == d ? date : nil
     }
 
-    /// Without an explicit year, choose the current year unless that lands more than ~5 months in the past.
+    /// Without an explicit year, choose the current year unless that lands more than 31 days in the past.
     static func resolve(day: String, month: String, year: Int?, now: Date, math: CalendarMath) -> Date? {
         guard let d = Int(day), let m = Int(month) else { return nil }
         return resolve(day: d, month: m, year: year, now: now, math: math)
@@ -137,7 +144,7 @@ public enum GoToDateParser {
         if let year { return build(year, month, day, math) }
         let y = math.year(now)
         guard let this = build(y, month, day, math) else { return nil }
-        if math.daysBetween(this, now) > 150 { return build(y + 1, month, day, math) ?? this }
+        if math.daysBetween(this, now) > 31 { return build(y + 1, month, day, math) ?? this }
         return this
     }
 

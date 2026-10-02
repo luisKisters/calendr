@@ -13,6 +13,7 @@ let package = Package(
         .executableTarget(
             name: "Calendr",
             dependencies: ["CalendrKit"],
+            resources: [.copy("Resources/Fonts")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(name: "CalendrKitTests", dependencies: ["CalendrKit"]),

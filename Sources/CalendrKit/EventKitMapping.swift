@@ -90,15 +90,4 @@ public enum EventKitMapping {
         if !e.isEmpty { return "\(n) <\(e)>" }
         return n.isEmpty ? nil : n
     }
-
-    /// Reminders and title-only tasks: EventKit has no task kind, so a leading "[P0]".."[P9]" is treated as a task style.
-    public static func kind(forTitle t: String, calendarIsTasks: Bool) -> EventKind {
-        if calendarIsTasks { return .task }
-        return isPriorityTitle(t) ? .task : .event
-    }
-
-    public static func isPriorityTitle(_ t: String) -> Bool {
-        let u = Array(t.utf8)
-        return u.count >= 4 && u[0] == UInt8(ascii: "[") && u[1] == UInt8(ascii: "P") && u[3...].contains(UInt8(ascii: "]"))
-    }
 }

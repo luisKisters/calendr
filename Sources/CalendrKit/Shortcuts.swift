@@ -11,11 +11,16 @@ public struct KeyInput: Equatable, Sendable {
 }
 
 public enum ShortcutAction: Equatable, Sendable {
-    case commandMenu, today, leftAlignToday, nextPeriod, previousPeriod
-    case createEvent, meetWith, showTeammate, goToDate, showShortcuts, schedulingLink, addNotionDatabase
+    case commandMenu, today, nextPeriod, previousPeriod
+    case createEvent, meetWith, goToDate, searchEvents, showShortcuts
     case viewDay, viewWeek, viewMonth
-    case toggleSidebar, toggleRightPanel, settings, menuBarCalendar, mainWindow
-    case focusSearch, undo, refresh, deleteSelection, escape
+    case toggleSidebar, settings, menuBarCalendar, mainWindow
+    case undo, refresh, deleteSelection, escape
+    /// An arrow key: walks the selection with one, pages the period (left, right) without.
+    case arrow(dx: Int, dy: Int)
+    /// Option-arrow: moves the selected event by a day (dx) or 15 minutes (dy).
+    case nudge(dx: Int, dy: Int)
+    case selectNext, selectPrevious, editTitle
 }
 
 public enum ShortcutResolver {
@@ -24,6 +29,21 @@ public enum ShortcutResolver {
     public static let keyForwardDelete: UInt16 = 117
     public static let keyLeft: UInt16 = 123
     public static let keyRight: UInt16 = 124
+    public static let keyDown: UInt16 = 125
+    public static let keyUp: UInt16 = 126
+    public static let keyReturn: UInt16 = 36
+    public static let keyEnter: UInt16 = 76
+    public static let keyTab: UInt16 = 48
+
+    static func arrow(_ code: UInt16) -> (dx: Int, dy: Int)? {
+        switch code {
+        case keyLeft: (-1, 0)
+        case keyRight: (1, 0)
+        case keyUp: (0, -1)
+        case keyDown: (0, 1)
+        default: nil
+        }
+    }
 
     /// Maps a key press to an action. Command-modified shortcuts always fire; bare keys never fire while a text field is focused.
     public static func resolve(_ k: KeyInput, textFocused: Bool) -> ShortcutAction? {
@@ -33,23 +53,23 @@ public enum ShortcutResolver {
             if k.option { return nil }
             switch c {
             case "k": return .commandMenu
-            case "/": return .toggleRightPanel
             case ",": return .settings
             case "1": return .mainWindow
+            case "\\": return .toggleSidebar
             case "z": return k.shift ? nil : (textFocused ? nil : .undo)
             case "r": return .refresh
-            case "f": return .focusSearch
+            case "f": return .searchEvents
             default: return nil
             }
         }
         if k.keyCode == keyEscape { return .escape }
-        if textFocused { return nil }
-        if k.control { return nil }
-        if k.option { return c == "t" ? .leftAlignToday : nil }
+        if textFocused || k.control { return nil }
+        if k.option { return arrow(k.keyCode).map { .nudge(dx: $0.dx, dy: $0.dy) } }
+        if let a = arrow(k.keyCode) { return .arrow(dx: a.dx, dy: a.dy) }
         switch k.keyCode {
         case keyDelete, keyForwardDelete: return .deleteSelection
-        case keyLeft: return .previousPeriod
-        case keyRight: return .nextPeriod
+        case keyTab: return k.shift ? .selectPrevious : .selectNext
+        case keyReturn, keyEnter: return .editTitle
         default: break
         }
         switch c {
@@ -60,14 +80,11 @@ public enum ShortcutResolver {
         case "d": return .viewDay
         case "w": return .viewWeek
         case "m": return .viewMonth
-        case "p": return .showTeammate
         case "f": return .meetWith
         case ".": return .goToDate
         case "?": return .showShortcuts
-        case "/": return k.shift ? .showShortcuts : .focusSearch
+        case "/": return k.shift ? .showShortcuts : .searchEvents
         case "`": return .toggleSidebar
-        case "s": return .schedulingLink
-        case "o": return .addNotionDatabase
         default: return nil
         }
     }

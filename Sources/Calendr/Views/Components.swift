@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-// Shared v2 building blocks: keycaps, buttons, segmented control, toggle, empty-state art, wordmark.
+// Shared building blocks (design/mockup-v3/app.css controls): keycaps, buttons, segmented control, switch, empty-state art.
 
 struct SFIcon: View {
     let name: String
@@ -23,151 +23,155 @@ struct PressStyle: ButtonStyle {
     }
 }
 
+/// `.btn--icon`: 28 pt (24 small) square, fg2 glyph, hover wash and fg.
 struct IconButton: View {
     let name: String
-    var size: CGFloat = 15
+    var size: CGFloat = 13
     var box: CGFloat = 28
-    var color: Color = Theme.haze
+    var color: Color = Theme.fg2
+    var help: String?
     let action: () -> Void
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            SFIcon(name: name, size: size, color: hover ? Theme.paper : color)
+            SFIcon(name: name, size: size, color: hover ? Theme.fg : color)
                 .frame(width: box, height: box)
-                .background(RoundedRectangle(cornerRadius: 8).fill(hover ? Theme.hover : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.hover : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
         .onHover { hover = $0 }
         .animation(Motion.fast, value: hover)
+        .help(help ?? "")
     }
 }
 
-/// Mono 10.5 / 600 keycap, `haze` on `ink600`, radius 5, 1pt bottom edge.
+/// `kbd`: 10.5 / 500 tabular, 18 pt high, fg2 on bg2 with a hair2 edge, radius 4.
 struct Keycap: View {
     let text: String
     var onAct = false
     var body: some View {
-        let wide = text.count > 1 && text.allSatisfy(\.isLetter)
-        Text(text).font(.calMono(10.5, .semibold)).foregroundStyle(onAct ? Color.white : Theme.haze)
-            .padding(.horizontal, wide ? 7 : 5).frame(minWidth: 19, minHeight: 19)
-            .background(RoundedRectangle(cornerRadius: 5).fill(onAct ? Color.white.opacity(0.18) : Theme.ink600))
-            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(onAct ? Color.clear : Theme.hair, lineWidth: 1))
-            .shadow(color: onAct ? .clear : Theme.keyEdge, radius: 0, y: 1)
+        Text(text).font(.calMono(10.5, .medium)).foregroundStyle(onAct ? Theme.onAct : Theme.fg2)
+            .padding(.horizontal, 4).frame(minWidth: 18, minHeight: 18, maxHeight: 18)
+            .background(RoundedRectangle(cornerRadius: 4).fill(onAct ? Theme.onAct.opacity(0.16) : Theme.bg2))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(onAct ? Color.clear : Theme.hair2, lineWidth: 1))
+            .fixedSize()
     }
 }
 
 struct Keycaps: View {
     let keys: [String]
     var onAct = false
+    /// 3 pt between caps; inside a flex row of the mockup the row's gap adds to it.
+    var spacing: CGFloat = 3
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: spacing) {
             ForEach(Array(keys.enumerated()), id: \.offset) { _, k in
-                if k == "or" { Text("or").font(.calMeta).foregroundStyle(Theme.haze) } else { Keycap(text: Self.glyph(k), onAct: onAct) }
+                if k == "or" { Text("or").font(.calMeta).foregroundStyle(Theme.fg3) } else { Keycap(text: Self.glyph(k), onAct: onAct) }
             }
         }
     }
     static func glyph(_ k: String) -> String { k == "command" ? "\u{2318}" : k }
 }
 
+/// `.btn`: 28 pt (24 small), radius 7, 12.5 / 500. Plain is fg2 with a hover wash, line adds a hair2 edge and fg text,
+/// fill is inverted ink. `quiet` is the line button with fg3 text and a hair edge (Today while today is on screen).
+struct TextButton: View {
+    enum Kind { case plain, line, fill }
+    let title: String
+    var kind = Kind.line
+    var icon: String?
+    var keys: [String] = []
+    var small = false
+    var quiet = false
+    var disabled = false
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        let h = !disabled && hover
+        let fg: Color = disabled || quiet ? Theme.fg3 : kind == .fill ? Theme.onAct : (kind == .line || h ? Theme.fg : Theme.fg2)
+        let fill: Color = kind == .fill ? (h ? Theme.actHover : Theme.act) : (h ? Theme.hover : .clear)
+        let edge: Color = kind == .fill ? .clear : (disabled || quiet ? Theme.hair : (kind == .line ? Theme.hair2 : .clear))
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let icon { SFIcon(name: icon, size: small ? 11 : 12.5, color: fg) }
+                Text(title).font(.ui(small ? 12 : 12.5, kind == .fill ? .semibold : .medium)).foregroundStyle(fg)
+                if !keys.isEmpty { Keycaps(keys: keys, onAct: kind == .fill) }
+            }
+            .padding(.horizontal, small ? 8 : 10).frame(height: small ? 24 : 28)
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(fill))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(edge, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle(scale: 0.97))
+        .disabled(disabled)
+        .onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
+        .animation(Motion.base, value: quiet)
+    }
+}
+
+/// `.btn--fill`.
 struct PrimaryButton: View {
     let title: String
     var keys: [String] = []
     var small = false
     let action: () -> Void
-    @State private var hover = false
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Text(title).font(.system(size: small ? 12 : 13, weight: .medium))
-                if !keys.isEmpty { Keycaps(keys: keys, onAct: true) }
-            }
-            .foregroundStyle(Theme.onAct)
-            .padding(.horizontal, small ? 10 : 14).frame(height: small ? 26 : 30)
-            .background(RoundedRectangle(cornerRadius: small ? 8 : Radius.control).fill(hover ? Theme.actLift : Theme.act))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
-    }
+    var body: some View { TextButton(title: title, kind: .fill, keys: keys, small: small, action: action) }
 }
 
+/// `.btn--line`.
 struct SecondaryButton: View {
     let title: String
     var keys: [String] = []
     var small = false
     let action: () -> Void
-    @State private var hover = false
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Text(title).font(.system(size: small ? 12 : 13, weight: .medium))
-                if !keys.isEmpty { Keycaps(keys: keys) }
-            }
-            .foregroundStyle(Theme.paper)
-            .padding(.horizontal, small ? 10 : 14).frame(height: small ? 26 : 30)
-            .background(RoundedRectangle(cornerRadius: small ? 8 : Radius.control).fill(hover ? Theme.ink600 : Theme.ink700))
-            .overlay(RoundedRectangle(cornerRadius: small ? 8 : Radius.control).strokeBorder(Theme.hairStrong, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
-    }
+    var body: some View { TextButton(title: title, kind: .line, keys: keys, small: small, action: action) }
 }
 
-/// Track ink-700, thumb ink-600 sliding 180 ms.
+/// `.rsvp` segmented control: bg2 track with 2 pt padding, 22 pt options (12 / 500, fg2); the chosen one sits on the thumb.
 struct Segmented<T: Hashable>: View {
     let options: [(T, String)]
     let selection: T
-    var height: CGFloat = 26
+    var height: CGFloat = 22
     var minWidth: CGFloat = 0
     let onSelect: (T) -> Void
-    @State private var widths: [Int: CGFloat] = [:]
 
     var body: some View {
-        let idx = options.firstIndex { $0.0 == selection } ?? 0
-        let w = options.indices.map { widths[$0] ?? 0 }
-        let x = w.prefix(idx).reduce(0, +)
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 7).fill(Theme.ink600)
-                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.hairStrong, lineWidth: 1))
-                .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
-                .frame(width: w[idx], height: height)
-                .offset(x: x)
-                .animation(Motion.base, value: idx)
-            HStack(spacing: 0) {
-                ForEach(Array(options.enumerated()), id: \.offset) { i, o in
-                    Button { onSelect(o.0) } label: {
-                        Text(o.1).font(.system(size: 12.5, weight: .medium))
-                            .foregroundStyle(i == idx ? Theme.paper : Theme.haze)
-                            .padding(.horizontal, 12).frame(minWidth: minWidth, minHeight: height)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { widths[i] = $0 }
+        HStack(spacing: 0) {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, o in
+                let on = o.0 == selection
+                Button { onSelect(o.0) } label: {
+                    Text(o.1).font(.ui(12, .medium))
+                        .foregroundStyle(on ? Theme.fg : Theme.fg2)
+                        .padding(.horizontal, 11).frame(minWidth: minWidth, minHeight: height)
+                        .background(RoundedRectangle(cornerRadius: Radius.control - 1).fill(on ? Theme.thumb : Color.clear)
+                            .shadow(color: .black.opacity(on ? 0.2 : 0), radius: 1, y: 1))
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .animation(Motion.base, value: on)
             }
         }
         .padding(2)
-        .background(RoundedRectangle(cornerRadius: Radius.control).fill(Theme.ink700))
-        .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.hair, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.control + 1).fill(Theme.bg2))
         .fixedSize()
     }
 }
 
-/// 30x18 track, ink-600 off / act on, 14 pt knob with spring overshoot.
+/// `.tg2` switch: 26 x 15 track (bg3 off, act on), 11 pt knob (fg2 off, onAct on).
 struct ActToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button { configuration.isOn.toggle() } label: {
             ZStack(alignment: .leading) {
-                Capsule().fill(configuration.isOn ? Theme.act : Theme.ink600).overlay(Capsule().strokeBorder(Theme.hair, lineWidth: 1))
-                Circle().fill(Color.white).frame(width: 14, height: 14).shadow(color: .black.opacity(0.35), radius: 1.5, y: 1)
-                    .offset(x: configuration.isOn ? 14 : 2)
+                Capsule().fill(configuration.isOn ? Theme.act : Theme.bg3)
+                Circle().fill(configuration.isOn ? Theme.onAct : Theme.fg2).frame(width: 11, height: 11)
+                    .offset(x: configuration.isOn ? 13 : 2)
             }
-            .frame(width: 30, height: 18)
-            .animation(Motion.base, value: configuration.isOn)
+            .frame(width: 26, height: 15)
+            .animation(Motion.spring, value: configuration.isOn)
+            .frame(height: 26)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -175,23 +179,13 @@ struct ActToggleStyle: ToggleStyle {
 }
 
 struct Hairline: View {
-    var body: some View { Rectangle().fill(Theme.hair).frame(height: 1) }
+    var color: Color = Theme.hair
+    var body: some View { Rectangle().fill(color).frame(height: 1) }
 }
 
-// MARK: Brand
-
-/// Small purple ring-and-dot glyph, the app icon's ring turned into a calendar dot.
-struct Wordmark: View {
-    var body: some View {
-        HStack(spacing: 9) {
-            ZStack {
-                Circle().strokeBorder(Theme.act, lineWidth: 1.8).frame(width: 15, height: 15)
-                Circle().fill(Theme.actLift).frame(width: 4.5, height: 4.5)
-            }
-            .frame(width: 18, height: 18)
-            Text("Calendr").font(.system(size: 14, weight: .semibold)).tracking(-0.2).foregroundStyle(Theme.paper)
-        }
-    }
+extension Theme {
+    /// The raised option of a segmented control (`--thumb`).
+    static let thumb = Color.dyn("#33333C", "#FFFFFF")
 }
 
 // MARK: Empty-state art

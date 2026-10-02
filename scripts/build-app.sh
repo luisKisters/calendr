@@ -13,9 +13,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Calendr"
 scripts/make-icon.sh   # no-op when design/icon/AppIcon.icns exists
 cp design/icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-# Optional menu bar template glyph
-[ -f design/icon/MenuBarTemplate.png ] && cp design/icon/MenuBarTemplate.png "$APP/Contents/Resources/MenuBarTemplate.png"
-[ -f design/icon/MenuBarTemplate@2x.png ] && cp design/icon/MenuBarTemplate@2x.png "$APP/Contents/Resources/MenuBarTemplate@2x.png"
+# Instrument Sans (SIL OFL) and its license; Typeface.swift looks in Contents/Resources/Fonts first
+mkdir -p "$APP/Contents/Resources/Fonts"
+cp Sources/Calendr/Resources/Fonts/InstrumentSans.ttf Sources/Calendr/Resources/Fonts/OFL.txt "$APP/Contents/Resources/Fonts/"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -28,8 +28,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleExecutable</key><string>Calendr</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>1.1.0</string>
+  <key>CFBundleVersion</key><string>2</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>NSHighResolutionCapable</key><true/>

@@ -1,72 +1,57 @@
 import Foundation
 
+/// The command menu's commands (design/mockup-v3 `COMMANDS`).
 public enum CommandID: String, CaseIterable, Sendable {
-    case createEvent, meetWith, showTeammate, recurringLink, oneOffLink, addNotionDatabase
-    case goToDate, goToToday, leftAlignToday, nextPeriod, previousPeriod
-    case viewDay, viewWeek, viewMonth, toggleSidebar, toggleRightPanel, settings
+    case newEvent, today, goToDate, nextPeriod, previousPeriod
+    case viewDay, viewWeek, viewMonth, toggleSidebar, switchAppearance
+    case searchEvents, meetWith, undo, deleteSelected, settings, fitWeek, shortcuts
 }
 
 public struct Command: Identifiable, Equatable, Sendable {
     public var id: CommandID
     public var title: String
-    public var section: String
-    /// Key chips, e.g. ["option", "T"].
-    public var chips: [String]
-    public var keywords: String
-    public init(_ id: CommandID, _ title: String, section: String, chips: [String] = [], keywords: String = "") {
-        self.id = id; self.title = title; self.section = section; self.chips = chips; self.keywords = keywords
+    /// Section in the unfiltered list: Create, Go to, View, Find, Edit, Help.
+    public var group: String
+    /// Keycaps, one string per cap ("⌘", "Z").
+    public var keys: [String]
+    /// Opens a mode of the menu or a sheet instead of finishing there: shown with an ellipsis.
+    public var more: Bool
+    /// Only listed while an event is selected.
+    public var needsSelection: Bool
+    public init(_ id: CommandID, _ title: String, group: String, keys: [String] = [], more: Bool = false, needsSelection: Bool = false) {
+        self.id = id; self.title = title; self.group = group; self.keys = keys; self.more = more; self.needsSelection = needsSelection
     }
-}
-
-public struct CommandSection: Identifiable, Equatable, Sendable {
-    public var id: String { title }
-    public var title: String
-    public var commands: [Command]
 }
 
 public enum CommandRegistry {
     public static let all: [Command] = [
-        Command(.createEvent, "Create event\u{2026}", section: "Calendar", chips: ["C"], keywords: "new add"),
-        Command(.meetWith, "Meet with\u{2026}", section: "Calendar", chips: ["F"], keywords: "find time schedule"),
-        Command(.showTeammate, "Show teammate calendar\u{2026}", section: "Calendar", chips: ["P"], keywords: "people overlay"),
-        Command(.recurringLink, "Create recurring scheduling link\u{2026}", section: "Calendar", keywords: "booking"),
-        Command(.oneOffLink, "Create one-off scheduling link\u{2026}", section: "Calendar", chips: ["S"], keywords: "booking"),
-        Command(.addNotionDatabase, "Add Notion database\u{2026}", section: "Calendar", chips: ["O"]),
-        Command(.goToDate, "Go to date\u{2026}", section: "Navigation", chips: ["."], keywords: "jump"),
-        Command(.goToToday, "Go to today", section: "Navigation", chips: ["T"], keywords: "now"),
-        Command(.leftAlignToday, "Left-align today in view", section: "Navigation", chips: ["option", "T"]),
-        Command(.nextPeriod, "Next period", section: "Navigation", chips: ["J"], keywords: "forward"),
-        Command(.previousPeriod, "Previous period", section: "Navigation", chips: ["K"], keywords: "back"),
-        Command(.viewDay, "Switch to Day view", section: "Navigation", chips: ["D"]),
-        Command(.viewWeek, "Switch to Week view", section: "Navigation", chips: ["W"]),
-        Command(.viewMonth, "Switch to Month view", section: "Navigation", chips: ["M"]),
-        Command(.toggleSidebar, "Toggle sidebar", section: "Navigation", chips: ["`"]),
-        Command(.toggleRightPanel, "Toggle right panel", section: "Navigation", chips: ["command", "/"]),
-        Command(.settings, "Settings", section: "Navigation", chips: ["command", ","], keywords: "preferences"),
+        Command(.newEvent, "New event", group: "Create", keys: ["C"]),
+        Command(.today, "Go to today", group: "Go to", keys: ["T"]),
+        Command(.goToDate, "Go to date", group: "Go to", keys: ["."], more: true),
+        Command(.nextPeriod, "Next period", group: "Go to", keys: ["J"]),
+        Command(.previousPeriod, "Previous period", group: "Go to", keys: ["K"]),
+        Command(.viewDay, "Day view", group: "View", keys: ["D"]),
+        Command(.viewWeek, "Week view", group: "View", keys: ["W"]),
+        Command(.viewMonth, "Month view", group: "View", keys: ["M"]),
+        Command(.toggleSidebar, "Toggle sidebar", group: "View", keys: ["`"]),
+        Command(.switchAppearance, "Switch appearance", group: "View"),
+        Command(.searchEvents, "Search events", group: "Find", keys: ["/"], more: true),
+        Command(.meetWith, "Meet with", group: "Find", keys: ["F"], more: true),
+        Command(.undo, "Undo", group: "Edit", keys: ["\u{2318}", "Z"]),
+        Command(.deleteSelected, "Delete selected event", group: "Edit", keys: ["\u{232B}"], needsSelection: true),
+        Command(.settings, "Settings", group: "Help", keys: ["\u{2318}", ","], more: true),
+        Command(.fitWeek, "Fit the week again", group: "View"),
+        Command(.shortcuts, "Keyboard shortcuts", group: "Help", keys: ["?"]),
     ]
 
-    public static func sections(matching query: String) -> [CommandSection] {
+    /// Commands available now. An empty query keeps the registry order; otherwise best fuzzy match first.
+    public static func matching(_ query: String, hasSelection: Bool) -> [Command] {
         let q = query.trimmingCharacters(in: .whitespaces)
-        var out: [CommandSection] = []
-        if q.isEmpty {
-            for c in all { append(c, to: &out) }
-            return out
-        }
-        let scored = all.compactMap { c -> (Command, Int)? in
-            guard let s = FuzzyMatcher.score(query: q, in: c.title) ?? FuzzyMatcher.score(query: q, in: c.keywords).map({ $0 - 20 }) else { return nil }
-            return (c, s)
-        }.sorted { $0.1 > $1.1 }
-        for (c, _) in scored { append(c, to: &out) }
-        return out
+        let pool = all.filter { !$0.needsSelection || hasSelection }
+        guard !q.isEmpty else { return pool }
+        return pool.compactMap { c in FuzzyMatcher.rank(q, in: c.title + " " + c.group).map { (c, $0) } }
+            .sorted { $0.1 > $1.1 }.map(\.0)
     }
-
-    static func append(_ c: Command, to out: inout [CommandSection]) {
-        if let i = out.firstIndex(where: { $0.title == c.section }) { out[i].commands.append(c) }
-        else { out.append(CommandSection(title: c.section, commands: [c])) }
-    }
-
-    /// Flattened order as displayed, used for keyboard selection.
-    public static func flat(_ sections: [CommandSection]) -> [Command] { sections.flatMap(\.commands) }
 }
 
 public enum FuzzyMatcher {
@@ -89,6 +74,29 @@ public enum FuzzyMatcher {
         score -= t.count / 8
         if text.lowercased().hasPrefix(String(q)) { score += 15 }
         return score
+    }
+
+    /// The command menu's ranking (mockup `fuzzy`): a contiguous hit beats any scattered one, earlier and at a word start wins;
+    /// otherwise a subsequence scored by runs and word starts. nil means no match.
+    public static func rank(_ query: String, in text: String) -> Double? {
+        let q = Array(query.lowercased()), t = Array(text.lowercased())
+        guard !q.isEmpty else { return 1 }
+        if let at = firstIndex(of: q, in: t) {
+            return 1000 - Double(at) * 2 - Double(t.count - q.count) * 0.1 + (at == 0 || t[at - 1] == " " ? 50 : 0)
+        }
+        var i = 0, score = 0.0, last = -1
+        for ch in q where ch != " " {
+            guard let j = t[i...].firstIndex(of: ch) else { return nil }
+            score += (j == last + 1 ? 8 : 0) + (j == 0 || t[j - 1] == " " ? 6 : 0) - Double(j - i) * 0.4
+            last = j; i = j + 1
+        }
+        return score
+    }
+
+    static func firstIndex(of q: [Character], in t: [Character]) -> Int? {
+        guard q.count <= t.count else { return nil }
+        for s in 0...(t.count - q.count) where t[s] == q[0] && Array(t[s..<(s + q.count)]) == q { return s }
+        return nil
     }
 
     public static func filter<T>(_ items: [T], query: String, text: (T) -> String) -> [T] {

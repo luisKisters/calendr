@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CalendrKit
+import CoreText
 @testable import Calendr
 
 @MainActor
@@ -15,20 +16,33 @@ struct DemoWeekTests {
     @Test func tuesdayTimedTitlesInOrder() {
         let m = makeModel()
         let tue = m.layout.timed[1].map(\.event).sorted { $0.start < $1.start }.map { "\(m.fmt.time($0.start)) \($0.title)" }
-        #expect(tue == ["07:30 Meal Prep", "07:30 Gym bag", "08:00 Data Structures", "10:10 Genetics", "12:00 Calculus", "14:00 Sam / Alex", "16:00 [P1] Book a haircut",
-                        "16:15 Public Policy", "18:00 [P1] Water the plants - every day until done", "20:00 [P1] Plan the weekend trip with Jamie",
-                        "22:00 Call with Jamie", "22:49 Evening journal", "23:00 [P0] Stretch for ten minutes"])
+        #expect(tue == ["07:30 Meal prep", "07:45 Gym bag", "08:00 Data Structures", "10:10 Genetics", "12:00 Calculus", "14:00 Sam / Alex", "16:00 [P1] Book a haircut",
+                        "16:15 Public Policy", "18:00 [P1] Water the plants", "20:00 [P1] Plan the weekend trip with Jamie",
+                        "22:00 Call with Jamie", "22:45 Evening journal"])
     }
     @Test func allDayLanesForFriSun() {
         let m = makeModel()
         let byTitle = Dictionary(uniqueKeysWithValues: m.layout.allDay.placements.map { (m.layout.allDayEvents[$0.id]!.title, $0) })
-        #expect(byTitle["OFFSITE?? (maybe, see desc)"]?.span == 3)
+        #expect(byTitle["Offsite (maybe, see description)"]?.span == 3)
         #expect(byTitle["Sam away"]?.lane == 1)
         #expect(m.layout.allDay.laneCount == 5)
     }
     @Test func wednesdayHasDeclinedClimbing() {
         let m = makeModel()
         #expect(m.layout.timed[2].contains { $0.event.title == "Climbing" && $0.event.status == .declined })
+    }
+    @Test func tasksAreOrdinaryEventsWithRawTitles() {
+        let m = makeModel()
+        let tasks = m.layout.timed.flatMap { $0 }.map(\.event).filter { $0.calendarID == DemoData.tasks }
+        #expect(tasks.contains { $0.title == "[P1] Water the plants" && m.fmt.time($0.start) == "18:00" && m.fmt.time($0.end) == "18:15" })
+        #expect(m.layout.timed[6].contains { $0.event.title == "[P1] Reply to Dana" && m.fmt.time($0.event.start) == "09:30" })
+    }
+    @Test func guestsAndVideoMatchTheFixture() {
+        let m = makeModel()
+        let sam = m.layout.timed[1].first { $0.event.title == "Sam / Alex" }!.event
+        #expect(sam.participants == ["Sam Okafor"] && sam.conferencing == "meet.example.com/sam-alex")
+        let sync = m.layout.timed[3].first { $0.event.title == "Thursday sync" }!.event
+        #expect(sync.participants.count == 3 && !sync.conferencing.isEmpty)
     }
     @Test func inspectorSampleIsRecurringPolicy() {
         let m = makeModel()
@@ -38,9 +52,9 @@ struct DemoWeekTests {
         let t = RecurrenceDescriber.describe(policy.recurrence!, start: policy.start, fmt: m.fmt)
         #expect(t.lead == "Every week" && t.rest.hasPrefix("on Wed until"))
     }
-    @Test func menuBarLabelMatchesReference() {
+    @Test func upcomingMatchesReference() {
         let m = makeModel()
-        #expect(Upcoming.menuBarLabel(m.upcoming) == "Calculus \u{00B7} in 12m")
+        #expect(m.upcoming.next?.title == "Calculus")
         #expect(m.upcoming.sections.map(\.title).prefix(3) == ["Today", "Tomorrow", "Thu Oct 1"])
         #expect(m.upcoming.sections[0].events.first?.title == "Sam / Alex")
     }
@@ -48,8 +62,8 @@ struct DemoWeekTests {
         let m = makeModel()
         #expect(m.store.accounts.map(\.name) == ["alex.rivera@mail.example.com", "alex.rivera.studio@mail.example.com", "alex.rivera@northwind.example.com"])
         #expect(m.store.accounts[0].calendars.count == 7 && m.store.accounts[1].calendars.count == 4)
-        #expect(m.hiddenCalendars.count == 3)
-        #expect(m.store.teammates.count == 11)
+        #expect(m.hiddenCalendars.count == 4)
+        #expect(m.store.teammates.count == 8)
     }
 }
 
@@ -78,11 +92,14 @@ struct ModelBehaviourTests {
         m.gridGeometry = GridGeometry(dayWidth: 180, hourHeight: 48, dayCount: 7)
         let g = m.gridGeometry
         m.gridMouseDown(CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(14 * 60) + 2))
-        m.gridMouseDragged(CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(14 * 60 + 50)))
-        m.gridMouseUp(CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(14 * 60 + 50)))
+        m.gridMouseDragged(CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(14 * 60 + 55)))
+        m.gridMouseUp(CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(14 * 60 + 55)))
         let created = m.selectedEvent
         #expect(created != nil && m.fmt.time(created!.start) == "14:00" && m.fmt.time(created!.end) == "15:00")
         #expect(m.layout.timed[5].contains { $0.event.id == created!.id })
+        // The draft cannot be dragged; the panel saves it first.
+        m.updateSelected { $0.title = "Run" }
+        m.draftEventID = nil
         // Move it to Sunday 15:00.
         let id = created!.id
         m.gridMouseDown(CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(14 * 60 + 20)))
@@ -123,7 +140,9 @@ struct ModelBehaviourTests {
         let s = m.math.date(year: 2026, month: 10, day: 3, hour: 12)
         let e = m.createEvent(start: s, end: s.addingTimeInterval(3600))!
         m.deselect()
-        #expect(m.event(id: e.id) == nil || !m.layout.timed[5].contains { $0.event.id == e.id })
+        #expect(m.event(id: e.id) == nil)
+        #expect(!m.store.events(in: DateInterval(start: s, duration: 3600)).contains { $0.id == e.id })
+        #expect(!m.layout.timed[5].contains { $0.event.id == e.id })
         #expect(m.undoStack.isEmpty)
     }
     @Test func inspectorEditWritesThrough() {
@@ -162,9 +181,9 @@ struct ModelBehaviourTests {
     @Test func commandFlowGoToDate() {
         let m = makeModel()
         m.handle(.goToDate)
-        m.goToText = "oct 12"
-        #expect(m.goToPreview != nil)
-        m.submitGoToDate()
+        m.setPaletteQuery("oct 12")
+        #expect(m.chromeState.paletteMode == .goTo && m.paletteRows.count == 1)
+        m.runPaletteSelection()
         #expect(m.overlay == nil && m.math.day(m.visibleStart) == 12)
     }
     @Test func escapeUnwindsLayers() {
@@ -211,6 +230,7 @@ struct WritePathTests {
         let start = m.math.date(on: day0, minutes: 22 * 60), end = m.math.date(on: m.visibleDays[1], minutes: 2 * 60)
         let ev = m.createEvent(start: start, end: end)!
         m.updateSelected { $0.title = "Night shift" }
+        m.draftEventID = nil
         let g = m.gridGeometry
         let x = 1.5 * g.dayWidth
         m.gridMouseDown(CGPoint(x: x, y: g.yPos(30)))
@@ -219,5 +239,21 @@ struct WritePathTests {
         let moved = m.event(id: ev.id) ?? m.layout.timed.flatMap { $0 }.first { $0.event.title == "Night shift" }!.event
         #expect(moved.start == start.addingTimeInterval(30 * 60))
         #expect(moved.end == end.addingTimeInterval(30 * 60))
+    }
+}
+
+@Suite("Typeface")
+struct TypefaceTests {
+    @Test func instrumentSansIsBundledAndRegistered() {
+        #expect(Typeface.locate() != nil)
+        #expect(Typeface.register())
+        let f = Typeface.ctFont(13, weight: 600, tabular: true)
+        #expect(CTFontCopyFamilyName(f) as String == Typeface.family)
+    }
+    @Test func oldSettingsDecodeWithDefaults() throws {
+        let old = #"{"appearance":"Light","weekStartsOnMonday":true,"defaultDurationMinutes":45,"showDeclined":true,"use24h":true,"firstVisibleHour":7,"reduceMotion":false}"#
+        let s = try JSONDecoder().decode(AppSettings.self, from: Data(old.utf8))
+        #expect(s.appearance == .light && s.defaultDurationMinutes == 45)
+        #expect(!s.showWeekNumbers && s.menuBarDisplay == .titleAndCountdown && s.hourHeight == nil)
     }
 }

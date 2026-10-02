@@ -4,14 +4,18 @@ import Foundation
 public struct CalendarMath: Sendable {
     public var calendar: Calendar
 
-    public init(timeZone: TimeZone = TimeZone(identifier: "Europe/Berlin") ?? .current, weekStartsOnMonday: Bool = true) {
+    /// `firstWeekday` as in `Calendar` (1 = Sunday, 2 = Monday).
+    public init(timeZone: TimeZone = TimeZone(identifier: "Europe/Berlin") ?? .current, firstWeekday: Int = 2) {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = timeZone
         c.locale = Locale(identifier: "en_US_POSIX")
-        c.firstWeekday = weekStartsOnMonday ? 2 : 1
+        c.firstWeekday = firstWeekday
         c.minimumDaysInFirstWeek = 4
         calendar = c
     }
+
+    /// The user's time zone and first weekday (System Settings, Language and Region).
+    public static var system: CalendarMath { CalendarMath(timeZone: .current, firstWeekday: Calendar.autoupdatingCurrent.firstWeekday) }
 
     public var timeZone: TimeZone { calendar.timeZone }
 

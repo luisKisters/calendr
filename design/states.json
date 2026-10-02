@@ -67,6 +67,10 @@
     },
     "menubar-empty": {
       "mockup": "menubar-empty"
-    }
+    },
+    "create-event": {},
+    "week-zoomed": {},
+    "week-numbers": {},
+    "detail-guests": {}
   }
 }

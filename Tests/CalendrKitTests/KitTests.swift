@@ -14,7 +14,7 @@ struct DateMathTests {
         #expect(berlin.startOfWeek(d(2026, 9, 28)) == d(2026, 9, 28))
     }
     @Test func sundayWeekStartOption() {
-        let us = CalendarMath(timeZone: berlin.timeZone, weekStartsOnMonday: false)
+        let us = CalendarMath(timeZone: berlin.timeZone, firstWeekday: 1)
         #expect(us.startOfWeek(d(2026, 9, 29)) == d(2026, 9, 27))
     }
     @Test func miniMonthGridMatchesReference() {
@@ -65,36 +65,6 @@ struct OverlapTests {
         // 15-minute pills 10 minutes apart overlap in time.
         let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 1200, endMinute: 1215), TimeSpan(id: "b", startMinute: 1210, endMinute: 1225)])
         #expect(ps.allSatisfy { $0.columns == 2 })
-    }
-    @Test func capsuleNeverSqueezesABlockAndSitsAboveIt() {
-        // Sunday Oct 4: brunch 09:45-11:30 keeps the full column, "[P1] Dana" 09:40 moves up to a free slot above it.
-        let ps = OverlapLayout.layout([TimeSpan(id: "dana", startMinute: 580, endMinute: 595, isPill: true), TimeSpan(id: "brunch", startMinute: 585, endMinute: 690)])
-        #expect(p(ps, "brunch").left == 0 && p(ps, "brunch").width == 1)
-        #expect(p(ps, "dana").shiftMinutes < 0 && p(ps, "dana").z > p(ps, "brunch").z)
-        #expect(580 + p(ps, "dana").shiftMinutes + OverlapLayout.capsuleMinutes <= 585)      // clear of the block
-    }
-    @Test func capsuleFloatsOverALongRunningBlock() {
-        // Statistics 08:00-09:45 and a task capsule at 09:00: it started long before, so the capsule stays put on top of it.
-        let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 480, endMinute: 585), TimeSpan(id: "p", startMinute: 540, endMinute: 555, isPill: true)])
-        #expect(p(ps, "b").width == 1 && p(ps, "p").shiftMinutes == 0 && p(ps, "p").z > p(ps, "b").z)
-    }
-    @Test func simultaneousCapsulesStackVertically() {
-        // Tuesday 07:30: Gym bag and Meal Prep do not share columns, the second one moves down a row.
-        let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 450, endMinute: 465, isPill: true), TimeSpan(id: "b", startMinute: 450, endMinute: 465, isPill: true)])
-        #expect(p(ps, "a").shiftMinutes == 0)
-        #expect(p(ps, "b").shiftMinutes >= OverlapLayout.capsuleMinutes && !p(ps, "b").chip)
-        #expect(ps.allSatisfy { $0.width == 1 })
-    }
-    @Test func capsulesAroundABlockGoAboveAndBelow() {
-        // Wednesday: Notes block 07:30-08:00 with two capsules at 07:30: one above the block, one below.
-        let ps = OverlapLayout.layout([TimeSpan(id: "j", startMinute: 450, endMinute: 480), TimeSpan(id: "m", startMinute: 450, endMinute: 465, isPill: true), TimeSpan(id: "s", startMinute: 450, endMinute: 465, isPill: true)])
-        #expect(p(ps, "m").shiftMinutes < 0 && p(ps, "s").shiftMinutes > 0)
-    }
-    @Test func capsuleWithNoFreeSlotBecomesAChip() {
-        var spans = [TimeSpan(id: "blk", startMinute: 400, endMinute: 560)]
-        for i in 0..<6 { spans.append(TimeSpan(id: "p\(i)", startMinute: 470, endMinute: 485, isPill: true)) }
-        let ps = OverlapLayout.layout(spans)
-        #expect(ps.contains { $0.chip })
     }
     @Test func chainReusesColumns() {
         // a overlaps b, b overlaps c, a does not overlap c: c goes back into column 0.
@@ -190,7 +160,7 @@ struct GoToDateTests {
     @Test func weekdays() {
         #expect(parse("friday") == d(2026, 10, 2))
         #expect(parse("next friday") == d(2026, 10, 9))     // Tue -> Friday of next calendar week
-        #expect(parse("tuesday") == d(2026, 9, 29))
+        #expect(parse("tuesday") == d(2026, 10, 6))      // the same weekday means next week
         #expect(parse("last monday") == d(2026, 9, 28))
     }
     @Test func relative() {
@@ -212,24 +182,20 @@ struct GoToDateTests {
 
 @Suite("Commands")
 struct CommandTests {
-    @Test func emptyQueryShowsBothSectionsInOrder() {
-        let s = CommandRegistry.sections(matching: "")
-        #expect(s.map(\.title) == ["Calendar", "Navigation"])
-        #expect(s[0].commands.first?.id == .createEvent)
+    @Test func emptyQueryKeepsTheMockupOrder() {
+        let ids = CommandRegistry.matching("", hasSelection: false).map(\.id)
+        #expect(ids.first == .newEvent && ids.last == .shortcuts)
+        #expect(!ids.contains(.deleteSelected))
+        #expect(CommandRegistry.matching("", hasSelection: true).map(\.id).contains(.deleteSelected))
     }
-    @Test func fuzzyFindsSubsequence() {
-        let ids = CommandRegistry.flat(CommandRegistry.sections(matching: "gtd")).map(\.id)
-        #expect(ids.first == .goToDate)
+    @Test func contiguousMatchOutranksSubsequence() {
+        #expect(CommandRegistry.matching("mont", hasSelection: false).first?.id == .viewMonth)
+        #expect(CommandRegistry.matching("gtd", hasSelection: false).first?.id == .goToDate)
     }
-    @Test func prefixOutranksScatteredMatch() {
-        let ids = CommandRegistry.flat(CommandRegistry.sections(matching: "tog")).map(\.id)
-        #expect(ids.prefix(2).contains(.toggleSidebar) && ids.prefix(2).contains(.toggleRightPanel))
-    }
-    @Test func noMatchIsEmpty() { #expect(CommandRegistry.sections(matching: "zzzq").isEmpty) }
-    @Test func keywordMatch() { #expect(CommandRegistry.flat(CommandRegistry.sections(matching: "preferences")).first?.id == .settings) }
-    @Test func shortcutChipsMatchReference() {
-        let c = CommandRegistry.all.first { $0.id == .leftAlignToday }!
-        #expect(c.chips == ["option", "T"])
+    @Test func noMatchIsEmpty() { #expect(CommandRegistry.matching("zzzq", hasSelection: false).isEmpty) }
+    @Test func keycapsMatchTheMockup() {
+        #expect(CommandRegistry.all.first { $0.id == .undo }!.keys == ["\u{2318}", "Z"])
+        #expect(CommandRegistry.all.first { $0.id == .goToDate }!.more)
     }
 }
 
@@ -239,14 +205,12 @@ struct UpcomingTests {
     func ev(_ t: String, _ start: Date, mins: Int = 30, allDay: Bool = false, status: ResponseStatus = .confirmed) -> CalendarEvent {
         CalendarEvent(calendarID: "c", title: t, start: start, end: start.addingTimeInterval(Double(mins) * 60), isAllDay: allDay, status: status)
     }
-    @Test func nextEventIsLiftedAndLabelled() {
+    @Test func nextEventIsLifted() {
         let s = Upcoming.summarize(events: [
             ev("Pack gym bag", d(2026, 9, 29, 7, 30)), ev("Meal Prep", d(2026, 9, 29, 7, 30)),
             ev("Data Structures", d(2026, 9, 29, 8)), ev("Public Policy", d(2026, 9, 30, 10, 10)),
         ], now: now, fmt: fmt)
         #expect(s.next?.title == "Meal Prep")
-        #expect(s.untilNext == "4h 58min")
-        #expect(Upcoming.menuBarLabel(s) == "Meal Prep \u{00B7} in 4h 58m")
         #expect(s.sections.map(\.title) == ["Today", "Tomorrow"])
         #expect(s.sections[0].events.map(\.title) == ["Pack gym bag", "Data Structures"])
     }
@@ -264,12 +228,11 @@ struct UpcomingTests {
     }
     @Test func noEvents() {
         let s = Upcoming.summarize(events: [], now: now, fmt: fmt)
-        #expect(s.next == nil)
-        #expect(Upcoming.menuBarLabel(s) == "No upcoming events")
+        #expect(s.next == nil && s.sections.isEmpty)
     }
-    @Test func ongoingEventShowsNow() {
+    @Test func ongoingEventIsNext() {
         let s = Upcoming.summarize(events: [ev("Now", d(2026, 9, 29, 2, 0), mins: 60)], now: now, fmt: fmt)
-        #expect(s.label == "now")
+        #expect(s.next?.title == "Now" && s.sections.isEmpty)
     }
 }
 
@@ -374,12 +337,6 @@ struct EventKitMappingTests {
         #expect(EventKitMapping.participantLabel(name: "max@x.de", email: "max@x.de") == "max@x.de")
         #expect(EventKitMapping.participantLabel(name: nil, email: nil) == nil)
     }
-    @Test func priorityTitlesAreTasks() {
-        #expect(EventKitMapping.kind(forTitle: "[P1] Water the plants", calendarIsTasks: false) == .task)
-        #expect(EventKitMapping.kind(forTitle: "[P0?] x", calendarIsTasks: false) == .task)
-        #expect(EventKitMapping.kind(forTitle: "Public Policy", calendarIsTasks: false) == .event)
-        #expect(EventKitMapping.kind(forTitle: "Public Policy", calendarIsTasks: true) == .task)
-    }
 }
 
 @Suite("Shortcuts")
@@ -390,8 +347,8 @@ struct ShortcutTests {
     @Test func singleKeys() {
         #expect(r("t") == .today); #expect(r("j") == .nextPeriod); #expect(r("k") == .previousPeriod)
         #expect(r("c") == .createEvent); #expect(r("w") == .viewWeek); #expect(r(".") == .goToDate)
-        #expect(r("?", shift: true) == .showShortcuts); #expect(r("`") == .toggleSidebar); #expect(r("p") == .showTeammate)
-        #expect(r("", code: 124) == .nextPeriod); #expect(r("", code: 123) == .previousPeriod)
+        #expect(r("?", shift: true) == .showShortcuts); #expect(r("`") == .toggleSidebar); #expect(r("f") == .meetWith); #expect(r("/") == .searchEvents); #expect(r("p") == nil)
+        #expect(r("", code: 124) == .arrow(dx: 1, dy: 0)); #expect(r("", code: 123) == .arrow(dx: -1, dy: 0))
     }
     @Test func bareKeysAreSwallowedByTextFields() {
         #expect(r("t", text: true) == nil)
@@ -400,11 +357,11 @@ struct ShortcutTests {
     }
     @Test func commandKeysWorkWhileTyping() {
         #expect(r("k", cmd: true, text: true) == .commandMenu)
-        #expect(r("/", cmd: true, text: true) == .toggleRightPanel)
+        #expect(r(",", cmd: true, text: true) == .settings)
         #expect(r("", code: 53, text: true) == .escape)
     }
     @Test func modifiedVariants() {
-        #expect(r("t", opt: true) == .leftAlignToday)
+        #expect(r("t", opt: true) == nil)
         #expect(r("k", cmd: true, ctrl: true) == .menuBarCalendar)
         #expect(r(",", cmd: true) == .settings)
         #expect(r("1", cmd: true) == .mainWindow)

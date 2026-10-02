@@ -1,11 +1,10 @@
 import Foundation
 
-public enum EventKind: String, Sendable, Hashable, CaseIterable { case event, task }
 public enum ResponseStatus: String, Sendable, Hashable, CaseIterable { case confirmed, tentative, declined }
 public enum Availability: String, Sendable, Hashable, CaseIterable { case busy, free }
 public enum EventVisibility: String, Sendable, Hashable, CaseIterable { case standard, `public`, `private` }
 
-public enum CalendarKindIcon: String, Sendable, Hashable { case standard, feed, tasks }
+public enum CalendarKindIcon: String, Sendable, Hashable { case standard, feed }
 
 public struct CalendarInfo: Identifiable, Hashable, Sendable {
     public var id: String
@@ -62,7 +61,6 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
     /// Exclusive end. For all-day events this is the start of the day after the last day.
     public var end: Date
     public var isAllDay: Bool
-    public var kind: EventKind
     public var status: ResponseStatus
     public var location: String
     public var notes: String
@@ -81,14 +79,14 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
     public var secondaryBarHex: String?
 
     public init(id: String = UUID().uuidString, seriesID: String? = nil, calendarID: String, title: String,
-                start: Date, end: Date, isAllDay: Bool = false, kind: EventKind = .event,
+                start: Date, end: Date, isAllDay: Bool = false,
                 status: ResponseStatus = .confirmed, location: String = "", notes: String = "",
                 recurrence: Recurrence? = nil, participants: [String] = [], conferencing: String = "",
                 reminderMinutes: Int? = nil, availability: Availability = .busy,
                 visibility: EventVisibility = .standard, timeZoneID: String = "Europe/Berlin",
                 ownerEmail: String? = nil, colorHex: String? = nil, secondaryBarHex: String? = nil) {
         self.id = id; self.seriesID = seriesID; self.calendarID = calendarID; self.title = title
-        self.start = start; self.end = max(end, start); self.isAllDay = isAllDay; self.kind = kind
+        self.start = start; self.end = max(end, start); self.isAllDay = isAllDay
         self.status = status; self.location = location; self.notes = notes; self.recurrence = recurrence
         self.participants = participants; self.conferencing = conferencing; self.reminderMinutes = reminderMinutes
         self.availability = availability; self.visibility = visibility; self.timeZoneID = timeZoneID

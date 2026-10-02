@@ -29,7 +29,7 @@ final class EventKitStore: CalendarStore {
 
     var defaultCalendarID: String? { authorization == .authorized ? store.defaultCalendarForNewEvents?.calendarIdentifier : nil }
 
-    init(math: CalendarMath = CalendarMath(timeZone: .current)) {
+    init(math: CalendarMath = .system) {
         self.math = math
         observer = NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: store, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -183,11 +183,10 @@ final class EventKitStore: CalendarStore {
             if end <= start { end = math.addDays(start, 1) }
         }
         let cal = ev.calendar
-        let calIsTasks = cal?.title.lowercased() == "tasks" || cal?.title.lowercased() == "reminders"
         return CalendarEvent(
             id: id, seriesID: ev.hasRecurrenceRules ? baseID : nil, calendarID: cal?.calendarIdentifier ?? "",
             title: ev.title ?? "", start: start, end: end, isAllDay: ev.isAllDay,
-            kind: EventKitMapping.kind(forTitle: ev.title ?? "", calendarIsTasks: calIsTasks), status: status,
+            status: status,
             location: ev.location ?? "", notes: ev.notes ?? "", recurrence: ev.recurrenceRules?.first.flatMap(Self.convert),
             participants: participants, conferencing: ev.url?.absoluteString ?? "",
             reminderMinutes: EventKitMapping.reminderMinutes(alarmOffsetSeconds: (ev.alarms ?? []).map(\.relativeOffset)),

@@ -10,30 +10,40 @@ struct EventsCanvas: View {
     let events: [PlacedEvent]
     let geometry: GridGeometry
     let dark: Bool
-    let now: Date
-    let selectedID: String?
-    let movingID: String?
-    let preview: AppModel.DragPreview?
     let fmt: Fmt
-    let styles: (CalendarEvent, Bool, Bool, Bool, Bool) -> EventStyle     // (event, dark, selected, faded, overlapping)
-    let ghost: (EventPalette, String, String)?
+    let dayView: Bool
+    /// The block being created, moved or resized, at its preview position (`AppModel.gridPreviewLayout`); `events` leaves it out.
+    let preview: PlacedEvent?
+    let creating: Bool
+    let rank: (PlacedEvent) -> Int
+    let styles: (PlacedEvent) -> EventStyle
+    /// Read once: `ProcessInfo.environment` builds a dictionary per call, and this ran on every draw.
+    private static let profiling = ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil
 
     var body: some View {
         let g = geometry
         Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
-            let t0 = CFAbsoluteTimeGetCurrent(); defer { if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "canvas %.1f ms (%d events)", (CFAbsoluteTimeGetCurrent() - t0) * 1000, events.count)) } }
+            let t0 = CFAbsoluteTimeGetCurrent(); defer { if Self.profiling { print(String(format: "canvas %.1f ms (%d events)", (CFAbsoluteTimeGetCurrent() - t0) * 1000, events.count)) } }
             ctx.withCGContext { cg in
-                for p in events {
-                    let e = p.event
-                    let rect = g.rect(for: p)
-                    let style = styles(e, dark, e.id == selectedID, e.id == movingID, p.placement.columns > 1)
-                    EventPainter.draw(cg, p: p, rect: rect, style: style, fmt: fmt)
+                // Ranks once per event: `rank` reads observable model state, and calling it inside the comparator cost ~1 ms a week.
+                let ranks = events.map(rank)
+                let order = events.indices.sorted { ranks[$0] != ranks[$1] ? ranks[$0] < ranks[$1] : $0 < $1 }
+                for i in order {
+                    let p = events[i]
+                    EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: styles(p), fmt: fmt, dayView: dayView)
                 }
-                if let pv = preview, let (pal, title, range) = ghost {
-                    let y = CGFloat(g.yPos(pv.startMinute))
-                    let h = max(11, CGFloat(g.yPos(pv.endMinute)) - y - 3)
-                    let rect = CGRect(x: CGFloat(pv.dayIndex) * CGFloat(g.dayWidth) + g.leftInset, y: y, width: CGFloat(g.dayWidth) - g.leftInset - g.rightInset, height: h)
-                    EventPainter.drawGhost(cg, rect: rect, palette: pal, ink: EventPainter.Ink.of(dark), title: title, range: range)
+                if let p = preview {
+                    if creating {
+                        var s = EventStyle(palette: Palettes.palette(barHex: "#888888", fillHex: nil, dark: dark), past: false, selected: false, overlapping: false)
+                        s.draft = true; s.isDark = dark
+                        EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: s, fmt: fmt, dayView: dayView)
+                    } else {
+                        var s = styles(p)
+                        s.selected = true; s.over = false; s.past = false
+                        cg.saveGState(); cg.setAlpha(0.92)
+                        EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: s, fmt: fmt, dayView: dayView)
+                        cg.restoreGState()
+                    }
                 }
             }
         }
@@ -45,71 +55,64 @@ struct EventsCanvas: View {
 /// Cached CoreText lines. Colors come from the graphics context, so one line serves every appearance and state.
 @MainActor
 enum TextCache {
-    enum Kind: Int { case title, time, pill, pillTime, pillPri, mini, dow, header, badge, label11, chipTime, dayNum, hour, micro }
+    enum Kind: Int {
+        case title, titleMedium, time, hour, hourBold, header, headerToday, headerNum, headerNumToday, headerPast, allDayLabel, more, monthTitle, monthNum, monthNumToday, micro, dayNum
+    }
     struct Key: Hashable { var text: String; var kind: Int }
     private static var lines: [Key: (CTLine, CGFloat, CGFloat, CGFloat)] = [:]   // line, width, ascent, descent
-    private static var frames: [Key: [(CTLine, CGFloat)]] = [:]
-
-    static func mono(_ size: CGFloat, _ w: NSFont.Weight = .regular) -> NSFont {
-        // Tabular figures are part of SF Mono already; the monospaced design is the machine voice.
-        NSFont.monospacedSystemFont(ofSize: size, weight: w)
-    }
 
     static func font(_ k: Kind) -> CTFont {
+        func f(_ size: CGFloat, _ w: Int, _ tab: Bool = false) -> CTFont { Typeface.ctFont(size, weight: w, tabular: tab) }
         switch k {
-        case .title: return NSFont.systemFont(ofSize: 11.5, weight: .semibold)
-        case .time: return mono(10.5)
-        case .pill: return NSFont.systemFont(ofSize: 11, weight: .medium)
-        case .pillTime: return mono(10)
-        case .pillPri: return mono(9.5, .semibold)
-        case .mini: return NSFont.systemFont(ofSize: 12)
-        case .dow: return NSFont.systemFont(ofSize: 10.5, weight: .semibold)
-        case .header: return NSFont.systemFont(ofSize: 14)
-        case .badge: return mono(14, .medium)
-        case .label11: return NSFont.systemFont(ofSize: 11, weight: .medium)
-        case .chipTime: return mono(10)
-        case .dayNum: return mono(12, .medium)
-        case .hour: return mono(10.5)
-        case .micro: return NSFont.systemFont(ofSize: 10.5, weight: .semibold)
+        case .title: return f(11.5, 600)
+        case .titleMedium: return f(11.5, 500)
+        case .time: return f(10.5, 400, true)
+        case .hour: return f(10.5, 400, true)
+        case .hourBold: return f(10.5, 600, true)
+        case .header: return f(12.5, 400)
+        case .headerToday: return f(12.5, 600)
+        case .headerNum: return f(12.5, 600, true)
+        case .headerNumToday: return f(12.5, 650, true)
+        case .headerPast: return f(12.5, 450, true)
+        case .allDayLabel: return f(9.5, 400)
+        case .more: return f(11, 400, true)
+        case .monthTitle: return f(11.5, 400)
+        case .monthNum: return f(12, 500, true)
+        case .monthNumToday: return f(12, 650, true)
+        case .micro: return f(10.5, 600)
+        case .dayNum: return f(12, 500, true)
         }
     }
 
     private static var cuts: [Key: CTLine] = [:]
-    private static var splits: [String: (priority: String?, text: String)] = [:]
-    static func taskParts(_ title: String) -> (priority: String?, text: String) {
-        if let c = splits[title] { return c }
-        let r = TaskTitle.split(title)
-        if splits.count > 6000 { splits.removeAll() }
-        splits[title] = r
-        return r
-    }
     private static var wraps: [Key: [(CTLine, CGFloat, CGFloat)]] = [:]
-    /// Cached line breaking for event titles (typesetting per frame was measurable).
-    static func wrapped(_ text: String, width: CGFloat, maxLines: Int) -> [(line: CTLine, ascent: CGFloat, descent: CGFloat)] {
-        let key = Key(text: text + "\u{2}\(Int(width.rounded(.down)))\u{2}\(maxLines)", kind: Kind.title.rawValue)
+    /// Cached word wrapping for event titles (typesetting per frame was measurable), as CSS line-clamp does it: a word wider than
+    /// the line gets a line of its own and an ellipsis, and the last line ends with an ellipsis when text is left over.
+    static func wrapped(_ text: String, _ kind: Kind, width: CGFloat, maxLines: Int) -> [(line: CTLine, ascent: CGFloat, descent: CGFloat)] {
+        let key = Key(text: text + "\u{2}\(Int(width.rounded(.down)))\u{2}\(maxLines)", kind: kind.rawValue)
         if let c = wraps[key] { return c.map { ($0.0, $0.1, $0.2) } }
-        let attr = NSAttributedString(string: text, attributes: [.font: font(.title), NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true])
-        let ts = CTTypesetterCreateWithAttributedString(attr)
-        var out: [(CTLine, CGFloat, CGFloat)] = []
-        var start = 0
-        let len = (text as NSString).length
-        while start < len && out.count < maxLines {
-            let count = CTTypesetterSuggestLineBreak(ts, start, Double(width))
-            let line = CTTypesetterCreateLine(ts, CFRange(location: start, length: max(1, count)))
-            var asc: CGFloat = 0, desc: CGFloat = 0, lead: CGFloat = 0
-            _ = CTLineGetTypographicBounds(line, &asc, &desc, &lead)
-            out.append((line, asc, desc))
-            start += max(1, count)
+        var words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        var texts: [String] = []
+        while !words.isEmpty && texts.count < maxLines {
+            if texts.count == maxLines - 1 { texts.append(words.joined(separator: " ")); break }
+            var cur = words.removeFirst()
+            while let w = words.first, line(cur + " " + w, kind).width <= width { cur += " " + w; words.removeFirst() }
+            texts.append(cur)
+        }
+        let out: [(CTLine, CGFloat, CGFloat)] = texts.map { t in
+            let l = line(t, kind)
+            return (l.width <= width ? l.line : truncated(t, kind, width: width) ?? l.line, l.ascent, l.descent)
         }
         if wraps.count > 4000 { wraps.removeAll() }
         wraps[key] = out
         return out.map { ($0.0, $0.1, $0.2) }
     }
     private static var ranges: [Int: String] = [:]
+    /// "10:10 – 11:50"
     static func range(_ fmt: Fmt, _ a: Int, _ b: Int) -> String {
         let k = (a * 1441 + b) * 2 + (fmt.use24h ? 1 : 0)
         if let t = ranges[k] { return t }
-        let t = "\(fmt.time(minutes: a))\u{2013}\(fmt.time(minutes: b))"; ranges[k] = t; return t
+        let t = "\(fmt.time(minutes: a)) \u{2013} \(fmt.time(minutes: b))"; ranges[k] = t; return t
     }
     private static var times: [Int: String] = [:]
     static func time(_ fmt: Fmt, minutes: Int) -> String {
@@ -134,6 +137,7 @@ enum TextCache {
         if let hit = lines[key] { return (hit.0, hit.1, hit.2, hit.3) }
         var attrs: [NSAttributedString.Key: Any] = [.font: font(kind), NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true]
         if kind == .micro { attrs[.kern] = 0.63 }
+        if kind == .allDayLabel { attrs[.kern] = 0.19 }
         let l = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attrs))
         var asc: CGFloat = 0, desc: CGFloat = 0, lead: CGFloat = 0
         let w = CGFloat(CTLineGetTypographicBounds(l, &asc, &desc, &lead))
@@ -145,206 +149,181 @@ enum TextCache {
 
 enum EventPainter {
     /// Draws `line` with its line box top at `top` (CSS-style half leading inside `box` height).
-    @MainActor
+    @MainActor @discardableResult
     static func text(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, box: CGFloat = 14, color: CGColor, strike: Bool = false, kern: CGFloat = 0) -> CGFloat {
         let l = TextCache.line(s, kind)
-        let baseline = top + (box - (l.ascent + l.descent)) / 2 + l.ascent
-        cg.saveGState()
-        cg.setFillColor(color)
-        cg.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
-        cg.textPosition = CGPoint(x: x, y: baseline)
-        CTLineDraw(l.line, cg)
-        if strike {
-            cg.setStrokeColor(color); cg.setLineWidth(1)
-            let y = baseline - l.ascent * 0.32
-            cg.move(to: CGPoint(x: x, y: y)); cg.addLine(to: CGPoint(x: x + l.width, y: y)); cg.strokePath()
-        }
-        cg.restoreGState()
+        draw(cg, l.line, width: l.width, ascent: l.ascent, descent: l.descent, x: x, top: top, box: box, color: color, strike: strike)
         return l.width
     }
 
-    /// Like `text` but ends with an ellipsis when wider than `maxWidth` (returns the drawn width).
     @MainActor
-    static func truncated(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, box: CGFloat = 14, color: CGColor, maxWidth: CGFloat, strike: Bool = false) -> CGFloat {
-        let l = TextCache.line(s, kind)
-        if l.width <= maxWidth { return text(cg, s, kind, x: x, top: top, box: box, color: color, strike: strike) }
-        guard let cut = TextCache.truncated(s, kind, width: maxWidth) else { return 0 }
-        let baseline = top + (box - (l.ascent + l.descent)) / 2 + l.ascent
+    private static func draw(_ cg: CGContext, _ line: CTLine, width: CGFloat, ascent: CGFloat, descent: CGFloat, x: CGFloat, top: CGFloat, box: CGFloat, color: CGColor, strike: Bool) {
+        let baseline = top + (box - (ascent + descent)) / 2 + ascent
         cg.saveGState()
         cg.setFillColor(color)
         cg.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
         cg.textPosition = CGPoint(x: x, y: baseline)
-        CTLineDraw(cut, cg)
-        let cw = CGFloat(CTLineGetTypographicBounds(cut, nil, nil, nil))
-        if strike { cg.setStrokeColor(color); cg.setLineWidth(1); let y = baseline - l.ascent * 0.32; cg.move(to: CGPoint(x: x, y: y)); cg.addLine(to: CGPoint(x: x + cw, y: y)); cg.strokePath() }
+        CTLineDraw(line, cg)
+        if strike {
+            cg.setStrokeColor(color); cg.setLineWidth(1)
+            let y = baseline - ascent * 0.3
+            cg.move(to: CGPoint(x: x, y: y)); cg.addLine(to: CGPoint(x: x + width, y: y)); cg.strokePath()
+        }
         cg.restoreGState()
+    }
+
+    /// Like `text` but ends with an ellipsis when wider than `maxWidth` (returns the drawn width).
+    @MainActor @discardableResult
+    static func truncated(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, box: CGFloat = 14, color: CGColor, maxWidth: CGFloat, strike: Bool = false) -> CGFloat {
+        let l = TextCache.line(s, kind)
+        if l.width <= maxWidth { return text(cg, s, kind, x: x, top: top, box: box, color: color, strike: strike) }
+        guard maxWidth > 4, let cut = TextCache.truncated(s, kind, width: maxWidth) else { return 0 }
+        let cw = CGFloat(CTLineGetTypographicBounds(cut, nil, nil, nil))
+        draw(cg, cut, width: cw, ascent: l.ascent, descent: l.descent, x: x, top: top, box: box, color: color, strike: strike)
         return cw
     }
 
-    /// Wraps `s` to at most `maxLines` lines of `lineHeight` inside `width`, returns the number of lines drawn.
+    /// Wraps `s` to at most `maxLines` lines of `lineHeight` inside `width`; returns the number of lines drawn.
     @MainActor
-    static func wrapped(_ cg: CGContext, _ s: String, x: CGFloat, top: CGFloat, width: CGFloat, maxLines: Int, lineHeight: CGFloat, color: CGColor) -> Int {
-        let l = TextCache.line(s, .title)
-        if l.width <= width { _ = text(cg, s, .title, x: x, top: top, box: lineHeight, color: color); return 1 }
-        let lines = TextCache.wrapped(s, width: width, maxLines: maxLines)
-        cg.saveGState()
-        cg.setFillColor(color)
-        cg.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+    static func wrapped(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, width: CGFloat, maxLines: Int, lineHeight: CGFloat, color: CGColor, strike: Bool = false) -> Int {
+        let l = TextCache.line(s, kind)
+        if l.width <= width || maxLines == 1 { truncated(cg, s, kind, x: x, top: top, box: lineHeight, color: color, maxWidth: width, strike: strike); return 1 }
+        let lines = TextCache.wrapped(s, kind, width: width, maxLines: maxLines)
         for (n, ln) in lines.enumerated() {
-            let baseline = top + CGFloat(n) * lineHeight + (lineHeight - (ln.ascent + ln.descent)) / 2 + ln.ascent
-            cg.textPosition = CGPoint(x: x, y: baseline)
-            CTLineDraw(ln.line, cg)
+            let w = CGFloat(CTLineGetTypographicBounds(ln.line, nil, nil, nil))
+            draw(cg, ln.line, width: w, ascent: ln.ascent, descent: ln.descent, x: x, top: top + CGFloat(n) * lineHeight, box: lineHeight, color: color, strike: strike)
         }
-        cg.restoreGState()
         return max(1, lines.count)
     }
 
     static func roundedPath(_ r: CGRect, _ radius: CGFloat) -> CGPath {
-        CGPath(roundedRect: r, cornerWidth: min(radius, r.height / 2), cornerHeight: min(radius, r.height / 2), transform: nil)
+        let rad = max(0, min(radius, r.height / 2, r.width / 2))
+        return CGPath(roundedRect: r, cornerWidth: rad, cornerHeight: rad, transform: nil)
     }
 
-    /// CoreGraphics forms of the ink tokens for the current appearance.
+    /// A rounded rect whose left and/or right corners are square (all-day chips that continue past the visible range).
+    static func chipPath(_ r: CGRect, _ radius: CGFloat, squareLeft: Bool, squareRight: Bool) -> CGPath {
+        let rad = max(0, min(radius, r.height / 2))
+        let p = CGMutablePath()
+        let l = squareLeft ? 0 : rad, rr = squareRight ? 0 : rad
+        p.move(to: CGPoint(x: r.minX + l, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX - rr, y: r.minY))
+        if rr > 0 { p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.minY), tangent2End: CGPoint(x: r.maxX, y: r.maxY), radius: rr) } else { p.addLine(to: CGPoint(x: r.maxX, y: r.minY)) }
+        if rr > 0 { p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.maxY), radius: rr) } else { p.addLine(to: CGPoint(x: r.maxX, y: r.maxY)) }
+        if l > 0 { p.addArc(tangent1End: CGPoint(x: r.minX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.minY), radius: l) } else { p.addLine(to: CGPoint(x: r.minX, y: r.maxY)) }
+        if l > 0 { p.addArc(tangent1End: CGPoint(x: r.minX, y: r.minY), tangent2End: CGPoint(x: r.maxX, y: r.minY), radius: l) } else { p.addLine(to: CGPoint(x: r.minX, y: r.minY)) }
+        p.closeSubpath()
+        return p
+    }
+
+    /// CoreGraphics forms of the ink tokens for the current appearance (values as in `Theme`).
     struct Ink {
         let dark: Bool
-        let paper, haze, hazeDim, ink900, ink700, ink600, act, actWash, hairStrong, hair, live, actLift: CGColor
+        let bg, bg1, bg2, bg3, fg, fg2, fg3, act, onAct, actWash, ring, hair, hair2, hover, live, pastTitle, liftShadow: CGColor
+        // v2 names still used by the sidebar.
+        var paper: CGColor { fg }
+        var haze: CGColor { fg2 }
+        var hazeDim: CGColor { fg3 }
         private init(build dark: Bool) {
             self.dark = dark
             func c(_ d: String, _ l: String) -> CGColor { RGB(hex: dark ? d : l).cg }
-            let paperRGB = RGB(hex: dark ? "#EDEBF5" : "#1C1A26").cg
-            paper = c("#EDEBF5", "#1C1A26"); haze = c("#9A96AD", "#5F5B74"); hazeDim = c("#6B6880", "#8D89A1")
-            ink900 = c("#0F0E14", "#FBFAF7"); ink700 = c("#1E1C28", "#EAE7EF"); ink600 = c("#2A2836", "#DCD8E6")
-            act = c("#8B5CF6", "#7C3AED"); actLift = c("#A78BFA", "#6D28D9")
-            actWash = act.copy(alpha: dark ? 0.20 : 0.14) ?? act
-            hairStrong = paperRGB.copy(alpha: dark ? 0.14 : 0.16) ?? paperRGB
-            hair = paperRGB.copy(alpha: dark ? 0.08 : 0.09) ?? paperRGB
+            fg = c("#EDECF1", "#1B1A20"); fg2 = c("#A19FAC", "#5C5A65"); fg3 = c("#6D6B78", "#918E99")
+            bg = c("#0E0E11", "#FBFAF6"); bg1 = c("#15151A", "#F5F3ED"); bg2 = c("#1E1E24", "#ECE9E1"); bg3 = c("#2B2B33", "#DFDBD1")
+            act = fg; onAct = bg
+            actWash = fg.copy(alpha: 0.09) ?? fg
+            ring = fg.copy(alpha: 0.82) ?? fg
+            hair2 = fg.copy(alpha: dark ? 0.13 : 0.15) ?? fg
+            hair = fg.copy(alpha: dark ? 0.065 : 0.075) ?? fg
+            hover = fg.copy(alpha: dark ? 0.055 : 0.05) ?? fg
             live = c("#FF453A", "#E5342A")
+            // `.is-past .ev__t`: fg2 78 percent over the window colour.
+            pastTitle = RGB(hex: dark ? "#A19FAC" : "#5C5A65").mixed(with: RGB(hex: dark ? "#0E0E11" : "#FBFAF6"), 0.22).cg
+            liftShadow = dark ? CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.45) : CGColor(srgbRed: 40 / 255, green: 34 / 255, blue: 20 / 255, alpha: 0.16)
         }
         private static let darkInk = Ink(build: true)
         private static let lightInk = Ink(build: false)
         static func of(_ dark: Bool) -> Ink { dark ? darkInk : lightInk }
     }
 
+    /// One event block (app.css `.ev`): tint and bar. Sizes by height: under 30 pt one line (title, start time), under 50 pt title
+    /// and range, taller a two-line title then the range.
     @MainActor
-    static func draw(_ cg: CGContext, p: PlacedEvent, rect r: CGRect, style: EventStyle, fmt: Fmt) {
-        let e = p.event
+    static func draw(_ cg: CGContext, event e: CalendarEvent, start: Int, end: Int, rect r: CGRect, style: EventStyle, fmt: Fmt, dayView: Bool) {
         let pal = style.palette
         let ink = Ink.of(style.isDark)
-        let title = e.title.isEmpty ? "(No title)" : e.title
+        let shape = roundedPath(r, Radius.event)
+        let declined = e.status == .declined && !style.draft
         cg.saveGState()
         defer { cg.restoreGState() }
-        if style.faded { cg.setAlpha(0.35) } else if style.past { cg.setAlpha(style.isDark ? 0.55 : 0.5) }
-        if e.kind == .task { capsule(cg, rect: r, style: style, ink: ink, title: title, time: TextCache.time(fmt, minutes: p.startMinute), done: style.done); return }
-        let startS = TextCache.time(fmt, minutes: p.startMinute)
-        let shape = roundedPath(r, Radius.event)
-        if e.status == .declined { declined(cg, rect: r, style: style, ink: ink, title: title, range: "\(startS)\u{2013}\(TextCache.time(fmt, minutes: p.endMinute))", time: startS); return }
 
-        cg.addPath(shape); cg.setFillColor((style.selected ? pal.hoverFillRGB : pal.fillRGB).cg); cg.fillPath()
-        cg.saveGState()
+        // Fill, outline and shadow.
+        if style.draft {
+            cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
+            cg.saveGState()
+            cg.addPath(roundedPath(r.insetBy(dx: 0.75, dy: 0.75), Radius.event - 0.75))
+            cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
+            cg.restoreGState()
+        } else if declined {
+            cg.addPath(shape); cg.setFillColor(ink.bg); cg.fillPath()
+            cg.addPath(roundedPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event - 0.5))
+            cg.setStrokeColor(pal.barRGB.cg.copy(alpha: 0.4) ?? pal.barRGB.cg); cg.setLineWidth(1); cg.strokePath()
+        } else {
+            if style.over && !style.selected {
+                cg.addPath(roundedPath(r.insetBy(dx: -0.75, dy: -0.75), Radius.event + 0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
+            }
+            let fill = style.past && !style.selected ? pal.pastFillRGB : (style.selected || style.hovered ? pal.hoverFillRGB : pal.fillRGB)
+            if style.selected {
+                cg.saveGState()
+                cg.setShadow(offset: CGSize(width: 0, height: 8), blur: 22, color: ink.liftShadow)
+                cg.addPath(shape); cg.setFillColor(fill.cg); cg.fillPath()
+                cg.restoreGState()
+            }
+            cg.addPath(shape); cg.setFillColor(fill.cg); cg.fillPath()
+        }
+        if style.selected && !style.draft {
+            cg.addPath(roundedPath(r.insetBy(dx: -0.75, dy: -0.75), Radius.event + 0.75)); cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.strokePath()
+        }
+
         cg.addPath(shape); cg.clip()
-        let barColor = pal.barRGB.cg
-        if e.status == .tentative { stripes(cg, CGRect(x: r.minX, y: r.minY, width: 3, height: r.height), color: barColor) }
-        else { cg.setFillColor(barColor); cg.fill(CGRect(x: r.minX, y: r.minY, width: 3, height: r.height)) }
-        var textX = r.minX + 10
-        if let b = style.secondaryBarCG {
-            cg.setFillColor(b); cg.fill(CGRect(x: r.minX + 3, y: r.minY, width: 3, height: r.height))
-            textX = r.minX + 13
+        // Bar: 3 pt, inset 3 pt from top, bottom and left.
+        if !style.draft && !declined {
+            let bar = CGRect(x: r.minX + 3, y: r.minY + 3, width: 3, height: max(0, r.height - 6))
+            let color = style.past && !style.selected ? (pal.barRGB.cg.copy(alpha: 0.5) ?? pal.barRGB.cg) : pal.barRGB.cg
+            cg.saveGState()
+            cg.addPath(roundedPath(bar, 1.5)); cg.clip()
+            cg.setFillColor(color)
+            if e.status == .tentative {
+                var y = bar.minY
+                while y < bar.maxY { cg.fill(CGRect(x: bar.minX, y: y, width: 3, height: min(3, bar.maxY - y))); y += 6 }
+            } else { cg.fill(bar) }
+            cg.restoreGState()
         }
-        let textW = r.maxX - 4 - textX
-        if r.height >= 40 {
-            let lines = wrapped(cg, title, x: textX, top: r.minY + 4, width: max(1, textW), maxLines: 2, lineHeight: 14, color: ink.paper)
-            _ = text(cg, TextCache.range(fmt, p.startMinute, p.endMinute), .time, x: textX, top: r.minY + 4 + CGFloat(lines) * 14, box: 13, color: ink.haze)
+
+        // Text.
+        let title = e.title.isEmpty ? (style.draft || e.id.isEmpty ? "New event" : "(No title)") : e.title
+        let titleColor: CGColor, timeColor: CGColor
+        if style.draft { titleColor = ink.fg; timeColor = ink.fg2 }
+        else if declined { titleColor = ink.fg3; timeColor = ink.fg3 }
+        else if style.selected { titleColor = ink.fg; timeColor = pal.timeRGB.cg }
+        else if style.past { titleColor = ink.pastTitle; timeColor = ink.fg3.copy(alpha: 0.8) ?? ink.fg3 }
+        else { titleColor = pal.titleRGB.cg; timeColor = pal.timeRGB.cg }
+        let titleKind: TextCache.Kind = declined ? .titleMedium : .title
+        let x = r.minX + (style.draft ? 8 : 11)
+        let w = max(1, r.maxX - 6 - x)
+        if r.height < 30 {
+            let startS = TextCache.time(fmt, minutes: start)
+            let tw = r.width > 118 ? TextCache.line(startS, .time).width : 0
+            let top = r.minY + (r.height - 15) / 2
+            let drawn = truncated(cg, title, titleKind, x: x, top: top, box: 15, color: titleColor, maxWidth: tw > 0 ? max(1, w - tw - 6) : w, strike: declined)
+            if tw > 0 { text(cg, startS, .time, x: x + drawn + 6, top: r.minY + (r.height - 14) / 2, box: 14, color: timeColor) }
         } else {
-            let top = r.minY + max(0, (r.height - 14) / 2)
-            let w = truncated(cg, title, .title, x: textX, top: top, color: ink.paper, maxWidth: textW)
-            if textW - w > 44 { _ = text(cg, startS, .time, x: textX + w + 6, top: top, color: ink.haze) }
-        }
-        cg.restoreGState()
-    }
-
-    static func stripes(_ cg: CGContext, _ r: CGRect, color: CGColor) {
-        cg.saveGState()
-        cg.clip(to: r)
-        cg.setStrokeColor(color); cg.setLineWidth(2.8)
-        var x = r.minX - r.height
-        while x < r.maxX + r.height {
-            cg.move(to: CGPoint(x: x, y: r.maxY)); cg.addLine(to: CGPoint(x: x + r.height, y: r.minY))
-            x += 4 * 1.4142
-        }
-        cg.strokePath()
-        cg.restoreGState()
-    }
-
-    /// Checkbox circle rect inside a capsule (also used for hit testing).
-    static func checkboxRect(in r: CGRect) -> CGRect { CGRect(x: r.minX + 3, y: r.midY - 6.5, width: 13, height: 13) }
-
-    static func checkbox(_ cg: CGContext, _ c: CGRect, ink: Ink, done: Bool) {
-        if done {
-            cg.setFillColor(ink.act); cg.fillEllipse(in: c)
-            cg.setStrokeColor(CGColor(gray: 1, alpha: 1)); cg.setLineWidth(1.6); cg.setLineCap(.round); cg.setLineJoin(.round)
-            cg.move(to: CGPoint(x: c.minX + 3.4, y: c.midY + 0.2)); cg.addLine(to: CGPoint(x: c.minX + 5.7, y: c.midY + 2.6)); cg.addLine(to: CGPoint(x: c.minX + 9.6, y: c.midY - 2.4))
-            cg.strokePath()
-        } else {
-            cg.setStrokeColor(ink.hazeDim); cg.setLineWidth(1.5); cg.strokeEllipse(in: c.insetBy(dx: 0.75, dy: 0.75))
+            let lines = wrapped(cg, title, titleKind, x: x, top: r.minY + 4, width: w, maxLines: r.height < 50 ? 1 : 2, lineHeight: 15, color: titleColor, strike: declined)
+            var y = r.minY + 4 + CGFloat(lines) * 15
+            truncated(cg, TextCache.range(fmt, start, end), .time, x: x, top: y, box: 14, color: timeColor, maxWidth: w)
+            y += 14
+            if dayView && r.height > 66 && !e.location.isEmpty && !declined {
+                truncated(cg, e.location.components(separatedBy: "\n")[0], .time, x: x, top: y, box: 14, color: timeColor, maxWidth: w)
+            }
         }
     }
-
-    /// Task capsule: ink-700 pill with a checkbox, title, optional priority and time.
-    @MainActor
-    static func capsule(_ cg: CGContext, rect r: CGRect, style: EventStyle, ink: Ink, title: String, time: String, done: Bool) {
-        let shape = roundedPath(r, r.height / 2)
-        if style.overlapping {
-            cg.addPath(roundedPath(r.insetBy(dx: -1, dy: -1), r.height / 2 + 1)); cg.setFillColor(ink.ink900); cg.fillPath()
-        }
-        cg.addPath(shape); cg.setFillColor(style.selected ? ink.ink600 : ink.ink700); cg.fillPath()
-        cg.addPath(roundedPath(r.insetBy(dx: 0.5, dy: 0.5), r.height / 2)); cg.setStrokeColor(ink.hairStrong); cg.setLineWidth(1); cg.strokePath()
-        checkbox(cg, checkboxRect(in: r), ink: ink, done: done)
-        guard r.width >= 40 else { return }
-        let parts = TextCache.taskParts(title)
-        var right = r.maxX - 8
-        if r.width >= 150 { let w = TextCache.line(time, .pillTime).width; _ = text(cg, time, .pillTime, x: right - w, top: r.minY + (r.height - 12) / 2, box: 12, color: ink.haze); right -= w + 5 }
-        if r.width >= 96, let pr = parts.priority { let w = TextCache.line(pr, .pillPri).width; _ = text(cg, pr, .pillPri, x: right - w, top: r.minY + (r.height - 12) / 2, box: 12, color: ink.hazeDim); right -= w + 5 }
-        let x = r.minX + 21
-        let top = r.minY + (r.height - 13) / 2
-        _ = truncated(cg, parts.text, .pill, x: x, top: top, box: 13, color: done ? ink.hazeDim : ink.paper, maxWidth: max(1, right - x), strike: done)
-    }
-
-    @MainActor
-    static func declined(_ cg: CGContext, rect r: CGRect, style: EventStyle, ink: Ink, title: String, range: String, time: String) {
-        let shape = roundedPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event)
-        cg.saveGState()
-        cg.addPath(shape); cg.setStrokeColor(style.palette.barRGB.cg.copy(alpha: 0.75) ?? style.palette.barRGB.cg); cg.setLineWidth(1); cg.setLineDash(phase: 0, lengths: [4, 3]); cg.strokePath()
-        cg.restoreGState()
-        cg.saveGState()
-        cg.addPath(roundedPath(r, Radius.event)); cg.clip()
-        if r.height >= 40 {
-            _ = wrappedStrike(cg, title, x: r.minX + 10, top: r.minY + 4, width: r.width - 14, color: ink.haze)
-            _ = text(cg, range, .time, x: r.minX + 10, top: r.minY + 18, box: 13, color: ink.haze, strike: true)
-        } else {
-            let top = r.minY + max(0, (r.height - 14) / 2)
-            let w = truncated(cg, title, .title, x: r.minX + 10, top: top, color: ink.haze, maxWidth: r.width - 14, strike: true)
-            if r.width - 14 - w > 44 { _ = text(cg, time, .time, x: r.minX + 10 + w + 6, top: top, color: ink.haze, strike: true) }
-        }
-        cg.restoreGState()
-    }
-
-    @MainActor
-    static func wrappedStrike(_ cg: CGContext, _ s: String, x: CGFloat, top: CGFloat, width: CGFloat, color: CGColor) -> Int {
-        truncated(cg, s, .title, x: x, top: top, color: color, maxWidth: width, strike: true) > 0 ? 1 : 0
-    }
-
-    @MainActor
-    static func drawGhost(_ cg: CGContext, rect r: CGRect, palette pal: EventPalette, ink: Ink, title: String, range: String) {
-        cg.saveGState()
-        defer { cg.restoreGState() }
-        let shape = roundedPath(r, Radius.event)
-        cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
-        cg.addPath(roundedPath(r.insetBy(dx: 0.75, dy: 0.75), Radius.event)); cg.setStrokeColor(ink.act); cg.setLineWidth(1.5); cg.strokePath()
-        cg.addPath(shape); cg.clip()
-        _ = text(cg, title, .title, x: r.minX + 10, top: r.minY + 4, color: ink.paper)
-        _ = text(cg, range, .time, x: r.minX + 10, top: r.minY + 18, box: 13, color: ink.haze)
-    }
-}
-
-extension EventStyle {
-    var secondaryBarCG: CGColor? { secondaryBarRGB?.cg }
 }
