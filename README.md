@@ -8,7 +8,7 @@ Motion follows one curve and four durations (120 / 180 / 260 / 300 ms) and colla
 
 ## Install
 
-Download `Calendr.dmg` (build it with `scripts/make-dmg.sh`; it lands in `dist/`), open it and drag Calendr onto Applications. The app is ad-hoc signed, not notarized: on first launch macOS refuses to open it by double-click. Right-click (or Control-click) Calendr in Applications, choose **Open**, then **Open** again in the dialog. macOS remembers the choice. Calendr then asks for calendar access; without it you see an empty state with a shortcut to System Settings > Privacy & Security > Calendars.
+Download `Calendr.dmg` from the [latest release](https://github.com/luisKisters/calendr/releases/latest), open it and drag Calendr onto Applications. Starting with 1.1.1, releases are Developer ID signed and notarized by Apple. Open Calendr normally; macOS can ask you to confirm the first launch of an app downloaded from the internet. Calendr then asks for calendar access; without it you see an empty state with a shortcut to System Settings > Privacy & Security > Calendars. Browsers can still set `com.apple.quarantine` on signed downloads. You do not need to remove it.
 
 ## Run it
 
@@ -19,6 +19,15 @@ open build/Calendr.app --args --demo --now "2026-10-12T09:00" # demo data with a
 ```
 
 `scripts/build-app.sh` builds release, assembles `build/Calendr.app` (bundle id `com.luiskisters.calendr`, calendar usage descriptions) and ad-hoc signs it (`codesign -s -`).
+
+To build a distribution release, use your Developer ID certificate and a saved `notarytool` keychain profile:
+
+```sh
+SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
+NOTARY_PROFILE='your-notarization-profile' scripts/make-dmg.sh
+```
+
+This enables the hardened runtime and a secure signing timestamp, notarizes and staples the app, then signs, notarizes and staples `dist/Calendr.dmg`. The script checks Apple's acceptance, both tickets, Gatekeeper, the mounted app signature and a demo launch. Without these variables, local builds remain ad-hoc signed.
 
 ### Showing your Google and Apple calendars
 
@@ -93,6 +102,6 @@ Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--s
 - Search and the teammate list fetch a year each way on a background thread; visible-range fetches (a month plus a week either side) still run on the main thread.
 - All-day events cannot be dragged in the grid (use the right panel). Participants can be added only in the demo store.
 - The menu bar design is not locked yet (`design/mockup-v3/menubar.html` is the proposal); the menu uses the system font on purpose so it looks native.
-- The DMG is ad-hoc signed and not notarized (first launch needs right-click > Open); it has no custom background.
+- The DMG has no custom background.
 - Screen capture of the running app needs Screen Recording permission, so pixel evidence comes from the offscreen renderer; real mouse gestures were never driven through the live window, and the animations were only observed through the offscreen window.
 - `artifacts/walkthrough-v3.mov` and the snapshots show fictional demo data only. Older git history contains the previous personal demo data.

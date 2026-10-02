@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds build/Calendr.app (release, ad-hoc signed).
+# Builds build/Calendr.app. Set SIGNING_IDENTITY for Developer ID signing.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
@@ -28,8 +28,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleExecutable</key><string>Calendr</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.1.0</string>
-  <key>CFBundleVersion</key><string>2</string>
+  <key>CFBundleShortVersionString</key><string>1.1.1</string>
+  <key>CFBundleVersion</key><string>3</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>NSHighResolutionCapable</key><true/>
@@ -40,5 +40,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-codesign --force --deep -s - "$APP"
+if [ -n "${SIGNING_IDENTITY:-}" ]; then
+  codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements scripts/Calendr.entitlements "$APP"
+else
+  codesign --force --sign - "$APP"
+fi
+codesign --verify --deep --strict "$APP"
 echo "Built $APP"

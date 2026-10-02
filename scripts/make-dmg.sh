@@ -1,11 +1,29 @@
 #!/bin/bash
-# Builds dist/Calendr.dmg (ad-hoc signed app + Applications symlink) and verifies it.
+# Builds dist/Calendr.dmg (app + Applications symlink) and verifies it.
+# Set SIGNING_IDENTITY and NOTARY_PROFILE for a signed, notarized release.
 # Usage: scripts/make-dmg.sh [--no-verify]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
+if [ -n "${NOTARY_PROFILE:-}" ] && [ -z "${SIGNING_IDENTITY:-}" ]; then
+  echo "FAIL: NOTARY_PROFILE requires SIGNING_IDENTITY" >&2
+  exit 1
+fi
 scripts/build-app.sh
+
+mkdir -p dist
+if [ -n "${NOTARY_PROFILE:-}" ]; then
+  ZIP=dist/Calendr-notarization.zip
+  rm -f "$ZIP"
+  ditto -c -k --keepParent build/Calendr.app "$ZIP"
+  xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json > dist/app-notarization.json
+  python3 -c 'import json; d=json.load(open("dist/app-notarization.json")); print(d); assert d["status"] == "Accepted", "App notarization failed"'
+  xcrun stapler staple build/Calendr.app
+  xcrun stapler validate build/Calendr.app
+  spctl --assess --type execute --verbose=2 build/Calendr.app
+  rm -f "$ZIP"
+fi
 
 STAGE=dist/staging
 DMG=dist/Calendr.dmg
@@ -15,6 +33,16 @@ cp -R build/Calendr.app "$STAGE/Calendr.app"
 ln -s /Applications "$STAGE/Applications"
 
 hdiutil create -volname Calendr -srcfolder "$STAGE" -format UDZO -ov "$DMG"
+if [ -n "${SIGNING_IDENTITY:-}" ]; then
+  codesign --force --sign "$SIGNING_IDENTITY" --timestamp "$DMG"
+fi
+if [ -n "${NOTARY_PROFILE:-}" ]; then
+  xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json > dist/dmg-notarization.json
+  python3 -c 'import json; d=json.load(open("dist/dmg-notarization.json")); print(d); assert d["status"] == "Accepted", "DMG notarization failed"'
+  xcrun stapler staple "$DMG"
+  xcrun stapler validate "$DMG"
+  spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+fi
 echo "Created $DMG ($(du -h "$DMG" | cut -f1))"
 
 [ "${1:-}" = "--no-verify" ] && exit 0
