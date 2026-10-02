@@ -1,0 +1,14 @@
+[0/1] Planning build
+Building for production...
+[0/2] Write swift-version--58304C5D6DBC2206.txt
+Build complete! (0.18s)
+design/icon/AppIcon.icns exists (use --force to regenerate)
+build/Calendr.app: replacing existing signature
+Built build/Calendr.app
+created: /Users/ci/code/projects/calendr-audit/dist/Calendr.dmg
+Created dist/Calendr.dmg (2.8M)
+ok: Calendr.app and Applications symlink present
+ok: codesign --verify --deep --strict passed
+ok: launch output: launch to interactive window: 767 ms
+first responder: AppKitWindow
+DMG verified: dist/Calendr.dmg (2.8M)

@@ -50,7 +50,7 @@ enum SnapshotStates {
         case "detail-guests":
             if let e = find(m, "Sam / Alex", day: 1) { m.select(eventID: e.id) }
         default:
-            return SnapshotGrid.apply(name, m) || SnapshotChrome.apply(name, m) || SnapshotPanel.apply(name, m) || SnapshotMenuBar.apply(name, m)
+            return SnapshotAudit.apply(name, m) || SnapshotGrid.apply(name, m) || SnapshotChrome.apply(name, m) || SnapshotPanel.apply(name, m) || SnapshotMenuBar.apply(name, m)
         }
         return true
     }

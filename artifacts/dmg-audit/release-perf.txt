@@ -1,0 +1,11 @@
+  (perf started 63 ms after process start)
+  (model built after 101 ms)
+cold launch (demo data, offscreen window, process start to first drawn frame): 304 ms (model ready at 101 ms)
+events per week visible: min 301, median 337, max 378
+week navigation x100 (50 forward, 50 back), layout+render: p50 12.0 ms, p95 16.2 ms, max 17.2 ms
+  of which model reload (fetch + layout): p50 1.27 ms, p95 1.64 ms
+  breakdown p50: runloop/update 10.6 ms, layout 0.0 ms, draw 0.1 ms
+week navigation with animations on (x40): p50 14.2 ms, p95 18.2 ms
+month navigation x40: p50 10.7 ms, p95 15.4 ms
+  month breakdown p50: model 1.4 ms, runloop/update 9.0 ms, layout+draw 0.1 ms
+PERF OK (budget: p95 < 16.7 ms per navigation, cold < 500 ms)

@@ -1,0 +1,58 @@
+wrote /tmp/calendr-audit/release-snapshots/week.png
+week: exit 0
+wrote /tmp/calendr-audit/release-snapshots/week-selected-event.png
+week-selected-event: exit 0
+wrote /tmp/calendr-audit/release-snapshots/command-menu.png
+command-menu: exit 0
+wrote /tmp/calendr-audit/release-snapshots/teammate-picker.png
+teammate-picker: exit 0
+wrote /tmp/calendr-audit/release-snapshots/teammate-overlay.png
+teammate-overlay: exit 0
+wrote /tmp/calendr-audit/release-snapshots/go-to-date.png
+go-to-date: exit 0
+wrote /tmp/calendr-audit/release-snapshots/search-results.png
+search-results: exit 0
+wrote /tmp/calendr-audit/release-snapshots/month.png
+month: exit 0
+wrote /tmp/calendr-audit/release-snapshots/day.png
+day: exit 0
+wrote /tmp/calendr-audit/release-snapshots/sidebar-hidden.png
+sidebar-hidden: exit 0
+wrote /tmp/calendr-audit/release-snapshots/all-day-collapsed.png
+all-day-collapsed: exit 0
+wrote /tmp/calendr-audit/release-snapshots/create-drag.png
+create-drag: exit 0
+wrote /tmp/calendr-audit/release-snapshots/shortcuts-sheet.png
+shortcuts-sheet: exit 0
+wrote /tmp/calendr-audit/release-snapshots/settings.png
+settings: exit 0
+wrote /tmp/calendr-audit/release-snapshots/light-week.png
+light-week: exit 0
+wrote /tmp/calendr-audit/release-snapshots/delete-recurring.png
+delete-recurring: exit 0
+wrote /tmp/calendr-audit/release-snapshots/readonly-event.png
+readonly-event: exit 0
+wrote /tmp/calendr-audit/release-snapshots/empty-access.png
+empty-access: exit 0
+wrote /tmp/calendr-audit/release-snapshots/month-light.png
+month-light: exit 0
+wrote /tmp/calendr-audit/release-snapshots/toast.png
+toast: exit 0
+wrote /tmp/calendr-audit/release-snapshots/search-empty.png
+search-empty: exit 0
+wrote /tmp/calendr-audit/release-snapshots/create-event.png
+create-event: exit 0
+wrote /tmp/calendr-audit/release-snapshots/week-zoomed.png
+week-zoomed: exit 0
+wrote /tmp/calendr-audit/release-snapshots/week-numbers.png
+week-numbers: exit 0
+wrote /tmp/calendr-audit/release-snapshots/detail-guests.png
+detail-guests: exit 0
+wrote /tmp/calendr-audit/release-snapshots/menubar.png
+menubar: exit 0
+wrote /tmp/calendr-audit/release-snapshots/menubar-submenu.png
+menubar-submenu: exit 0
+wrote /tmp/calendr-audit/release-snapshots/menubar-running.png
+menubar-running: exit 0
+wrote /tmp/calendr-audit/release-snapshots/menubar-none.png
+menubar-none: exit 0
