@@ -101,7 +101,7 @@ extension AppModel {
         guard let hit = hitTest(p) else { return }
         if case .more(let d, let i) = hit { toggleStack(day: d, group: i); return }
         // A press outside an open "+N" stack only closes it (`PanelClickAway` does the same outside the grid).
-        if gridState.stack != nil { closeStack(); return }
+        if visibleStack != nil { closeStack(); return }
         if case .event = hit { gridState.dayList = nil }
         let now = ProcessInfo.processInfo.systemUptime
         switch hit {
@@ -146,9 +146,13 @@ extension AppModel {
                 dragPreview = DragPreview(kind: .resize, eventID: id, dayIndex: d, startMinute: max(0, min(e - snap, cur)), endMinute: e)
                 gridState.pointer.minute = dragPreview?.startMinute
             case nil:
-                let dur = min(e - s, 1440)
-                let start = max(0, min(1440 - dur, Int(((m - pr.grabMinutes) / Double(snap)).rounded()) * snap))
-                dragPreview = DragPreview(kind: .move, eventID: id, dayIndex: day, startMinute: start, endMinute: start + dur)
+                // The preview shows the whole event from the grabbed segment on (an overnight event keeps its full length).
+                let full = max(e - s, Int(ev.end.timeIntervalSince(ev.start) / 60))
+                let into = visibleDays.indices.contains(d) ? max(0, Int(math.date(on: visibleDays[d], minutes: s).timeIntervalSince(ev.start) / 60)) : 0
+                let segment = min(e - s, 1440)
+                let start = max(0, min(1440 - segment, Int(((m - pr.grabMinutes) / Double(snap)).rounded()) * snap))
+                let end = min(1440, max(start + segment, start - into + full))
+                dragPreview = DragPreview(kind: .move, eventID: id, dayIndex: day, startMinute: start, endMinute: end)
                 gridState.pointer.minute = start
             }
         }
@@ -206,33 +210,40 @@ extension AppModel {
         }
     }
 
-    /// While dragging, the day columns the drag touches are cascaded again with the preview in place of the event (as the
-    /// mockup re-packs on every move). Returns the events to draw and the preview with its placement.
-    func gridPreviewLayout() -> (events: [PlacedEvent], preview: PlacedEvent?) {
-        guard let pv = dragPreview, layout.timed.indices.contains(pv.dayIndex) else { return (flatTimed, nil) }
+    /// While dragging, the day columns the drag touches are laid out again with the preview in place of the event (as the
+    /// mockup re-packs on every move). Returns the events to draw, the preview with its placement and the "+N" groups per day.
+    /// The ghost carries the times it will be saved with, so it lays out exactly as the saved event will (short or not, replies).
+    func gridPreviewLayout() -> (events: [PlacedEvent], preview: PlacedEvent?, groups: [[OverflowGroup]]) {
+        guard let pv = dragPreview, layout.timed.indices.contains(pv.dayIndex) else { return (flatTimed, nil, layout.overflow) }
         let moving = pv.kind == .create ? nil : pv.eventID
         var touched: Set<Int> = [pv.dayIndex]
         if let id = moving { for p in flatTimed where p.event.id == id { touched.insert(p.dayIndex) } }
-        let e = moving.flatMap { event(id: $0) } ?? CalendarEvent(id: "", calendarID: "", title: "", start: visibleDays[pv.dayIndex], end: visibleDays[pv.dayIndex])
+        let day0 = visibleDays[pv.dayIndex]
+        var e = moving.flatMap { event(id: $0) } ?? CalendarEvent(id: "", calendarID: "", title: "", start: day0, end: day0)
+        if pv.kind != .move {
+            // A new block or a resized one: its length is the preview's.
+            e.start = math.date(on: day0, minutes: pv.startMinute)
+            e.end = math.date(on: day0, minutes: pv.endMinute)
+        }
         let ghost = PlacedEvent(id: "\(e.id)|preview", event: e, dayIndex: pv.dayIndex, startMinute: pv.startMinute, endMinute: pv.endMinute,
                                 placement: Placement(id: "", column: 0, columns: 1))
+        var keep: Set<String> = [ghost.id]
+        if let d = draftEventID { keep.insert(d) }
         var out: [PlacedEvent] = []
         out.reserveCapacity(flatTimed.count)
         var preview: PlacedEvent?
+        var groups = layout.overflow
         for d in layout.timed.indices {
             guard touched.contains(d) else { out += layout.timed[d]; continue }
             var day = layout.timed[d].filter { $0.event.id != moving }
             if d == pv.dayIndex { day.append(ghost) }
-            for var p in RangeLayoutBuilder.pack(day) {
-                if p.id == ghost.id {
-                    // The block being dragged always shows, even where it would overflow into a "+N".
-                    if p.placement.hidden { p.placement = Placement(v5: V5Placement(id: p.id, left: 0.5, width: 0.5, indent: 0, level: 9, cut: true,
-                                                                                    startMinute: p.startMinute, endMinute: p.endMinute), order: 999) }
-                    preview = p
-                } else { out.append(p) }
+            let r = RangeLayoutBuilder.packDay(day, keepVisible: keep)
+            if groups.indices.contains(d) { groups[d] = r.groups }
+            for p in r.events {
+                if p.id == ghost.id { preview = p } else { out.append(p) }
             }
         }
-        return (out, preview)
+        return (out, preview, groups)
     }
 
     /// Month view: a double-click on a day cell creates an all-day event there.

@@ -22,8 +22,10 @@ struct GridV3State: Equatable {
     var zoom: GutterZoom?
     /// The open "+N" stack panel.
     var stack: StackRef?
-    /// Window frame of the stack panel, published by the view (a press outside it closes it).
-    var stackFrame = CGRect.zero
+    /// Window frame of the stack panel, published by the view (a press outside it closes it). A plain box, not observed state:
+    /// the frame changes on every scroll frame and must not invalidate the grid.
+    let stackBox = StackBox()
+    var stackFrame: CGRect { stackBox.frame }
     /// The all-day section shows every lane (it scrolls past 4.5 lanes) instead of two lanes and "+N more".
     var allDayExpanded = false
     /// The expanded all-day section scrolls to `allDayScrollTarget` whenever `allDayScrollTick` changes.
@@ -36,7 +38,7 @@ struct GridV3State: Equatable {
     static func == (a: GridV3State, b: GridV3State) -> Bool {
         a.fit == b.fit && a.viewportHeight == b.viewportHeight && a.scrollTarget == b.scrollTarget && a.scrollTick == b.scrollTick
             && a.dayList == b.dayList && a.allDayFrame == b.allDayFrame && a.monthFrame == b.monthFrame && a.draftMadeAt == b.draftMadeAt
-            && a.zoom == b.zoom && a.stack == b.stack && a.stackFrame == b.stackFrame && a.allDayExpanded == b.allDayExpanded && a.allDayScrollTarget == b.allDayScrollTarget && a.allDayScrollTick == b.allDayScrollTick && a.pointer === b.pointer && a.monthCache === b.monthCache
+            && a.zoom == b.zoom && a.stack == b.stack && a.stackBox === b.stackBox && a.allDayExpanded == b.allDayExpanded && a.allDayScrollTarget == b.allDayScrollTarget && a.allDayScrollTick == b.allDayScrollTick && a.pointer === b.pointer && a.monthCache === b.monthCache
     }
 }
 
@@ -87,6 +89,8 @@ final class GridPointer {
     var hoveredAllDayMore: Int?
 }
 
+final class StackBox { var frame = CGRect.zero }
+
 struct GridMoreRef: Equatable { var day: Int; var group: Int }
 
 extension AppModel {
@@ -105,6 +109,8 @@ extension AppModel {
 
     /// Used by `reload()`: fits a period the first time it is shown, then cascades its events for the hour height on screen.
     func gridLayout(_ l: RangeLayout) -> RangeLayout {
+        // The "+N" stack belongs to the period it was opened in.
+        if let s = gridState.stack, s.period != periodID { closeStack() }
         guard viewMode != .month else { return l }
         refitIfNeeded(l)
         return l.repacked(pointsPerHour: gridHourHeight)
@@ -188,7 +194,7 @@ extension AppModel {
     /// Esc during a drag (create, move, resize or gutter zoom) puts everything back, and Esc closes the day list.
     /// Returns false when there was nothing to undo or close.
     func gridCancelDrag() -> Bool {
-        if gridState.stack != nil { closeStack(); return true }
+        if visibleStack != nil { closeStack(); return true }
         if let z = gridState.zoom {
             gridState.zoom = nil
             if z.live != nil { reload() }

@@ -92,7 +92,7 @@ scripts/verify.sh --fast   # skips walkthrough video, perf and DMG
 
 `scripts/walkthrough-video.sh` makes the polished video (`artifacts/walkthrough-v3.mp4`): it records the tour, renders it with [Glide](https://glide.dipxsy.app) (ink backdrop, rounded window, drawn cursor and click ripples, 7 explicit zooms) and burns the caption chips in with `scripts/caption-video.py`. Glide is a separate tool, so verify.sh does not run it.
 
-Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--size WxH]`, `--walkthrough [<tour>] [--record <mov>]` (no tour: the v3 tour; `v4-a`, `v4-b`, `v4-c-1` event styles, `v4-c-2` "+N" and its stack, `v4-c-3` all-day mix: the v4 feature tours, on the v4 fixture), `--fixture v4` (the design/mockup-v4 week: Sam Rivera, now Sun 4 Oct 2026 15:10, 46 pt hours), `--perf`, `--print-launch`.
+Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--size WxH]`, `--walkthrough [<tour>] [--record <mov>]` (no tour: the v3 tour; `v4-a`, `v4-b`, `v4-c-1` reply states, `v4-c-2` "+N" and its stack, `v4-c-3` all-day mix, `v4-c-4` selection and text rules: the v4 feature tours, on the v4 fixture), `--fixture v4` (the design/mockup-v4 week: Sam Rivera, now Sun 4 Oct 2026 15:10, 46 pt hours), `--perf`, `--print-launch`.
 
 ## Known gaps
 

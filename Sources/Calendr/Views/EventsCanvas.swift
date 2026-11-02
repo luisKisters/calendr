@@ -394,14 +394,10 @@ enum EventPainter {
             let top = r.minY + (plan.compact ? 2 : 4)
             let lines = wrapped(cg, title, .title, x: x, top: top, width: w, maxLines: plan.maxTitleLines, lineHeight: lh, color: titleColor,
                                 strike: strike, hyphenate: plan.hyphenate)
-            var y = top + CGFloat(lines) * lh + (plan.compact ? 0 : 1)
+            let y = top + CGFloat(lines) * lh + (plan.compact ? 0 : 1)
             if let t = timeText {
                 if plan.narrow { text(cg, t, .time, x: x, top: y, box: lh, color: timeColor, strike: strike) }
                 else { truncated(cg, t, .time, x: x, top: y, box: lh, color: timeColor, maxWidth: w, strike: strike) }
-            }
-            y += lh
-            if dayView && r.height > 66 && !e.location.isEmpty && !strike {
-                truncated(cg, e.location.components(separatedBy: "\n")[0], .time, x: x, top: y, box: lh, color: timeColor, maxWidth: w)
             }
         }
     }

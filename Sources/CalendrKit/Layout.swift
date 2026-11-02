@@ -250,14 +250,31 @@ public enum RangeLayoutBuilder {
         return V5Item(id: id, startMinute: p.startMinute, endMinute: p.endMinute, isShort: short, isUnaccepted: e.isUnaccepted)
     }
 
+    /// Where an event that must show goes when it would overflow (the draft, the block being dragged): the right half, above all.
+    public static func forcedPlacement(_ p: PlacedEvent, order: Int) -> Placement {
+        let span = item(p, id: p.id)
+        return Placement(v5: V5Placement(id: p.id, left: OverlapV5.unacceptedLeft, width: 1 - OverlapV5.unacceptedLeft, indent: 0, level: 9, cut: true,
+                                         startMinute: span.startMinute, endMinute: span.isShort ? span.startMinute + OverlapV5.shortSpan : span.endMinute),
+                         order: order)
+    }
+
     /// Lays out one day with `OverlapV5` and sorts it into paint order; events that do not fit are kept with `placement.hidden`
-    /// and listed in the returned "+N" groups (by event id).
-    public static func packDay(_ day: [PlacedEvent]) -> (events: [PlacedEvent], groups: [OverflowGroup]) {
+    /// and listed in the returned "+N" groups (by event id). `keepVisible` (the draft, a drag preview) is never hidden: when it
+    /// would overflow it gets `forcedPlacement` and stays out of the groups.
+    public static func packDay(_ day: [PlacedEvent], keepVisible: Set<String> = []) -> (events: [PlacedEvent], groups: [OverflowGroup]) {
         var placed = day
         let r = OverlapV5.layout(placed.indices.map { item(placed[$0], id: String($0)) })
         for i in placed.indices { placed[i].placement.hidden = true }
         for (k, p) in r.placements.enumerated() { if let i = Int(p.id) { placed[i].placement = Placement(v5: p, order: k) } }
-        let groups = r.groups.map { g in OverflowGroup(startMinute: g.startMinute, ids: g.ids.compactMap { Int($0).map { placed[$0].event.id } }) }
+        var kept = Set<Int>()
+        for i in placed.indices where placed[i].placement.hidden && (keepVisible.contains(placed[i].event.id) || keepVisible.contains(placed[i].id)) {
+            placed[i].placement = forcedPlacement(placed[i], order: r.placements.count + i)
+            kept.insert(i)
+        }
+        let groups: [OverflowGroup] = r.groups.compactMap { g in
+            let ids = g.ids.compactMap { Int($0) }.filter { !kept.contains($0) }.map { placed[$0].event.id }
+            return ids.isEmpty ? nil : OverflowGroup(startMinute: g.startMinute, ids: ids)
+        }
         // Sort small integer keys, not the (large) PlacedEvent values; hidden events go first.
         let keys = placed.map { $0.placement.hidden ? -1 : $0.placement.z }
         let order = (0..<placed.count).sorted { keys[$0] != keys[$1] ? keys[$0] < keys[$1] : $0 < $1 }
@@ -267,7 +284,8 @@ public enum RangeLayoutBuilder {
     /// `packDay` without the groups (the drag preview).
     public static func pack(_ day: [PlacedEvent], pointsPerHour: Double = 56) -> [PlacedEvent] { packDay(day).events }
 
-    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56) -> RangeLayout {
+    /// `keepVisible`: event ids that never go into a "+N" group (the draft).
+    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56, keepVisible: Set<String> = []) -> RangeLayout {
         let dayCount = days.count
         guard dayCount > 0 else { return .empty }
         let rangeEnd = math.addDays(days[dayCount - 1], 1)
@@ -316,7 +334,7 @@ public enum RangeLayoutBuilder {
                 PlacedEvent(id: "\(sp.event.id)|\(d)", event: sp.event, dayIndex: d, startMinute: sp.s, endMinute: sp.e,
                             placement: Placement(id: "", column: 0, columns: 1), continuesFromPrevious: sp.from, continuesToNext: sp.to)
             }
-            let r = packDay(placed)
+            let r = packDay(placed, keepVisible: keepVisible)
             timed.append(r.events)
             overflow.append(r.groups)
         }

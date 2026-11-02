@@ -71,4 +71,74 @@ struct GridV5Tests {
         #expect(AllDayView.expandedHeight(lanes: 7) == many)
         #expect(AllDayView.contentHeight(rows: 3) == content)
     }
+
+    // Review fixes
+
+    @Test func anOverflowingDraftShowsOnTheRightHalfAndIsHitOnlyThere() {
+        let m = model()
+        let wed = m.math.addDays(DemoDataV4.weekStart, 2)
+        let s = m.math.date(on: wed, minutes: 17 * 60 + 30)
+        m.createEvent(start: s, end: s.addingTimeInterval(3600))
+        let id = m.draftEventID!
+        let p = m.layout.timed[2].first { $0.event.id == id }!
+        #expect(!p.placement.hidden && p.placement.left == 0.5 && p.placement.width == 0.5)
+        #expect(!m.layout.groups(day: 2).contains { $0.ids.contains(id) })
+        let r = m.gridGeometry.rect(for: p)
+        if case .event(let hit, _, _, _, _)? = m.hitTest(CGPoint(x: r.midX, y: r.midY)) { #expect(hit == id) } else { Issue.record("the draft is not hit") }
+        let left = CGPoint(x: 2 * 118 + 10, y: r.midY)
+        if case .event(let hit, _, _, _, _)? = m.hitTest(left) { #expect(hit != id) }
+    }
+
+    @Test func theStackClosesWhenThePeriodOrViewChanges() {
+        let m = model()
+        m.toggleStack(day: 2, group: 0)
+        m.next()
+        #expect(m.gridState.stack == nil)
+        m.previous()
+        m.toggleStack(day: 2, group: 0)
+        m.setMode(.day)
+        #expect(m.gridState.stack == nil)
+    }
+
+    @Test func aClickOutsideTheGridAndTheStackClosesIt() {
+        let m = model()
+        m.toggleStack(day: 2, group: 0)
+        let size = CGSize(width: 1440, height: 900)
+        m.gridViewport = CGRect(x: 236, y: 160, width: 884, height: 740)
+        m.gridState.stackBox.frame = CGRect(x: 530, y: 600, width: 228, height: 130)
+        func bl(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: size.height - y) }   // window points, bottom-left origin
+        #expect(PanelClickAway.closesStack(at: bl(100, 500), in: size, model: m))             // the sidebar
+        #expect(!PanelClickAway.closesStack(at: bl(600, 650), in: size, model: m))            // inside the stack
+        #expect(!PanelClickAway.closesStack(at: bl(400, 400), in: size, model: m))            // the grid handles its own presses
+        m.closeStack()
+        #expect(!PanelClickAway.closesStack(at: bl(100, 500), in: size, model: m))
+    }
+
+    @Test func theCreatePreviewLaysOutLikeTheSavedEvent() {
+        let m = model()
+        let g = m.gridGeometry
+        let a = CGPoint(x: 0.3 * g.dayWidth, y: g.yPos(21 * 60) + 2), b = CGPoint(x: 0.3 * g.dayWidth, y: g.yPos(22 * 60))
+        m.gridMouseDown(a)
+        m.gridMouseDragged(b)
+        let r = m.gridPreviewLayout()
+        let walkID = m.layout.timed[0].first { $0.event.title == "Evening walk" }!.id
+        let previewWalk = r.events.first { $0.id == walkID }!.placement
+        let ghost = r.preview!.placement
+        // 60 minutes, not a zero-length short item: the walk 30 minutes later cascades over it (a short ghost would sit beside it).
+        #expect(ghost.drawEndMinute == 22 * 60 && ghost.width == 1 && previewWalk.level == 1 && previewWalk.indent == OverlapV5.indentStep)
+        m.gridMouseUp(b)
+        let saved = m.layout.timed[0].first { $0.event.id == m.draftEventID }!.placement
+        let walk = m.layout.timed[0].first { $0.id == walkID }!.placement
+        #expect(saved.left == ghost.left && saved.width == ghost.width && saved.level == ghost.level && saved.indent == ghost.indent)
+        #expect(walk.left == previewWalk.left && walk.width == previewWalk.width)
+    }
+
+    @Test func theSelectedAllDayEventIsNeverFolded() {
+        let m = model()
+        let low = m.layout.allDay.placements.first { $0.lane >= 2 }!
+        m.select(eventID: low.id)
+        #expect(m.allDayFold == nil)
+        m.deselect()
+        #expect(m.allDayFold == 2)
+    }
 }

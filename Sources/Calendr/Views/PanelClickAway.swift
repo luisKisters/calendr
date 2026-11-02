@@ -29,7 +29,7 @@ final class PanelClickAway {
     /// A press outside the open "+N" stack and outside the grid closes the stack (the grid closes it itself, so a press on "+N" toggles).
     /// `point` in window coordinates (bottom-left origin).
     static func closesStack(at point: CGPoint, in size: CGSize, model: AppModel) -> Bool {
-        guard model.gridState.stack != nil else { return false }
+        guard model.visibleStack != nil else { return false }
         let p = CGPoint(x: point.x, y: size.height - point.y)
         return !model.gridState.stackFrame.contains(p) && !model.gridViewport.contains(p)
     }

@@ -22,6 +22,8 @@ extension AppModel {
     var allDayFold: Int? {
         let all = layout.allDay
         guard all.laneCount > AllDayView.shownLanes, !gridState.allDayExpanded else { return nil }
+        // The selected or new event never hides behind "+N more": every lane shows while it sits below the second (v3 rule).
+        if let held = all.placements.first(where: { $0.id == selectedEventID || $0.id == draftEventID }), held.lane >= AllDayView.shownLanes { return nil }
         return AllDayView.shownLanes
     }
 

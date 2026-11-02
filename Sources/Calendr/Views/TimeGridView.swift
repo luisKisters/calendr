@@ -175,7 +175,7 @@ private struct EventsLayer: View {
         let open = model.visibleStack.map { s in GridMoreRef(day: s.ref.day, group: model.layout.groups(day: s.ref.day).firstIndex(of: s.group) ?? -1) }
         return EventsCanvas(events: drag.events, geometry: g, dark: dark, fmt: model.fmt, dayView: model.viewMode == .day,
                             preview: drag.preview, creating: model.dragPreview?.kind == .create, rank: { m.paintRank($0) },
-                            groups: model.layout.overflow, hotMore: [model.gridState.pointer.hoveredMore, open].compactMap { $0 },
+                            groups: drag.groups, hotMore: [model.gridState.pointer.hoveredMore, open].compactMap { $0 },
                             styles: { p in
                                 var s = m.style(for: p.event, dark: dark, now: now, selected: p.event.id == selected, overlapping: p.placement.over)
                                 s.isDark = dark
