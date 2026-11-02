@@ -25,6 +25,16 @@ Most of the explorer findings are correct. These points differ or add detail:
 4. Order of authority: DECISIONS.md, then the mockup `LOCKED` picks with the `.ds` CSS, then README, then `design/LOCKED.md` (v3), then SPEC.
 
 ## 3. Phases in dependency order
+PR stack: 5 stacked PRs. Each phase is one or more commits inside its PR. Each PR targets the PR before it. Nothing merges automatically.
+
+| PR | Phases | Base | What you can see after it |
+|---|---|---|---|
+| A Foundation | 0 tooling, 1 tokens | `main` | The app has the v4 colours, type and controls. Mockup compare works. |
+| B Logic | 2 data model, 3 overlap v5 | A | No UI change. New CalendrKit tests. |
+| C Grid | 4 event styles, 5 grid, "+N", stack panel, all-day | B | The week grid matches the mockup. |
+| D Chrome and editor | 6 chrome, 7a, 7b editor, 9 menu bar | C | Sidebar, right column, editor and menu bar match the mockup. |
+| E Contacts and Google | 8a, 8b, 8c, clean-up | D | Names from Contacts. Google RSVP and guests. Needs the OAuth client (Q1). |
+
 | # | Phase | Area (lane) | Needs | Size |
 |---|---|---|---|---|
 | 0 | Tooling: mockup shots, compare, v4 fixture | TOOLS | none | M |
@@ -278,6 +288,8 @@ Rules for every PR:
 - Update `design/LOCKED.md` so that it points to DECISIONS.md.
 
 ## 4. Parallel work (file ownership)
+The waves below still apply to agents that work at the same time. Their commits go into the PR of the table above.
+
 | Wave | Lanes that can run at the same time | Owned files |
 |---|---|---|
 | 1 | Phase 0 alone | `scripts/*`, `states.json`, `DemoDataV4.swift`, `LaunchOptions.swift` |
