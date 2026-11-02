@@ -46,14 +46,15 @@ struct FixtureV4Tests {
         #expect(wed.contains("Flat cleaning") && wed.contains("Club board meeting"))
         let cleaning = m.layout.timed[2].first { $0.event.title == "Flat cleaning" }!.event
         #expect(cleaning.status == .declined && m.fmt.timeRange(cleaning.start, cleaning.end).hasPrefix("18:00"))
-        // Club board meeting is not answered yet: it reads as accepted until Phase 2.
+        // Club board meeting is not answered yet.
         let board = m.layout.timed[2].first { $0.event.title == "Club board meeting" }!.event
-        #expect(board.status == .confirmed && board.isRecurring && board.conferencing.contains("oet-mzpa-wdr"))
+        #expect(board.status == .needsAction && board.myReply == .needsAction && board.isUnaccepted && board.isRecurring && board.conferencing.contains("oet-mzpa-wdr"))
     }
 
     @Test func flatDinnerCarriesTheMockupDetails() {
         let e = DemoDataV4.buildEvents().first { $0.id == "v4.wg" }!
-        #expect(e.colorHex == "#5FB97E" && e.participants == ["Sam Rivera", "Mara Hoffmann", "Jonas Weber", "Dion Kraft", "Sam Rivera"])
+        #expect(e.colorHex == "#5FB97E" && e.participants == ["Mara Hoffmann", "Jonas Weber", "Dion Kraft", "Sam Rivera"])
+        #expect(e.iAmOrganizer && e.myReply == .confirmed && e.attendees.count == 5 && e.attendees.last?.status == .needsAction)
         #expect(e.location == "Kitchen, 12 Harbour Street" && e.reminderMinutes == 10 && e.recurrence?.weekdays == [1])
     }
 

@@ -92,7 +92,7 @@ struct PanelNextCard: View {
             }
             .buttonStyle(.plain)
             .padding(.top, 6)
-            if !event.conferencing.isEmpty {
+            if !event.conferencing.isEmpty || CallLink.parse(event) != nil {
                 PanelFillButton(title: "Join", small: true, fullWidth: true) { model.joinCall(event) }.padding(.top, 10)
             }
         }

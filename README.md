@@ -37,7 +37,7 @@ Calendr reads calendars through EventKit, so anything macOS knows about shows up
 - **iCloud / Exchange / CalDAV**: same place.
 - **On My Mac**: calendars created locally in Calendar.app.
 
-Then launch Calendr and press "Allow access". Cmd R asks macOS to re-sync remote sources; edits are written back through the account (typing is debounced into one save; edits to a recurring event apply to that occurrence, deletes ask this / all). Read-only calendars (holidays, subscribed, shared read-only) show no edit affordances and cannot be dragged. Attendees are shown but cannot be edited: EventKit has no API to add them. Direct Google Calendar API access (OAuth) would allow attendee editing and Meet links; it is out of scope because it needs a provisioned client ID.
+Then launch Calendr and press "Allow access". Cmd R asks macOS to re-sync remote sources; edits are written back through the account (typing is debounced into one save; edits to a recurring event apply to that occurrence, deletes ask this / all). Read-only calendars (holidays, subscribed, shared read-only) show no edit affordances and cannot be dragged. Attendees are shown but cannot be edited: EventKit has no API to add them. Calendr reads the organizer, each guest's role and answer, and your own answer (an invitation you have not answered is "no reply", not accepted; your own events count as accepted), and reads and writes every alarm of an event as its reminders. The call link (Google Meet, Zoom, Teams and other known meeting hosts) comes from the event's URL, else from its notes (where Google writes its Meet block) or its location; a website link is not a call. Direct Google Calendar API access (OAuth) would allow attendee editing and Meet links; it is out of scope because it needs a provisioned client ID.
 
 ## Shortcuts
 
@@ -60,7 +60,7 @@ Mouse: click an empty slot to select it, drag on the grid to create (15 minute s
 ## How it is built
 
 ```
-Sources/CalendrKit   Foundation-only logic: models, week math (locale first weekday), overlap + all-day layout, go-to-date parser,
+Sources/CalendrKit   Foundation-only logic: models (attendees, replies, reminders, call links), week math (locale first weekday), overlap + all-day layout, go-to-date parser,
                      command registry + fuzzy filter, upcoming grouping, duration/recurrence text, search, shortcut
                      resolver, EventKit mapping decisions. Swift Testing tests in Tests/CalendrKitTests.
 Sources/Calendr      SwiftUI + AppKit shell. AppModel (@Observable @MainActor) owns state and caches layouts;

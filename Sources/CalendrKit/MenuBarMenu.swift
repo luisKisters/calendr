@@ -85,7 +85,7 @@ public enum MenuBarMenu {
     /// Builds the menu from the events around `now` (hidden calendars already left out). Declined events are left out.
     /// `canRespond` and `guestAddresses` are what `submenu` gets, so a row has a menu exactly when it has something in it.
     public static func build(events: [CalendarEvent], now: Date, fmt: Fmt, canRespond: Bool = false,
-                             guestAddresses: (CalendarEvent) -> [String] = { $0.participants.compactMap(guestAddress) },
+                             guestAddresses: (CalendarEvent) -> [String] = MenuBarMenu.guestAddresses,
                              colorHex: (CalendarEvent) -> String) -> MenuBarMenuModel {
         let math = fmt.math
         let today = math.startOfDay(now)
@@ -155,16 +155,12 @@ public enum MenuBarMenu {
         return out
     }
 
-    /// Hosts whose links are calls. Any other URL on an event (a website, a document) gets no Join.
-    static let callHosts = ["meet.google.com", "zoom.us", "zoomgov.com", "teams.microsoft.com", "teams.live.com", "webex.com",
-                            "whereby.com", "around.co", "facetime.apple.com", "meet.jit.si", "chime.aws", "gotomeeting.com",
-                            "meet.goto.com", "bluejeans.com", "meet.example.com"]
+    /// The event's call link (`CallLink`: conferencing, then the notes, then the location; known meeting hosts only).
+    public static func videoURL(_ e: CalendarEvent) -> URL? { CallLink.parse(e)?.url }
 
-    /// The event's call link, when it points at a known meeting host (subdomains included, like us02web.zoom.us).
-    public static func videoURL(_ e: CalendarEvent) -> URL? {
-        let s = e.conferencing.trimmingCharacters(in: .whitespaces)
-        guard !s.isEmpty, let url = URL(string: s.contains("://") ? s : "https://" + s), let host = url.host?.lowercased() else { return nil }
-        return callHosts.contains { host == $0 || host.hasSuffix("." + $0) } ? url : nil
+    /// The other guests' addresses (guests known only by name have none).
+    public static func guestAddresses(_ e: CalendarEvent) -> [String] {
+        e.attendees.filter { !$0.isMe }.compactMap { $0.email.isEmpty ? guestAddress($0.label) : $0.email }
     }
 
     /// "Sam Okafor <sam@example.com>" -> "Sam Okafor"

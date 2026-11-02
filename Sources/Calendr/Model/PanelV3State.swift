@@ -58,6 +58,7 @@ enum PanelText {
         case .confirmed: "Yes"
         case .tentative: "Maybe"
         case .declined: "No"
+        case .needsAction: "No reply"
         }
     }
     /// "Weekly on Tue", "Every weekday", "Every day"
@@ -174,7 +175,7 @@ extension AppModel {
         switch f {
         case .place: return !e.location.isEmpty || added
         case .guests: return !e.participants.isEmpty || added
-        case .video: return !e.conferencing.isEmpty || added
+        case .video: return !e.conferencing.isEmpty || CallLink.parse(e) != nil || added
         case .notes: return !e.notes.isEmpty || added
         }
     }
@@ -245,9 +246,13 @@ extension AppModel {
         }
     }
 
+    /// Opens the event's call: `CallLink` (the conferencing field, else a call link in the notes or the location), else
+    /// whatever web address the conferencing field holds.
     func joinCall(_ e: CalendarEvent) {
-        if options.isHeadless { showToast("Opens the call in your browser"); return }
         let link = e.conferencing.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let u = URL(string: link.contains("://") ? link : "https://" + link) { NSWorkspace.shared.open(u) }
+        let call = CallLink.parse(e)
+        guard let url = call?.url ?? (link.isEmpty ? nil : URL(string: link.contains("://") ? link : "https://" + link)) else { return }
+        if options.isHeadless { showToast("Opens \(call?.name ?? "the call") in your browser"); return }
+        NSWorkspace.shared.open(url)
     }
 }

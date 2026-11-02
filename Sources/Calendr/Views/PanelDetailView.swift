@@ -111,7 +111,7 @@ struct PanelDetailView: View {
             }
             if model.panelShows(.video, e) {
                 row(.video) {
-                    if e.conferencing.isEmpty {
+                    if e.conferencing.isEmpty && CallLink.parse(e) == nil {
                         if writable && model.canInventVideoLink {
                             PanelLineButton(title: "Create a video link") { model.createVideoLink() }
                         } else if writable {
@@ -121,7 +121,7 @@ struct PanelDetailView: View {
                     } else {
                         HStack(spacing: 10) {
                             Button { model.joinCall(e) } label: {
-                                Text(e.conferencing).font(.text).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
+                                Text(CallLink.parse(e)?.display ?? e.conferencing).font(.text).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
                                     .underline(color: Theme.fg.opacity(0.4))
                             }
                             .buttonStyle(.plain)
