@@ -137,4 +137,92 @@ struct ModelV4Tests {
         #expect(MenuBarMenu.videoURL(e)?.absoluteString == "https://meet.google.com/oet-mzpa-wdr")
         #expect(MenuBarMenu.guestAddresses(e) == ["o@example.com"])
     }
+
+    // MARK: Review fixes
+
+    @Test func myAnswerUsesOneMapping() {
+        func r(_ s: RawParticipantStatus?, tentative: Bool = false) -> ResponseStatus {
+            EventKitMapping.responseStatus(myStatus: s, eventTentative: tentative, eventCanceled: false)
+        }
+        #expect(r(.unknown) == .needsAction && r(.inProcess) == .needsAction && r(.pending) == .needsAction)
+        #expect(r(.delegated) == .declined && r(.completed) == .confirmed && r(.accepted) == .confirmed)
+        #expect(r(.accepted, tentative: true) == .tentative && r(nil, tentative: true) == .tentative && r(.declined, tentative: true) == .declined)
+        #expect(EventKitMapping.myAnswer(.delegated) == .declined && EventKitMapping.status(of: .delegated) == .confirmed)
+    }
+
+    @Test func organizerOfATentativeEventIsConfirmed() {
+        #expect(EventKitMapping.responseStatus(myStatus: nil, iAmOrganizer: true, eventTentative: true, eventCanceled: false) == .confirmed)
+    }
+
+    @Test func onlyEventKitsOrganizerIsTheOrganizerAndRoomsAreNoGuests() {
+        let raw = [RawParticipant(name: "Chair", email: "chair@example.com", role: .chair, status: .accepted),
+                   RawParticipant(name: "Room 4", email: "room4@example.com", status: .accepted, kind: .room),
+                   RawParticipant(name: "Projector", email: "proj@example.com", status: .accepted, kind: .resource),
+                   RawParticipant(name: "Me", email: "me@example.com", isCurrentUser: true, status: .delegated)]
+        let a = EventKitMapping.attendees(raw, organizer: nil)
+        #expect(a.map(\.label) == ["Chair", "Me"])
+        #expect(!a.contains { $0.isOrganizer })
+        #expect(a[1].isMe && a[1].status == .declined)
+    }
+
+    @Test func initPutsTheStatusIntoMyEntry() {
+        let e = ev(attendees: [Attendee(email: "o@example.com", isOrganizer: true), Attendee(email: "me@example.com", isMe: true, status: .confirmed)],
+                   status: .needsAction)
+        #expect(e.attendees[1].status == .needsAction)
+    }
+
+    @Test func removingOneOfTwoSameNameGuestsRemovesThatOne() {
+        var e = ev(attendees: [Attendee(email: "sam1@example.com", name: "Sam"), Attendee(email: "sam2@example.com", name: "Sam"),
+                               Attendee(email: "me@example.com", isMe: true)])
+        e.removeGuest(at: 0)
+        #expect(e.attendees.map(\.email) == ["sam2@example.com", "me@example.com"])
+        var f = ev(attendees: [Attendee(email: "sam1@example.com", name: "Sam"), Attendee(email: "sam2@example.com", name: "Sam")])
+        f.participants.removeLast()
+        #expect(f.attendees.map(\.email) == ["sam1@example.com"])
+        f.addGuest("Lea <lea@example.org>")
+        f.addGuest("   ")
+        #expect(f.participants == ["Sam", "Lea"] && f.attendees[1].status == .needsAction)
+        #expect(Attendee.parse("<>") == nil && Attendee.parse(" < > ") == nil && Attendee.parse("") == nil)
+        #expect(Attendee.parse("<a@example.com>")?.email == "a@example.com")
+    }
+
+    @Test func savingRemindersKeepsOtherAlarmsAndUnchangedOnes() {
+        let abs = RawAlarm(relativeOffset: 0, isAbsolute: true), after = RawAlarm(relativeOffset: 60), ten = RawAlarm(relativeOffset: -600)
+        #expect(EventKitMapping.reminders(alarms: [abs, after, ten]) == [10])
+        #expect(EventKitMapping.alarmChanges(existing: [abs, after, ten], reminders: [10]) == nil)
+        let c = EventKitMapping.alarmChanges(existing: [abs, after, ten], reminders: [60, 10])
+        #expect(c?.remove == [2] && c?.add == [-600, -3600])
+        // A sub-minute offset that already gives the reminder is not rewritten.
+        #expect(EventKitMapping.alarmChanges(existing: [RawAlarm(relativeOffset: -630)], reminders: [11]) == nil)
+        let cleared = EventKitMapping.alarmChanges(existing: [abs, ten], reminders: [])
+        #expect(cleared?.remove == [1] && cleared?.add == [])
+    }
+
+    @Test func meetCodeOnlyForTheMeetingCodeShape() {
+        #expect(CallLink.parse(conferencing: "https://meet.google.com/lookup/abcdef")?.code == nil)
+        #expect(CallLink.parse(conferencing: "https://meet.google.com/lookup/abcdef")?.kind == .meet)
+        #expect(CallLink.parse(conferencing: "meet.google.com/abcd-efgh-ijk")?.code == nil)
+        #expect(CallLink.parse(conferencing: "meet.google.com/abc-defg-hij")?.code == "abc-defg-hij")
+    }
+
+    @Test func strippingHandlesCRLFFencesOfTheUserAndKeepsOtherBlankLines() {
+        let crlf = ("Line one\n\n\nLine two\n\n" + Self.boiler("abc-defg-hij")).replacingOccurrences(of: "\n", with: "\r\n")
+        let (c, had) = CallLink.stripMeetBoilerplate(crlf)
+        #expect(had && c == "Line one\r\n\r\n\r\nLine two")
+        let fence = "-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-"
+        let mine = "\(fence)\nMy own divider\n\n" + Self.boiler("abc-defg-hij") + "\nAfter."
+        let (m, had2) = CallLink.stripMeetBoilerplate(mine)
+        #expect(had2 && m == "\(fence)\nMy own divider\n\nAfter.")
+    }
+
+    @Test func overnightEventsEndAtMidnightOfTheirDay() {
+        let day = d(2026, 9, 30)
+        let s = d(2026, 9, 30, 23), e = d(2026, 10, 1, 0, 30)
+        #expect(berlin.minutesOnDay(s, e, day: day) == (1380, 1440))
+        #expect(berlin.minutesOnDay(s, e, day: d(2026, 10, 1)) == (0, 30))
+        #expect(berlin.minutesOnDay(d(2026, 9, 29, 12), d(2026, 10, 2), day: day) == (0, 1440))
+        let it = V5Item(id: "x", start: s, end: e, day: day, math: berlin)
+        #expect(it.startMinute == 1380 && it.endMinute == 1440 && !it.isShort)
+        #expect(V5Item(id: "t", start: s, end: s, day: day, math: berlin).isShort)
+    }
 }

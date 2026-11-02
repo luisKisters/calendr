@@ -226,7 +226,7 @@ extension AppModel {
     func addGuest(_ name: String) {
         let v = name.trimmingCharacters(in: .whitespaces)
         guard !v.isEmpty else { return }
-        updateSelected { $0.participants.append(v) }
+        updateSelected { $0.addGuest(v) }
     }
 
     /// Only the demo store makes up a call link; real calendars take a pasted one (`setVideoLink`).
@@ -246,13 +246,19 @@ extension AppModel {
         }
     }
 
-    /// Opens the event's call: `CallLink` (the conferencing field, else a call link in the notes or the location), else
-    /// whatever web address the conferencing field holds.
+    /// Opens the event's call (`CallLink`: the conferencing field, else a call link in the notes or the location).
+    /// A website is no call: it gets no Join (`openConferencingLink`).
     func joinCall(_ e: CalendarEvent) {
+        guard let call = CallLink.parse(e) else { return }
+        if options.isHeadless { showToast("Opens \(call.name) in your browser"); return }
+        NSWorkspace.shared.open(call.url)
+    }
+
+    /// Opens the web address in the conferencing field that is not a call (a website, a document).
+    func openConferencingLink(_ e: CalendarEvent) {
         let link = e.conferencing.trimmingCharacters(in: .whitespacesAndNewlines)
-        let call = CallLink.parse(e)
-        guard let url = call?.url ?? (link.isEmpty ? nil : URL(string: link.contains("://") ? link : "https://" + link)) else { return }
-        if options.isHeadless { showToast("Opens \(call?.name ?? "the call") in your browser"); return }
+        guard !link.isEmpty, let url = URL(string: link.contains("://") ? link : "https://" + link) else { return }
+        if options.isHeadless { showToast("Opens the link in your browser"); return }
         NSWorkspace.shared.open(url)
     }
 }

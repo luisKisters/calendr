@@ -95,6 +95,7 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
         self.start = start; self.end = max(end, start); self.isAllDay = isAllDay
         self.status = status; self.location = location; self.notes = notes; self.recurrence = recurrence
         self.attendees = attendees ?? participants.compactMap { Attendee.parse($0) }
+        if let i = self.attendees.firstIndex(where: \.isMe) { self.attendees[i].status = status }
         self.conferencing = conferencing
         self.reminders = Self.normalized(reminders ?? reminderMinutes.map { [$0] } ?? [])
         self.availability = availability; self.visibility = visibility; self.timeZoneID = timeZoneID
@@ -114,17 +115,31 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
     }
 
     /// The other guests' labels (name, else address), my own entry left out. Until the editor works on `attendees`
-    /// (v4 Phase 7), setting it keeps the entries whose label is unchanged and adds typed ones as not answered.
+    /// (v4 Phase 7), setting it keeps the old entries in order wherever the labels still match one after the other, and adds
+    /// the others as not answered. To remove one of two guests with the same name, use `removeGuest(at:)`.
     public var participants: [String] {
         get { attendees.filter { !$0.isMe }.map(\.label) }
         set {
-            var pool = attendees.filter { !$0.isMe }
+            let old = attendees.filter { !$0.isMe }
+            var j = 0
             let kept: [Attendee] = newValue.compactMap { l in
-                if let i = pool.firstIndex(where: { $0.label == l }) { return pool.remove(at: i) }
+                if let k = old[j...].firstIndex(where: { $0.label == l }) { j = k + 1; return old[k] }
                 return Attendee.parse(l)
             }
             attendees = attendees.filter(\.isMe) + kept
         }
+    }
+
+    /// Removes the other guest at `index` of `participants`.
+    public mutating func removeGuest(at index: Int) {
+        let others = attendees.indices.filter { !attendees[$0].isMe }
+        guard others.indices.contains(index) else { return }
+        attendees.remove(at: others[index])
+    }
+
+    /// Adds a typed guest ("Name <address>", an address or a name) as not answered.
+    public mutating func addGuest(_ text: String) {
+        if let a = Attendee.parse(text) { attendees.append(a) }
     }
 
     /// The organizer's entry, when the guest list has one.

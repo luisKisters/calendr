@@ -94,14 +94,11 @@ enum WalkthroughV4 {
     static func b(_ d: Driver, _ m: AppModel) {
         d.section("No reply")
         d.check(m.viewMode == .week && m.math.day(m.now) == 4, "v4 fixture: the week of Sun 4 Oct")
-        d.play(0.4) {
-            m.gridState.scrollTarget = SnapshotV4.eveningScroll
-            m.gridState.scrollTick += 1
-        }
-        d.say("v4 data model: replies, guests, call links")
-        d.frame(hold: 1.2)
+        m.gridState.scrollTarget = SnapshotV4.eveningScroll
+        m.gridState.scrollTick += 1
+        d.settle(8)
         guard let board = Walkthrough.placed(m, "Club board meeting", day: 2) else { d.check(false, "Club board meeting is on Wednesday"); return }
-        d.say("An invitation Sam has not answered")
+        d.say("v4 data: an invitation Sam has not answered")
         d.clickGrid(Walkthrough.centerOf(d, board))
         guard let e = m.selectedEvent, e.title == "Club board meeting" else { d.check(false, "click selects Club board meeting"); return }
         d.check(e.status == .needsAction && e.myReply == .needsAction && e.isUnaccepted, "Club board meeting: myReply is needsAction")
@@ -132,23 +129,39 @@ enum WalkthroughV4 {
         d.hold(1.4)
 
         d.section("Menu bar")
+        d.play(0.5) { m.toast = nil }      // the Join toast above times out (the frozen clock keeps it otherwise)
         let backdrop = d.win.image(scale: 2).map { NSImage(cgImage: $0, size: NSSize(width: 1440, height: 900)) }
         let menu = m.menuBarMenu
         let f = m.fmt
         let clock = "\(f.weekdayShort(m.now)) \(m.math.day(m.now)) \(f.monthShort(m.now))  \(f.time(m.now))"
-        func screen(highlight: Int?, submenu: [MenuBarSubItem]?) -> AnyView {
-            AnyView(MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock, backdrop: backdrop, highlight: highlight, submenu: submenu, open: true))
+        func screen(highlight: Int?, submenu: [MenuBarSubItem]?, sub: Int? = nil) -> AnyView {
+            AnyView(MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock, backdrop: backdrop, highlight: highlight,
+                                         submenu: submenu, open: true, subHighlight: sub))
         }
         guard let i = menu.rows.firstIndex(where: { $0.title == "Flat dinner" }) else { d.check(false, "Flat dinner is in the menu"); return }
-        let sub = m.menuBarSubmenu(for: menu.rows[i].event)
+        let row = menu.rows[i].event
+        let sub = m.menuBarSubmenu(for: row)
+        guard let j = sub.firstIndex(where: { if case .join = $0 { true } else { false } }) else { d.check(false, "Flat dinner menu has Join call"); return }
+        d.check(sub[j] == .join(URL(string: "https://meet.google.com/cmv-hjhb-qgb")!), "Flat dinner menu: Join call to its Meet link")
         let bar = OffscreenWindow(screen(highlight: i, submenu: sub), size: CGSize(width: 1440, height: 900), chrome: false)
         bar.settle(6)
         d.source = bar
         d.say("The menu bar's Join call uses the same link")
         d.cursor = CGPoint(x: 1180, y: 32 + Double(MenuBarMenuPreview.rowTop(i, in: menu)) + 11)
-        d.frame()
-        d.check(sub.contains(.join(URL(string: "https://meet.google.com/cmv-hjhb-qgb")!)), "Flat dinner menu: Join call to its Meet link")
-        d.hold(2.0)
+        d.frame(hold: 0.6)
+        let joinY = Double(MenuBarScreenPreview.submenuItemTop(j, items: sub, row: i, in: menu))
+        d.moveCursor(to: CGPoint(x: 940, y: joinY), duration: 0.5)
+        bar.host.rootView = screen(highlight: i, submenu: sub, sub: j)
+        bar.settle(4)
+        d.refreshFrame()
+        d.hold(0.8)
+        d.say("Click Join call: Google Meet opens")
+        d.recordClick()
+        d.play(0.2) {}
+        d.source = d.win
+        d.play(0.4) { m.joinCall(row) }
+        d.check(m.toast?.text == "Opens Google Meet in your browser", "the menu's Join call opens Google Meet (\(m.toast?.text ?? "no toast"))")
+        d.hold(1.6)
 
         d.section("OverlapV5")
         let shot = OffscreenWindow(SnapshotV4Layout.view(m), size: CGSize(width: 1440, height: 900), dark: true, chrome: false)

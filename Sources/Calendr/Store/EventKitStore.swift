@@ -91,6 +91,8 @@ final class EventKitStore: CalendarStore {
         @unknown default: .local
         }
     }
+    nonisolated static func raw(_ a: EKAlarm) -> RawAlarm { RawAlarm(relativeOffset: a.relativeOffset, isAbsolute: a.absoluteDate != nil) }
+
     nonisolated static func raw(_ p: EKParticipant) -> RawParticipant {
         let mail = p.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
         let role: RawParticipantRole = switch p.participantRole {
@@ -100,7 +102,15 @@ final class EventKitStore: CalendarStore {
         case .nonParticipant: .nonParticipant
         default: .unknown
         }
-        return RawParticipant(name: p.name, email: mail.contains("@") ? mail : nil, isCurrentUser: p.isCurrentUser, role: role, status: map(p.participantStatus))
+        let kind: RawParticipantKind = switch p.participantType {
+        case .person: .person
+        case .room: .room
+        case .resource: .resource
+        case .group: .group
+        default: .unknown
+        }
+        return RawParticipant(name: p.name, email: mail.contains("@") ? mail : nil, isCurrentUser: p.isCurrentUser, role: role,
+                              status: map(p.participantStatus), kind: kind)
     }
 
     nonisolated static func map(_ s: EKParticipantStatus) -> RawParticipantStatus {
@@ -191,7 +201,7 @@ final class EventKitStore: CalendarStore {
             status: status,
             location: ev.location ?? "", notes: ev.notes ?? "", recurrence: ev.recurrenceRules?.first.flatMap(Self.convert),
             attendees: attendees, conferencing: ev.url?.absoluteString ?? "",
-            reminders: EventKitMapping.reminders(alarmOffsetSeconds: (ev.alarms ?? []).map(\.relativeOffset)),
+            reminders: EventKitMapping.reminders(alarms: (ev.alarms ?? []).map(Self.raw)),
             availability: ev.availability == .free ? .free : .busy, visibility: .standard,
             timeZoneID: ev.timeZone?.identifier ?? math.timeZone.identifier)
     }
@@ -252,7 +262,11 @@ final class EventKitStore: CalendarStore {
         if e.isAllDay { ek.timeZone = nil }      // all-day events are floating dates
         else if let tz = TimeZone(identifier: e.timeZoneID) { ek.timeZone = tz }
         if let cal = store.calendar(withIdentifier: e.calendarID), cal.allowsContentModifications, ek.calendar?.calendarIdentifier != cal.calendarIdentifier { ek.calendar = cal }
-        for a in ek.alarms ?? [] { ek.removeAlarm(a) }
-        for off in EventKitMapping.alarmOffsets(reminders: e.reminders) { ek.addAlarm(EKAlarm(relativeOffset: off)) }
+        // Only reminder alarms change, and only when the reminders did (absolute and after-start alarms stay).
+        let alarms = ek.alarms ?? []
+        if let change = EventKitMapping.alarmChanges(existing: alarms.map(Self.raw), reminders: e.reminders) {
+            for i in change.remove { ek.removeAlarm(alarms[i]) }
+            for off in change.add { ek.addAlarm(EKAlarm(relativeOffset: off)) }
+        }
     }
 }

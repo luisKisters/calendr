@@ -28,6 +28,7 @@ public struct Attendee: Hashable, Sendable {
         if let lt = t.firstIndex(of: "<"), let gt = t.lastIndex(of: ">"), lt < gt {
             let name = t[..<lt].trimmingCharacters(in: .whitespaces)
             let mail = t[t.index(after: lt)..<gt].trimmingCharacters(in: .whitespaces)
+            if name.isEmpty && mail.isEmpty { return nil }
             return Attendee(email: mail, name: name.isEmpty ? nil : name, status: status)
         }
         return t.contains("@") && !t.contains(" ") ? Attendee(email: t, status: status) : Attendee(email: "", name: t, status: status)

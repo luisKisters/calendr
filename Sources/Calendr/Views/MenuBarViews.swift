@@ -124,6 +124,13 @@ struct MenuBarMenuPreview: View {
 /// An event row's menu, drawn.
 struct MenuBarSubmenuPreview: View {
     let items: [MenuBarSubItem]
+    /// Index into `items` of the hovered entry.
+    var highlight: Int? = nil
+
+    /// Top of item `i` inside the submenu surface.
+    static func itemTop(_ i: Int, in items: [MenuBarSubItem]) -> CGFloat {
+        items.prefix(i).reduce(NativeMenu.padding) { $0 + ($1 == .separator ? NativeMenu.separatorHeight : NativeMenu.rowHeight) }
+    }
 
     static func height(_ items: [MenuBarSubItem]) -> CGFloat {
         items.reduce(2 * NativeMenu.padding) { $0 + ($1 == .separator ? NativeMenu.separatorHeight : NativeMenu.rowHeight) }
@@ -148,6 +155,7 @@ struct MenuBarSubmenuPreview: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 9).frame(height: NativeMenu.rowHeight)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: Radius.row).fill(highlight == i ? NativeMenu.highlight : .clear))
                 }
             }
         }
@@ -281,6 +289,15 @@ struct MenuBarScreenPreview: View {
     /// Row (index into `menu.rows`) whose menu is open.
     var submenu: [MenuBarSubItem]?
     var open = true
+    /// Hovered entry of the open row menu.
+    var subHighlight: Int? = nil
+
+    /// Screen point of the middle of submenu item `i` (the row menu opens to the left of the menu here, 1440 pt wide screen).
+    static func submenuItemTop(_ i: Int, items: [MenuBarSubItem], row: Int, in menu: MenuBarMenuModel) -> CGFloat {
+        let h = MenuBarSubmenuPreview.height(items)
+        let top = min(max(menuTop + MenuBarMenuPreview.rowTop(row, in: menu) - 5, menuTop), size.height - h - 8)
+        return top + MenuBarSubmenuPreview.itemTop(i, in: items) + NativeMenu.rowHeight / 2
+    }
 
     private static let size = CGSize(width: 1440, height: 900)
     private static let menuTop: CGFloat = 32
@@ -321,7 +338,7 @@ struct MenuBarScreenPreview: View {
             if let submenu, let hl = highlight {
                 let h = MenuBarSubmenuPreview.height(submenu)
                 let top = min(max(Self.menuTop + MenuBarMenuPreview.rowTop(hl, in: menu) - 5, Self.menuTop), Self.size.height - h - 8)
-                MenuBarSubmenuPreview(items: submenu)
+                MenuBarSubmenuPreview(items: submenu, highlight: subHighlight)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { submenuWidth = $0 }
                     .offset(x: subX, y: top)
             }

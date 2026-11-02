@@ -53,7 +53,7 @@ public struct CallLink: Equatable, Sendable {
         guard let kind = hosts.first(where: { host == $0.0 || host.hasSuffix("." + $0.0) })?.1 else { return nil }
         let parts = url.path.split(separator: "/").map(String.init)
         let code: String? = switch kind {
-        case .meet: parts.first { $0.range(of: #"^[a-z]{3,4}-[a-z]{3,4}-[a-z]{3,4}$"#, options: .regularExpression) != nil } ?? parts.first
+        case .meet: parts.first { $0.range(of: #"^[a-z]{3}-[a-z]{4}-[a-z]{3}$"#, options: .regularExpression) != nil }
         case .zoom: parts.firstIndex(of: "j").flatMap { $0 + 1 < parts.count ? parts[$0 + 1] : nil }
         default: nil
         }
@@ -70,30 +70,34 @@ public struct CallLink: Equatable, Sendable {
     }
 
     /// The Google Meet block Google writes into the notes (between two `-::~:~::~…::-` lines, mockup `BOILER`), removed.
-    /// `hadMeet` says whether a Meet block was there. The user's own text stays as written, without the blank lines around the block.
+    /// Only a pair of fence lines with a Meet link between them is a Meet block; other fence-like lines stay. The blank lines
+    /// around a removed block shrink to one (none at the start or the end); the rest of the user's text, its blank lines and
+    /// its line endings (LF or CRLF) stay as written. `hadMeet` says whether a block was removed.
     public static func stripMeetBoilerplate(_ notes: String) -> (notes: String, hadMeet: Bool) {
-        let lines = notes.components(separatedBy: "\n")
-        let isFence = { (l: String) in l.trimmingCharacters(in: .whitespaces).range(of: #"^-::~[:~]*::-$"#, options: .regularExpression) != nil }
+        let crlf = notes.contains("\r\n")
+        let lines = notes.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n").components(separatedBy: "\n")
+        func blank(_ l: String) -> Bool { l.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        func fence(_ l: String) -> Bool {
+            l.trimmingCharacters(in: .whitespacesAndNewlines).range(of: #"^-::~[:~]*::-$"#, options: .regularExpression) != nil
+        }
         var out: [String] = []
         var hadMeet = false
         var i = 0
         while i < lines.count {
-            if isFence(lines[i]), let close = lines[(i + 1)...].firstIndex(where: isFence) {
-                let block = lines[i...close].joined(separator: "\n")
-                if block.contains("meet.google.com") || block.contains("Google Meet") {
-                    hadMeet = true
-                    i = close + 1
-                    continue
-                }
+            // The next fence closes this one; the pair is a Meet block only when the lines between hold a Meet link.
+            if fence(lines[i]), let close = lines[(i + 1)...].firstIndex(where: fence),
+               lines[(i + 1)..<close].contains(where: { $0.contains("meet.google.com/") }) {
+                hadMeet = true
+                while let l = out.last, blank(l) { out.removeLast() }
+                i = close + 1
+                while i < lines.count, blank(lines[i]) { i += 1 }
+                if !out.isEmpty && i < lines.count { out.append("") }
+                continue
             }
             out.append(lines[i])
             i += 1
         }
         guard hadMeet else { return (notes, false) }
-        // Collapse the blank lines the block leaves behind and trim the ends.
-        var clean: [String] = []
-        for l in out where !(l.trimmingCharacters(in: .whitespaces).isEmpty && (clean.last?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)) { clean.append(l) }
-        while let l = clean.last, l.trimmingCharacters(in: .whitespaces).isEmpty { clean.removeLast() }
-        return (clean.joined(separator: "\n"), true)
+        return (out.joined(separator: crlf ? "\r\n" : "\n"), true)
     }
 }

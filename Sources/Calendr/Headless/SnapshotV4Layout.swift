@@ -31,9 +31,7 @@ enum SnapshotV4Layout {
         let math = m.math
         let wed = math.addDays(DemoDataV4.weekStart, 2)
         let events = m.store.events(in: DateInterval(start: wed, end: math.addDays(wed, 1))).filter { !$0.isAllDay && math.isSameDay($0.start, wed) }
-        let items = events.map {
-            V5Item(id: $0.id, startMinute: math.minutesSinceMidnight($0.start), endMinute: math.minutesSinceMidnight($0.end), isUnaccepted: $0.isUnaccepted)
-        }
+        let items = events.map { V5Item(id: $0.id, start: $0.start, end: $0.end, day: wed, math: math, isUnaccepted: $0.isUnaccepted) }
         return (events, items, OverlapV5.layout(items))
     }
 
@@ -43,8 +41,8 @@ enum SnapshotV4Layout {
         let math = m.math
         let byID = Dictionary(uniqueKeysWithValues: r.placements.map { ($0.id, $0) })
         let rows = events.filter { e in
-            let s = math.minutesSinceMidnight(e.start)
-            return s < to && max(math.minutesSinceMidnight(e.end), s + OverlapV5.shortSpan) > from
+            let (s, en) = math.minutesOnDay(e.start, e.end, day: e.start)
+            return s < to && max(en, s + OverlapV5.shortSpan) > from
         }.sorted { $0.start < $1.start }.map { Row(event: $0, place: byID[$0.id]) }
         let groups = r.groups.filter { $0.startMinute >= from && $0.startMinute < to }
         let stacks = groups.map { g in g.stackRows(dayEvents: items).compactMap { it in events.first { $0.id == it.id } } }

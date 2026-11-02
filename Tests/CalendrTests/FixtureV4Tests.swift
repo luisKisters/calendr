@@ -73,7 +73,7 @@ struct FixtureV4Tests {
         let math = DemoDataV4.math
         let wed = math.addDays(DemoDataV4.weekStart, 2)
         let items = DemoDataV4.buildEvents().filter { !$0.isAllDay && math.isSameDay($0.start, wed) }.map {
-            V5Item(id: $0.id, startMinute: math.minutesSinceMidnight($0.start), endMinute: math.minutesSinceMidnight($0.end), isUnaccepted: $0.isUnaccepted)
+            V5Item(id: $0.id, start: $0.start, end: $0.end, day: wed, math: math, isUnaccepted: $0.isUnaccepted)
         }
         let unaccepted = Set(items.filter(\.isUnaccepted).map(\.id))
         #expect(unaccepted == ["v4.w3", "v4.w5"])

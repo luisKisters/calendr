@@ -3,6 +3,13 @@ import Foundation
 // Overlap layout v5: a port of design/mockup-v4/index.html `layoutDay()` (:1083) with the locked picks
 // overlap "smart", unsure "right", more "stack" and short "block". Pure: minutes in, fractions of the day column out.
 // It does not know about `CalendarEvent`; the caller passes the two flags that matter (short, not accepted).
+//
+// One deliberate difference from the mockup: "+N" groups. The mockup groups overflow items in the order they overflow
+// (accepted blocks, then unaccepted, then short items) and joins an item to the first group with `item.start - group.start < 30`,
+// which also holds for an item that starts long *before* the group, so an early short item can join a later group.
+// Here the overflow items are sorted by start first, and an item joins the last group that started less than 30 minutes
+// before it. Placements are identical; only the grouping of hidden items can differ (OverlapV5Tests lists the golden days
+// where it does).
 
 /// One timed event of a day. Minutes since the start of the day; `endMinute` is the real end.
 public struct V5Item: Equatable, Sendable {
@@ -18,6 +25,14 @@ public struct V5Item: Equatable, Sendable {
         self.id = id; self.startMinute = startMinute; self.endMinute = max(endMinute, startMinute)
         self.isShort = isShort ?? (endMinute - startMinute <= OverlapV5.shortLimit)
         self.isUnaccepted = isUnaccepted
+    }
+
+    /// An event's minutes on `day`, clamped to the day: 23:00-00:30 gives 1380-1440, and a day it spans fully gives 0-1440.
+    /// Short or not follows the real length.
+    public init(id: String, start: Date, end: Date, day: Date, math: CalendarMath, isUnaccepted: Bool = false) {
+        let m = math.minutesOnDay(start, end, day: day)
+        self.init(id: id, startMinute: m.start, endMinute: m.end, isShort: end.timeIntervalSince(start) <= Double(OverlapV5.shortLimit) * 60,
+                  isUnaccepted: isUnaccepted)
     }
 
     /// The end the "+N" busy time uses: the real end, or 15 minutes for a zero-length item (mockup `evmore` `end`).
@@ -182,5 +197,16 @@ public enum OverlapV5 {
                         startMinute: w[i].s, endMinute: w[i].en)
         }
         return Result(placements: placements, groups: og)
+    }
+}
+
+extension CalendarMath {
+    /// Minutes since the start of `day` of the span start..<end, clamped to 0...1440 (the day's wall clock: an end on the next
+    /// day is 1440, not its minutes after midnight).
+    public func minutesOnDay(_ start: Date, _ end: Date, day: Date) -> (start: Int, end: Int) {
+        let d0 = startOfDay(day), d1 = addDays(d0, 1)
+        func m(_ t: Date) -> Int { t <= d0 ? 0 : t >= d1 ? 1440 : minutesSinceMidnight(t) }
+        let s = m(start)
+        return (s, max(s, m(end)))
     }
 }

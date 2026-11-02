@@ -124,10 +124,16 @@ struct OverlapV5Tests {
         var name: String; var items: [Item]; var placements: [Place]; var over: [String]; var groups: [Group]
     }
 
+    /// Golden days whose "+N" grouping differs from the mockup's on purpose (see the OverlapV5.swift header).
+    /// random-2 and random-6: same items, listed (and for random-6 started) in start order instead of overflow order.
+    /// random-11: the mockup puts r11-0 (9:05) and r11-9 (9:35) into the "+3" at 13:05; here they form their own group.
+    static let knownGroupDifferences = ["random-2", "random-6", "random-11"]
+
     @Test func matchesTheMockupGolden() throws {
         let url = try #require(Bundle.module.url(forResource: "layout-v4", withExtension: "json", subdirectory: "Fixtures"))
         let days = try JSONDecoder().decode([Golden].self, from: Data(contentsOf: url))
         #expect(days.count == 19)
+        var differing: [String] = []
         for day in days {
             let r = OverlapV5.layout(day.items.map { V5Item(id: $0.id, startMinute: $0.s, endMinute: $0.e, isUnaccepted: $0.un) })
             #expect(r.placements.map(\.id) == day.placements.map(\.id), "\(day.name): drawing order")
@@ -137,10 +143,13 @@ struct OverlapV5Tests {
                 #expect(same, "\(day.name) \(g.id): \(a) vs \(g)")
             }
             #expect(Set(r.groups.flatMap(\.ids)) == Set(day.over), "\(day.name): overflow")
-            if day.name.hasPrefix("fixture") {
-                #expect(r.groups.map(\.startMinute) == day.groups.map(\.s) && r.groups.map(\.ids) == day.groups.map(\.ids), "\(day.name): groups")
-            }
+            let same = r.groups.map(\.startMinute) == day.groups.map(\.s) && r.groups.map(\.ids) == day.groups.map(\.ids)
+            if !same { differing.append(day.name) }
         }
+        // The one deliberate difference (OverlapV5.swift header): overflow items are grouped in start order, the mockup groups them
+        // in overflow order and also joins an item to a group that starts after it. Every other golden day groups exactly alike.
+        print("OverlapV5 golden: groups differ on \(differing)")
+        #expect(differing == Self.knownGroupDifferences)
     }
 
     @Test func sixtyEventsADayLayOutUnderOneMillisecond() {
