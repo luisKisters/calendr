@@ -130,4 +130,77 @@ extension WalkthroughV4 {
         d.hold(0.4)
         d.endCaption()
     }
+
+    /// The menu bar menu (drawn as the preview screen, like the other tours): open it, the Join row with the Meet logo, hover and
+    /// click Join, then a Zoom event's head row with the Zoom logo.
+    static func d3(_ d: Driver, _ m: AppModel) {
+        let f = m.fmt
+        var backdrop: NSImage?
+        var bar: OffscreenWindow?
+        func clock() -> String { "\(f.weekdayShort(m.now)) \(m.math.day(m.now)) \(f.monthShort(m.now))  \(f.time(m.now))" }
+        func show(_ menu: MenuBarMenuModel, open: Bool, highlight: Int? = nil, join: Bool = false) {
+            let v = MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock(), backdrop: backdrop,
+                                         highlight: highlight, open: open, joinHover: join)
+            if let bar { bar.host.rootView = AnyView(v); bar.settle(4) } else {
+                let w = OffscreenWindow(AnyView(v), size: CGSize(width: 1440, height: 900), chrome: false)
+                w.settle(6)
+                bar = w
+                d.source = w
+            }
+            d.refreshFrame()
+        }
+        func snapBackdrop() { backdrop = d.win.image(scale: 2).map { NSImage(cgImage: $0, size: NSSize(width: 1440, height: 900)) } }
+        let item = CGPoint(x: 1130, y: 15)
+
+        d.section("Menu bar")
+        snapBackdrop()
+        var menu = m.menuBarMenu
+        guard let ji = menu.joinIndex, let jr = menu.joinRow else { d.check(false, "the menu has a Join row"); return }
+        d.check(jr.title == "Flat dinner" && jr.call?.kind == .meet && jr.logo == "meet", "Join row: Flat dinner, Google Meet logo")
+        d.cursor = CGPoint(x: 900, y: 300)
+        show(menu, open: false)
+        d.say("The menu bar calendar")
+        d.frame(hold: 0.8)
+        d.say("Click the item: the native menu opens")
+        d.moveCursor(to: item, duration: 0.5)
+        d.recordClick()
+        d.play(0.3) { show(menu, open: true) }
+        d.hold(0.8)
+        let rowY = 32 + Double(MenuBarMenuPreview.rowTop(ji, in: menu)) + Double(MenuJoinRow.height) / 2
+        d.say("One row gets Join with the call logo: the next call today")
+        d.moveCursor(to: CGPoint(x: 1150, y: rowY), duration: 0.5)
+        show(menu, open: true, highlight: ji)
+        d.hold(1.4)
+        d.say("Hover Join")
+        let joinP = CGPoint(x: 1309, y: rowY)
+        d.moveCursor(to: joinP, duration: 0.4)
+        show(menu, open: true, highlight: nil, join: true)
+        d.hold(1.0)
+        d.say("Click Join: Google Meet opens")
+        d.recordClick()
+        d.play(0.3) { show(menu, open: false) }
+        d.play(0.3) { m.joinCall(jr.event) }
+        d.check(m.toast?.text == "Opens Google Meet in your browser", "the menu's Join opens Google Meet (\(m.toast?.text ?? "no toast"))")
+        d.hold(1.2)
+        d.play(0.2) { m.toast = nil }
+
+        d.section("Zoom")
+        d.say("Thursday 17:20: Client call on Zoom is next")
+        let thu = m.math.addDays(m.math.startOfDay(m.now), -3)
+        d.play(0.3) { m.setNow(m.math.date(on: thu, minutes: 17 * 60 + 20)) }
+        snapBackdrop()
+        menu = m.menuBarMenu
+        guard menu.joinIndex == 0, let zr = menu.joinRow else { d.check(false, "the head row has Join at 17:20 (\(menu.head?.title ?? "none"))"); return }
+        d.check(zr.title == "Client call" && zr.call?.kind == .zoom && zr.logo == "zoom", "head row: Client call with the Zoom logo")
+        d.moveCursor(to: item, duration: 0.5)
+        d.recordClick()
+        d.play(0.3) { show(menu, open: true) }
+        d.hold(0.8)
+        let headY = 32 + Double(MenuBarMenuPreview.rowTop(0, in: menu)) + Double(MenuJoinRow.height) / 2
+        d.say("The head row: the countdown, Join with the Zoom logo")
+        d.moveCursor(to: CGPoint(x: 1309, y: headY), duration: 0.5)
+        show(menu, open: true, join: true)
+        d.hold(2.0)
+        d.endCaption()
+    }
 }

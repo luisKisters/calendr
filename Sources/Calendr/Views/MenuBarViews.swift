@@ -57,18 +57,26 @@ private enum NativeMenu {
 private enum MenuLine {
     case header(String, countdown: String?, soon: Bool)
     case row(Int)          // index into MenuBarMenuModel.rows
+    case join(Int)         // the row with the Join button (`MenuBarMenuModel.joinIndex`)
     case separator
 
-    var height: CGFloat { if case .separator = self { NativeMenu.separatorHeight } else { NativeMenu.rowHeight } }
+    var height: CGFloat {
+        switch self {
+        case .separator: NativeMenu.separatorHeight
+        case .join: MenuJoinRow.height
+        default: NativeMenu.rowHeight
+        }
+    }
 
     static func list(_ m: MenuBarMenuModel) -> [MenuLine] {
         var out: [MenuLine] = []
-        if let f = m.focus, m.head != nil { out += [.header(m.headLabel, countdown: f.text, soon: f.soon), .row(0)] } else { out.append(.header(m.headLabel, countdown: nil, soon: false)) }
+        func line(_ i: Int) -> MenuLine { i == m.joinIndex ? .join(i) : .row(i) }
+        if let f = m.focus, m.head != nil { out += [.header(m.headLabel, countdown: f.text, soon: f.soon), line(0)] } else { out.append(.header(m.headLabel, countdown: nil, soon: false)) }
         out.append(.separator)
         var i = m.head == nil ? 0 : 1
         for s in m.sections {
             out.append(.header(s.title, countdown: nil, soon: false))
-            for _ in s.rows { out.append(.row(i)); i += 1 }
+            for _ in s.rows { out.append(line(i)); i += 1 }
         }
         return out
     }
@@ -80,6 +88,8 @@ struct MenuBarMenuPreview: View {
     /// Highlighted row (index into `menu.rows`).
     var highlight: Int?
     var maxHeight: CGFloat = 846
+    /// The pointer is on the Join button of the Join row.
+    var joinHover = false
 
     static let footHeight = NativeMenu.separatorHeight * 2 + NativeMenu.rowHeight * 3
 
@@ -88,6 +98,7 @@ struct MenuBarMenuPreview: View {
         var y = NativeMenu.padding
         for l in MenuLine.list(m) {
             if case .row(let k) = l, k == i { return y }
+            if case .join(let k) = l, k == i { return y }
             y += l.height
         }
         return y
@@ -103,6 +114,9 @@ struct MenuBarMenuPreview: View {
                     switch lines[i] {
                     case .header(let t, let c, let soon): MenuHeaderLine(text: t, countdown: c, soon: soon)
                     case .row(let k): MenuEventRow(row: rows[k], highlighted: highlight == k)
+                    case .join(let k):
+                        MenuJoinRow(row: rows[k], detail: MenuJoinRow.detail(rows[k], focus: k == 0 && menu.head != nil ? menu.focus : nil),
+                                    highlighted: highlight == k, joinHover: joinHover)
                     case .separator: MenuSeparator()
                     }
                 }
@@ -291,6 +305,8 @@ struct MenuBarScreenPreview: View {
     var open = true
     /// Hovered entry of the open row menu.
     var subHighlight: Int? = nil
+    /// The pointer is on the Join button of the Join row.
+    var joinHover = false
 
     /// Screen point of the middle of submenu item `i` (the row menu opens to the left of the menu here, 1440 pt wide screen).
     static func submenuItemTop(_ i: Int, items: [MenuBarSubItem], row: Int, in menu: MenuBarMenuModel) -> CGFloat {
@@ -332,7 +348,7 @@ struct MenuBarScreenPreview: View {
         let right = x + menuWidth - 2
         let subX = right + submenuWidth < Self.size.width - 8 ? right : x - submenuWidth + 2
         return ZStack(alignment: .topLeading) {
-            MenuBarMenuPreview(menu: menu, highlight: highlight)
+            MenuBarMenuPreview(menu: menu, highlight: highlight, joinHover: joinHover)
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { menuWidth = $0 }
                 .offset(x: x, y: Self.menuTop)
             if let submenu, let hl = highlight {
@@ -397,6 +413,74 @@ struct MenuBarScreenPreview: View {
         .padding(.leading, 16).padding(.trailing, 10)
         .frame(width: Self.size.width, height: 30)
         .background(Color(red: 20 / 255, green: 18 / 255, blue: 28 / 255).opacity(0.42))
+    }
+}
+
+// MARK: The Join row (v4 Phase 9)
+
+/// The menu's Join row (design/mockup-v4 `.mbr` with `.mbjoin`): start time, the calendar bar, the title over its times or
+/// countdown, and Join (28 pt, radius 8, the act colour of the dark menu: white) with the call logo. In the real menu it is the
+/// view of one `NSMenuItem` (Q5: the native menu stays); highlighted like the native rows while the pointer is on it.
+struct MenuJoinRow: View {
+    static let height: CGFloat = 40
+    static let minWidth: CGFloat = 300
+    let row: MenuBarMenuModel.Row
+    /// "19:00–20:00", or the countdown of the head row ("in 20 min", "35 min left").
+    let detail: String
+    var highlighted = false
+    var joinHover = false
+    /// In the real menu the row tracks the pointer itself and runs the actions.
+    var interactive = false
+    var open: () -> Void = {}
+    var join: () -> Void = {}
+    @State private var hover = false
+    @State private var hoverJoin = false
+
+    static func detail(_ r: MenuBarMenuModel.Row, focus: MenuBarMenuModel.Focus?) -> String {
+        if let focus { return focus.text }
+        return r.end.map { "\(r.start)\u{2013}\($0)" } ?? r.start
+    }
+
+    var body: some View {
+        let hl = highlighted || (interactive && hover && !hoverJoin)
+        let onJoin = joinHover || hoverJoin
+        HStack(spacing: 8) {
+            Group {
+                if row.tentative && !hl { MenuBarStripes(color: Color(hex: row.colorHex)) } else { Rectangle().fill(hl ? .white : Color(hex: row.colorHex)) }
+            }
+            .frame(width: 3, height: 26).clipShape(RoundedRectangle(cornerRadius: Radius.bar))
+            Text(row.start).font(NativeMenu.font).monospacedDigit().foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.time)
+                .fixedSize().frame(width: MenuBarColumns.timeWidth, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(MenuBarColumns.truncate(row.title)).font(NativeMenu.font).lineLimit(1)
+                Text(detail).font(NativeMenu.small).monospacedDigit().foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.dim).lineLimit(1)
+            }
+            .fixedSize()
+            Spacer(minLength: 18)
+            if let call = row.call {
+                Button(action: join) {
+                    HStack(spacing: 6) {
+                        CallLogo(kind: call.kind, size: 13, glyphColor: .black)
+                        Text("Join").font(.system(size: 12, weight: .semibold)).foregroundStyle(.black)
+                    }
+                    .padding(.horizontal, 10).frame(height: Dim.row)
+                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(Color.white.opacity(onJoin ? 1 : 0.92)))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.white.opacity(onJoin ? 0.9 : 0), lineWidth: 1.5).padding(-2.5))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .onHover { hoverJoin = $0 }
+                .help("Join \(call.name)")
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 9).frame(height: Self.height)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Radius.row).fill(hl ? NativeMenu.highlight : .clear))
+        .padding(.horizontal, interactive ? NativeMenu.padding : 0)
+        .contentShape(Rectangle())
+        .onTapGesture { open() }
+        .onHover { hover = $0 }
     }
 }
 
