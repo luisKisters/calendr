@@ -9,3 +9,4 @@ dist/
 artifacts/*.sb-*
 artifacts/mockup-v3/
 artifacts/*.mov
+artifacts/snapshots/

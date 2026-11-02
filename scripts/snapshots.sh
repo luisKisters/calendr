@@ -9,13 +9,13 @@ BIN="$(swift build -c "$CONFIG" --show-bin-path)/Calendr"
 OUT=artifacts/snapshots
 mkdir -p "$OUT"
 fail=0
-while IFS=$'\t' read -r name state size; do
-  if ! "$BIN" --snapshot "$state" --out "$OUT/$name.png" --size "$size" >/dev/null; then echo "FAILED: $name"; fail=1; fi
+while IFS=$'\t' read -r name state size fixture; do
+  if ! "$BIN" --snapshot "$state" --fixture "$fixture" --out "$OUT/$name.png" --size "$size" >/dev/null; then echo "FAILED: $name"; fail=1; fi
 done < <(python3 - <<'PY'
 import json
 d = json.load(open("design/states.json"))
 for name, s in d["states"].items():
-    print(f"{name}\t{s.get('state', name)}\t{s.get('size', d['size'])}")
+    print(f"{name}\t{s.get('state', name)}\t{s.get('size', d['size'])}\t{s.get('fixture', 'v3')}")
 PY
 )
 [ $fail -eq 0 ] && echo "rendered $(ls "$OUT"/*.png | wc -l | tr -d ' ') snapshots into $OUT"
