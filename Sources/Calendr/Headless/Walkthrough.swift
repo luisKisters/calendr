@@ -19,7 +19,8 @@ enum Walkthrough {
         switch o.tour {
         case nil: tour(d, model)
         case "v4-a": WalkthroughV4.a(d, model)
-        case let t?: print("unknown tour \(t) (tours: v4-a)"); return 2
+        case "v4-b": WalkthroughV4.b(d, model)
+        case let t?: print("unknown tour \(t) (tours: v4-a, v4-b)"); return 2
         }
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }
