@@ -60,7 +60,7 @@ struct GridFixTests {
         let m = model()
         m.gridState.allDayFrame = CGRect(x: 300, y: 100, width: 700, height: 72)
         let a = m.dayListAnchor(GridDayList(day: DemoData.day(10, 3), period: m.periodID))!
-        #expect(a == CGRect(x: 300 + 5 * 100 + 1, y: 100 + 2 * AllDayView.row, width: 97, height: 21))
+        #expect(a == CGRect(x: 300 + 5 * 100 + 2, y: 100 + AllDayView.topPad + 2 * AllDayView.row, width: 95, height: AllDayView.chip))
         let size = CGSize(width: GridDayListPopover.width, height: 200)
         let below = GridDayListHost.origin(anchor: CGRect(x: 40, y: 50, width: 90, height: 21), size: size, in: CGSize(width: 900, height: 700))
         #expect(below == CGPoint(x: 40, y: 77))
@@ -134,11 +134,11 @@ struct GridFixTests {
         let m = model()
         let mon = m.layout.timed[0].first { $0.event.title == "Statistics" }!
         let thu = m.layout.timed[3].first { $0.event.title == "Statistics" }!
-        #expect(thu.placement.columns == 1)
+        #expect(thu.placement.width == 1)
         m.dragPreview = AppModel.DragPreview(kind: .move, eventID: mon.event.id, dayIndex: 3, startMinute: thu.startMinute, endMinute: thu.endMinute)
         let r = m.gridPreviewLayout()
-        #expect(r.preview?.placement.columns == 2 && r.preview?.dayIndex == 3)
-        #expect(r.events.first { $0.id == thu.id }?.placement.columns == 2)
+        #expect(r.preview?.placement.width == 0.5 && r.preview?.dayIndex == 3)   // same start: the two share the width (v5)
+        #expect(r.events.first { $0.id == thu.id }?.placement.width == 0.5)
         #expect(!r.events.contains { $0.event.id == mon.event.id })
         #expect(r.events.count == m.flatTimed.count - 1)
         m.dragPreview = nil

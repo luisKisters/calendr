@@ -20,6 +20,15 @@ struct GridV3State: Equatable {
     var draftMadeAt: TimeInterval = 0
     /// Gutter zoom in progress.
     var zoom: GutterZoom?
+    /// The open "+N" stack panel.
+    var stack: StackRef?
+    /// Window frame of the stack panel, published by the view (a press outside it closes it).
+    var stackFrame = CGRect.zero
+    /// The all-day section shows every lane (it scrolls past 4.5 lanes) instead of two lanes and "+N more".
+    var allDayExpanded = false
+    /// The expanded all-day section scrolls to `allDayScrollTarget` whenever `allDayScrollTick` changes.
+    var allDayScrollTarget: Double = 0
+    var allDayScrollTick = 0
     /// Pointer feedback lives in its own observable object, so hovering redraws only the views that show it.
     let pointer = GridPointer()
     let monthCache = MonthLayoutCache()
@@ -27,8 +36,15 @@ struct GridV3State: Equatable {
     static func == (a: GridV3State, b: GridV3State) -> Bool {
         a.fit == b.fit && a.viewportHeight == b.viewportHeight && a.scrollTarget == b.scrollTarget && a.scrollTick == b.scrollTick
             && a.dayList == b.dayList && a.allDayFrame == b.allDayFrame && a.monthFrame == b.monthFrame && a.draftMadeAt == b.draftMadeAt
-            && a.zoom == b.zoom && a.pointer === b.pointer && a.monthCache === b.monthCache
+            && a.zoom == b.zoom && a.stack == b.stack && a.stackFrame == b.stackFrame && a.allDayExpanded == b.allDayExpanded && a.allDayScrollTarget == b.allDayScrollTarget && a.allDayScrollTick == b.allDayScrollTick && a.pointer === b.pointer && a.monthCache === b.monthCache
     }
+}
+
+/// A "+N" group by its day and start, in the period it was opened in.
+struct StackRef: Equatable {
+    var period: String
+    var day: Int
+    var startMinute: Int
 }
 
 struct GridDayList: Equatable {
@@ -63,7 +79,15 @@ final class GridPointer {
     /// Snapped minute shown in the gutter pill (hover over empty grid, or the edge being dragged).
     var minute: Int?
     var hoveredEventID: String?
+    /// The "+N" button under the pointer (day, group index).
+    var hoveredMore: GridMoreRef?
+    /// The row of the "+N" stack under the pointer (event id).
+    var hoveredStackRow: String?
+    /// The day whose all-day "+N more" is under the pointer.
+    var hoveredAllDayMore: Int?
 }
+
+struct GridMoreRef: Equatable { var day: Int; var group: Int }
 
 extension AppModel {
     static let gridMinHourHeight = 20.0
@@ -164,6 +188,7 @@ extension AppModel {
     /// Esc during a drag (create, move, resize or gutter zoom) puts everything back, and Esc closes the day list.
     /// Returns false when there was nothing to undo or close.
     func gridCancelDrag() -> Bool {
+        if gridState.stack != nil { closeStack(); return true }
         if let z = gridState.zoom {
             gridState.zoom = nil
             if z.live != nil { reload() }
@@ -178,5 +203,43 @@ extension AppModel {
         dragPreview = nil
         gridState.pointer.minute = nil
         return true
+    }
+}
+
+// MARK: "+N" stack
+
+extension AppModel {
+    /// The open stack while it belongs to the period on screen, with its day's group.
+    var visibleStack: (ref: StackRef, group: OverflowGroup)? {
+        guard let s = gridState.stack, s.period == periodID, let g = layout.groups(day: s.day).first(where: { $0.startMinute == s.startMinute }) else { return nil }
+        return (s, g)
+    }
+
+    /// The rows of the open stack: every event of the busy time, in time order.
+    var stackRows: [PlacedEvent] {
+        guard let v = visibleStack else { return [] }
+        return layout.stackRows(day: v.ref.day, group: v.group)
+    }
+
+    /// A click on "+N": opens its stack over the day, or closes it when it is the open one.
+    func toggleStack(day: Int, group i: Int) {
+        let groups = layout.groups(day: day)
+        guard groups.indices.contains(i) else { return }
+        let ref = StackRef(period: periodID, day: day, startMinute: groups[i].startMinute)
+        if gridState.stack == ref { closeStack(); return }
+        gridState.dayList = nil
+        gridState.stack = ref
+    }
+
+    func closeStack() {
+        gridState.stack = nil
+        gridState.pointer.hoveredMore = nil
+        gridState.pointer.hoveredStackRow = nil
+    }
+
+    /// A row of the stack: select that event and close the stack.
+    func pickFromStack(_ id: String) {
+        closeStack()
+        select(eventID: id)
     }
 }

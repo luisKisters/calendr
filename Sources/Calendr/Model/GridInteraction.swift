@@ -18,22 +18,36 @@ struct GridGeometry: Equatable {
     func minute(atY y: Double) -> Double { min(1440, max(0, (y - Self.pad) / hourHeight * 60)) }
     func snapped(_ m: Double) -> Int { min(1440, max(0, Int((m / Double(Self.snap)).rounded()) * Self.snap)) }
 
-    /// A block inside its day column (`.ev` in app.css): 1 pt in from the column's hairline, 3 pt narrower than its share, at least 19 pt tall, 1 pt gap below.
-    func rect(day: Int, start: Int, end: Int, left: Double = 0, width: Double = 1) -> CGRect {
+    /// A block inside its day column (mockup-v4 `.ev`): `left` and `width` are fractions of the column inside its hairline, `indent`
+    /// points of cascade; 2 pt in from the left and 5 pt narrower than its share (`calc(left + 2px + px)`, `calc(width - 5px - px)`),
+    /// at least 19 pt tall, 1 pt gap below.
+    func rect(day: Int, start: Int, end: Int, left: Double = 0, width: Double = 1, indent: Double = 0) -> CGRect {
         let inner = dayWidth - 1
         let y0 = yPos(start), y1 = max(yPos(end), y0 + OverlapLayout.minHeight)
-        return CGRect(x: Double(day) * dayWidth + 2 + left * inner, y: y0, width: max(4, width * inner - 3), height: y1 - y0 - 1)
+        return CGRect(x: Double(day) * dayWidth + 2 + left * inner + indent, y: y0, width: max(4, width * inner - 5 - indent), height: y1 - y0 - 1)
     }
 
     func rect(for p: PlacedEvent) -> CGRect {
-        rect(day: p.dayIndex, start: p.startMinute, end: p.endMinute, left: p.placement.left, width: p.placement.width)
+        rect(day: p.dayIndex, start: p.startMinute, end: max(p.endMinute, p.placement.drawEndMinute ?? 0), left: p.placement.left,
+             width: p.placement.width, indent: p.placement.indent)
     }
+
+    /// The "+N" button of an overflow group (`.evmore`): 16 pt high, 3 pt from the column's right edge, 2 pt below the group start.
+    @MainActor
+    func moreRect(day: Int, group: OverflowGroup) -> CGRect {
+        let w = max(22, TextCache.line(Self.moreLabel(group), .moreChip).width + 10)
+        return CGRect(x: Double(day + 1) * dayWidth - 3 - w, y: yPos(group.startMinute) + 2, width: w, height: 16)
+    }
+
+    static func moreLabel(_ g: OverflowGroup) -> String { "+\(g.ids.count)" }
 }
 
 enum GridHit: Equatable {
     enum Edge { case top, bottom }
     case event(id: String, dayIndex: Int, startMinute: Int, endMinute: Int, edge: Edge?)
     case empty(dayIndex: Int, minute: Double)
+    /// The "+N" button of the `group`-th overflow group of a day.
+    case more(dayIndex: Int, group: Int)
 }
 
 struct GridPress {
@@ -52,8 +66,10 @@ extension AppModel {
         guard p.x >= 0, p.y >= 0, g.dayWidth > 0 else { return nil }
         let day = min(g.dayCount - 1, Int(p.x / g.dayWidth))
         guard day >= 0, day < layout.timed.count else { return nil }
+        // "+N" buttons sit above every block.
+        for (i, grp) in layout.groups(day: day).enumerated() where g.moreRect(day: day, group: grp).contains(p) { return .more(dayIndex: day, group: i) }
         // Paint order is ascending, so the topmost block is the last one that contains the point.
-        let order = layout.timed[day].sorted { paintRank($0) < paintRank($1) }
+        let order = layout.timed[day].filter { !$0.placement.hidden || $0.event.id == draftEventID }.sorted { paintRank($0) < paintRank($1) }
         for pe in order.reversed() {
             let r = gridGeometry.rect(for: pe)
             guard r.contains(p) else { continue }
@@ -67,7 +83,7 @@ extension AppModel {
     }
 
     /// The selected event and the draft paint above everything else.
-    func paintRank(_ p: PlacedEvent) -> Int { p.event.id == selectedEventID || p.event.id == draftEventID ? 100 : p.placement.z }
+    func paintRank(_ p: PlacedEvent) -> Int { p.event.id == selectedEventID || p.event.id == draftEventID ? 100_000 : p.placement.z }
 
     /// A press on empty grid closes the day list, dismisses the selection and settles the draft (kept when it has a title, dropped when not).
     @discardableResult
@@ -83,12 +99,16 @@ extension AppModel {
 
     func gridMouseDown(_ p: CGPoint, clickCount: Int = 1) {
         guard let hit = hitTest(p) else { return }
+        if case .more(let d, let i) = hit { toggleStack(day: d, group: i); return }
+        // A press outside an open "+N" stack only closes it (`PanelClickAway` does the same outside the grid).
+        if gridState.stack != nil { closeStack(); return }
         if case .event = hit { gridState.dayList = nil }
         let now = ProcessInfo.processInfo.systemUptime
         switch hit {
         case .event(let id, _, let s, _, _):
             if id == draftEventID { requestTitleFocus(); return }      // the block under construction hands the keyboard back to its field
             press = GridPress(hit: hit, origin: p, grabMinutes: gridGeometry.minute(atY: p.y) - Double(s), clickCount: clickCount)
+        case .more: return
         case .empty:
             if draftEventID != nil && now - gridState.draftMadeAt < 0.5 { requestTitleFocus(); return }
             press = GridPress(hit: hit, origin: p, grabMinutes: 0, clickCount: clickCount, dismissed: gridDismiss())
@@ -109,6 +129,7 @@ extension AppModel {
         let cur = g.snapped(m)
         let snap = GridGeometry.snap
         switch pr.hit {
+        case .more: return
         case .empty(let d0, let m0):
             // Anchored at the slot that was pressed; dragging upwards works too.
             let t0 = min(1440 - snap, Int(m0) / snap * snap)
@@ -143,6 +164,7 @@ extension AppModel {
                 let double = pr.clickCount >= 2 || (lastClick.map { now - $0.time < 0.42 && $0.id == id } ?? false)
                 select(eventID: id, focusTitle: double)
                 lastClick = double ? nil : (now, d, s, id)
+            case .more: return
             case .empty(let d, let m):
                 // A click only dismisses; the second click of a double-click creates an event at the half hour under the pointer.
                 let twice = !pr.dismissed && (pr.clickCount >= 2 || (lastClick.map { now - $0.time < 0.42 && $0.id == nil && $0.day == d && abs(Double($0.minute) - m) < 10 } ?? false))
@@ -201,8 +223,13 @@ extension AppModel {
             guard touched.contains(d) else { out += layout.timed[d]; continue }
             var day = layout.timed[d].filter { $0.event.id != moving }
             if d == pv.dayIndex { day.append(ghost) }
-            for p in RangeLayoutBuilder.pack(day, pointsPerHour: layout.pointsPerHour) {
-                if p.id == ghost.id { preview = p } else { out.append(p) }
+            for var p in RangeLayoutBuilder.pack(day) {
+                if p.id == ghost.id {
+                    // The block being dragged always shows, even where it would overflow into a "+N".
+                    if p.placement.hidden { p.placement = Placement(v5: V5Placement(id: p.id, left: 0.5, width: 0.5, indent: 0, level: 9, cut: true,
+                                                                                    startMinute: p.startMinute, endMinute: p.endMinute), order: 999) }
+                    preview = p
+                } else { out.append(p) }
             }
         }
         return (out, preview)
@@ -218,6 +245,6 @@ extension AppModel {
 
 extension GridHit {
     var dayIndex: Int {
-        switch self { case .event(_, let d, _, _, _): d; case .empty(let d, _): d }
+        switch self { case .event(_, let d, _, _, _): d; case .empty(let d, _): d; case .more(let d, _): d }
     }
 }

@@ -23,6 +23,8 @@ struct DayHeaderView: View {
             Canvas { ctx, size in
                 let ink = EventPainter.Ink.of(dark)
                 ctx.withCGContext { cg in
+                    // `.dh { border-bottom: 1px solid var(--hair) }`
+                    cg.setFillColor(ink.hair); cg.fill(CGRect(x: 0, y: size.height - 1, width: size.width, height: 1))
                     for (i, d) in days.enumerated() {
                         let x0 = gw + CGFloat(i) * colW
                         if hovered == i {
@@ -69,69 +71,112 @@ struct DayHeaderView: View {
     }
 }
 
-/// All-day lane: 23 pt rows of 21 pt chips (tint and bar). At most three rows: with more, the third becomes "n more" per day,
-/// unless the selected or new event sits there (`AppModel.allDayFold`). "n more" opens the day list.
+/// All-day section, the mockup-v4 "mix" (`allDay()` :1215): 18 pt chips in 21 pt lanes. Collapsed it shows two lanes and, per day,
+/// "+N more" in the third; the gutter's expand button (or "+N more") shows every lane, scrolling past 4.5 lanes, and collapse goes back.
 struct AllDayView: View {
-    static let row: CGFloat = 23
-    static let maxRows = 3
+    /// Chip height and lane pitch (`--adh` 18 + 3 pt gap).
+    static let chip: CGFloat = 18
+    static let row: CGFloat = 21
+    static let topPad: CGFloat = 4
+    static let bottomPad: CGFloat = 5
+    /// Lanes before "+N more": two lanes and the "+N more" row.
+    static let shownLanes = 2
+    static let maxRows = shownLanes + 1
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
-    @State private var hoverMore: Int?
+    @State private var hoverToggle = false
+    @State private var scroll = ScrollPosition(y: 0)
+
+    /// Height of `rows` grid rows (the content, without scrolling).
+    static func contentHeight(rows: Int) -> CGFloat { rows == 0 ? 0 : topPad + CGFloat(rows) * row - 3 + bottomPad }
+    /// The expanded section: min(lanes, 4.5) lanes and the padding; taller content scrolls.
+    static func expandedHeight(lanes: Int) -> CGFloat { min(CGFloat(lanes), 4.5) * row + 9 }
 
     var body: some View {
         let n = max(1, model.visibleDays.count)
         let all = model.layout.allDay
+        let expanded = model.gridState.allDayExpanded && all.laneCount > Self.shownLanes
         let fold = model.allDayFold
         let rows = fold.map { $0 + 1 } ?? all.laneCount
-        let height = rows == 0 ? 0 : CGFloat(rows) * Self.row + 3
+        let height = all.laneCount == 0 ? 0 : expanded ? Self.expandedHeight(lanes: all.laneCount) : Self.contentHeight(rows: rows)
         let dark = scheme == .dark
         HStack(spacing: 0) {
-            Text("all-day").font(.small).tracking(0.19).foregroundStyle(Theme.fg3)
-                .frame(width: Theme.gutterWidth - 10, height: 22, alignment: .trailing)
-                .padding(.trailing, 10)
-                .frame(maxHeight: .infinity, alignment: .top)
+            VStack(spacing: 2) {
+                if expanded || fold != nil {
+                    Button { model.toggleAllDayExpanded() } label: {
+                        AllDayToggleIcon(expand: !expanded).stroke(hoverToggle ? Theme.fg : Theme.fg2,
+                                                                     style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                            .frame(width: Dim.iconGlyphSmall, height: Dim.iconGlyphSmall)
+                            .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
+                            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hoverToggle ? Theme.hover : .clear))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { hoverToggle = $0 }
+                    .help(expanded ? "Collapse all-day section" : "Expand all-day section")
+                }
+                Text("all-day").font(.small).tracking(0.19).foregroundStyle(Theme.fg3)
+            }
+            .padding(.top, 5)
+            .frame(width: Theme.gutterWidth)
+            .frame(maxHeight: .infinity, alignment: .top)
             GeometryReader { geo in
                 let dw = geo.size.width / CGFloat(n)
-                let chips = all.placements.filter { fold == nil || $0.lane < fold! }
+                let content = Self.contentHeight(rows: expanded ? all.laneCount : rows)
+                let lanes = fold ?? Int.max
+                let chips = all.placements.filter { $0.lane < lanes }
                 let hidden = fold.map { all.collapsed(maxLanes: $0).hiddenPerDay } ?? []
-                let hovered = hoverMore
-                Canvas { ctx, _ in
+                let hovered = model.gridState.pointer.hoveredAllDayMore
+                let canvas = Canvas { ctx, size in
                     ctx.withCGContext { cg in
+                        let ink = EventPainter.Ink.of(dark)
+                        cg.setFillColor(ink.hair)
+                        for d in 0..<n { cg.fill(CGRect(x: CGFloat(d) * dw, y: 0, width: 1, height: size.height)) }
                         for p in chips {
                             guard let e = model.layout.allDayEvents[p.id] else { continue }
                             var s = model.style(for: e, dark: dark, now: model.now, selected: e.id == model.selectedEventID, overlapping: false)
                             s.isDark = dark
                             s.draft = e.id == model.draftEventID
-                            AllDayPainter.chip(cg, title: e.title, reply: s.reply, rect: chipRect(p, dw), style: s, openLeft: p.clippedLeft, openRight: p.clippedRight)
+                            AllDayPainter.chip(cg, title: e.title, reply: s.reply, rect: Self.chipRect(p, dw), style: s, openLeft: p.clippedLeft, openRight: p.clippedRight)
                         }
-                        let ink = EventPainter.Ink.of(dark)
                         for (d, count) in hidden.enumerated() where count > 0 {
-                            let r = moreRect(d, fold!, dw)
-                            if hovered == d { cg.addPath(EventPainter.roundedPath(r, Radius.event)); cg.setFillColor(ink.hover); cg.fillPath() }
-                            EventPainter.text(cg, "\(count) more", .more, x: r.minX + 10, top: r.minY, box: r.height, color: hovered == d ? ink.fg : ink.fg3)
+                            let r = Self.moreRect(d, fold!, dw)
+                            let hot = hovered == d
+                            if hot { cg.addPath(EventPainter.roundedPath(r, Radius.row)); cg.setFillColor(ink.hover); cg.fillPath() }
+                            EventPainter.text(cg, "+\(count) more", .more, x: r.minX + 10, top: r.minY, box: r.height, color: hot ? ink.fg : ink.fg2)
                         }
                     }
                 }
+                .frame(width: geo.size.width, height: max(content, geo.size.height))
                 .contentShape(Rectangle())
                 .onContinuousHover { phase in
                     var over: Int?
                     if case .active(let p) = phase, let f = fold {
                         let d = Int(p.x / dw)
-                        if hidden.indices.contains(d), hidden[d] > 0, moreRect(d, f, dw).contains(p) { over = d }
+                        if hidden.indices.contains(d), hidden[d] > 0, Self.moreRect(d, f, dw).contains(p) { over = d }
                     }
-                    if over != hoverMore { hoverMore = over }
+                    if over != model.gridState.pointer.hoveredAllDayMore { model.gridState.pointer.hoveredAllDayMore = over }
                 }
                 .gesture(SpatialTapGesture(count: 1).onEnded { v in
                     let p = v.location
-                    if let c = chips.last(where: { chipRect($0, dw).contains(p) }), let e = model.layout.allDayEvents[c.id] {
+                    if let c = chips.last(where: { Self.chipRect($0, dw).contains(p) }), let e = model.layout.allDayEvents[c.id] {
                         model.select(eventID: e.id, focusTitle: NSApp.currentEvent?.clickCount == 2)
-                    } else if let f = fold, hidden.indices.contains(Int(p.x / dw)), hidden[Int(p.x / dw)] > 0, moreRect(Int(p.x / dw), f, dw).contains(p) {
-                        model.openDayList(model.visibleDays[Int(p.x / dw)])
+                    } else if let f = fold, hidden.indices.contains(Int(p.x / dw)), hidden[Int(p.x / dw)] > 0, Self.moreRect(Int(p.x / dw), f, dw).contains(p) {
+                        model.toggleAllDayExpanded()
                     } else {
                         model.gridDismiss()
                     }
                 })
-                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { model.gridState.allDayFrame = $0 }
+                Group {
+                    if expanded {
+                        ScrollView(.vertical, showsIndicators: true) { canvas }.scrollPosition($scroll)
+                    } else {
+                        canvas
+                    }
+                }
+                    .onChange(of: expanded) { _, _ in scroll = ScrollPosition(y: 0) }
+                    .onChange(of: model.gridState.allDayScrollTick) { _, _ in scroll = ScrollPosition(y: model.gridState.allDayScrollTarget) }
+                    .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { model.gridState.allDayFrame = $0 }
             }
             .id(model.periodID)
             .transition(.periodSlide(model.navDirection))
@@ -141,13 +186,32 @@ struct AllDayView: View {
         .clipped()
     }
 
-    /// `.ad__more`: the day's slot in the fold row.
-    private func moreRect(_ d: Int, _ fold: Int, _ dw: CGFloat) -> CGRect {
-        CGRect(x: CGFloat(d) * dw + 1, y: CGFloat(fold) * Self.row, width: dw - 3, height: 21)
+    /// `.ad .more`: the day's slot in the third row.
+    static func moreRect(_ d: Int, _ fold: Int, _ dw: CGFloat) -> CGRect {
+        CGRect(x: CGFloat(d) * dw + 2, y: topPad + CGFloat(fold) * row, width: dw - 5, height: chip)
     }
 
-    private func chipRect(_ p: AllDayPlacement, _ dw: CGFloat) -> CGRect {
-        CGRect(x: CGFloat(p.firstDay) * dw + 1, y: CGFloat(p.lane) * Self.row, width: max(4, CGFloat(p.span) * dw - 3), height: 21)
+    /// `.adi`: margin 0 3 0 2 inside its grid columns.
+    static func chipRect(_ p: AllDayPlacement, _ dw: CGFloat) -> CGRect {
+        CGRect(x: CGFloat(p.firstDay) * dw + 2, y: topPad + CGFloat(p.lane) * row, width: max(4, CGFloat(p.span) * dw - 5), height: chip)
+    }
+}
+
+/// The mockup's `expand` (two chevrons apart) and `collapse` (two chevrons together) glyphs, 16 unit box.
+struct AllDayToggleIcon: Shape {
+    var expand: Bool
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let k = r.width / 16
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + x * k, y: r.minY + y * k) }
+        if expand {
+            p.move(to: pt(5, 6)); p.addLine(to: pt(8, 3)); p.addLine(to: pt(11, 6))
+            p.move(to: pt(5, 10)); p.addLine(to: pt(8, 13)); p.addLine(to: pt(11, 10))
+        } else {
+            p.move(to: pt(5, 3)); p.addLine(to: pt(8, 6)); p.addLine(to: pt(11, 3))
+            p.move(to: pt(5, 13)); p.addLine(to: pt(8, 10)); p.addLine(to: pt(11, 13))
+        }
+        return p
     }
 }
 
