@@ -6,7 +6,7 @@ import CalendrKit
 @MainActor
 enum AppContext {
     static let model: AppModel = {
-        let store: CalendarStore = launchOptions.demo ? DemoStore() : EventKitStore()
+        let store: CalendarStore = launchOptions.demo ? DemoStore(fixture: launchOptions.fixture) : EventKitStore()
         return AppModel(store: store, options: launchOptions)
     }()
 }

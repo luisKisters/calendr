@@ -112,22 +112,22 @@ struct GridDayListHost: View {
 struct GridDayListPopover: View {
     @Environment(AppModel.self) private var model
     static let width: CGFloat = 286
-    static let rowHeight: CGFloat = 30
-    static let headerHeight: CGFloat = 30
+    static let rowHeight: CGFloat = Dim.row
+    static let headerHeight: CGFloat = Dim.row
     let day: Date
     let events: [CalendarEvent]
 
-    static func height(rows: Int) -> CGFloat { min(420, 12 + headerHeight + CGFloat(rows) * rowHeight) }
+    static func height(rows: Int) -> CGFloat { min(420, 2 * Space.xs + headerHeight + CGFloat(rows) * rowHeight) }
 
     var body: some View {
         let fmt = model.fmt
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(fmt.weekdayLong(day)) \(model.math.day(day)) \(fmt.monthLong(day))").font(.ui(12.5, .semibold)).foregroundStyle(Theme.fg)
+                Text("\(fmt.weekdayLong(day)) \(model.math.day(day)) \(fmt.monthLong(day))").font(.textSemibold).foregroundStyle(Theme.fg)
                 Spacer(minLength: 8)
-                Text("\(events.count)").font(.calMono(11)).foregroundStyle(Theme.fg3)
+                Text("\(events.count)").font(.smallTab).foregroundStyle(Theme.fg3)
             }
-            .padding(.horizontal, 9)
+            .padding(.horizontal, Space.s)
             .frame(height: Self.headerHeight)
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
@@ -136,9 +136,9 @@ struct GridDayListPopover: View {
             }
             .scrollIndicators(.never)
         }
-        .padding(6)
+        .padding(Space.xs)
         .frame(width: Self.width, height: Self.height(rows: events.count), alignment: .top)
-        .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.bg1))
+        .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.pop))
         .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
         .popShadow()
     }
@@ -155,16 +155,16 @@ private struct GridDayListRow: View {
         let selected = model.selectedEventID == e.id
         Button { model.pickFromDayList(e.id) } label: {
             HStack(spacing: 8) {
-                Text(e.isAllDay ? "all day" : model.fmt.time(e.start)).font(.calMono(11)).foregroundStyle(Theme.fg2)
+                Text(e.isAllDay ? "all day" : model.fmt.time(e.start)).font(.smallTab).foregroundStyle(Theme.fg2)
                     .frame(width: 40, alignment: .leading)
-                RoundedRectangle(cornerRadius: 2).fill(Color(hex: model.hexColor(of: e))).frame(width: 3, height: 14)
-                Text(e.title.isEmpty ? "(No title)" : e.title).font(.ui(12.5)).foregroundStyle(past ? Theme.fg3 : Theme.fg)
+                RoundedRectangle(cornerRadius: Radius.bar).fill(Color(hex: model.hexColor(of: e))).frame(width: 3, height: 14)
+                Text(e.title.isEmpty ? "(No title)" : e.title).font(.text).foregroundStyle(past ? Theme.fg3 : Theme.fg)
                     .lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 9)
+            .padding(.horizontal, Space.s)
             .frame(height: GridDayListPopover.rowHeight)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected ? Theme.actWash : hover ? Theme.hover : .clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected || hover ? Theme.hover : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

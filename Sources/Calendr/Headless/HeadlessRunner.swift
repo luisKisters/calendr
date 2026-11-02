@@ -25,7 +25,7 @@ enum HeadlessRunner {
     }
 
     static func makeModel(_ o: LaunchOptions, dense: Bool = false) -> AppModel {
-        AppModel(store: DemoStore(dense: dense), options: o, persist: false)
+        AppModel(store: DemoStore(dense: dense, fixture: o.fixture), options: o, persist: false)
     }
 
     static func runSnapshot(_ state: String, _ o: LaunchOptions) -> Int32 {
