@@ -4,6 +4,10 @@
 // Each scene loads `index.html#<mockup>` in a fresh non-persistent web view, so the mockup starts from its LOCKED picks
 // (`&key=value` in `mockup` adds extra picks). The page reads the font from ../../Sources, so file access is granted to the repo root.
 // An optional `js` step runs after the fonts are ready (for example to open a popover: `document.querySelector('[data-pop=evmore]').click()`).
+//
+// Usage: swift scripts/render-mockup.swift --eval "<js expression>" [--scene <hash>]
+// Loads the mockup (scene `week` unless --scene), evaluates the expression in the page and prints its value (a string) to stdout,
+// for example `JSON.stringify(layoutDay(...))` to make a golden file for a ported algorithm. Nothing is written.
 import AppKit
 import WebKit
 
@@ -18,8 +22,11 @@ guard let data = try? Data(contentsOf: statesURL),
       let states = json["states"] as? [String: [String: Any]],
       let mockupDir = json["mockupDir"] as? String else { print("design/states.json needs mockupDir and states"); exit(2) }
 
-struct Job { var shot: String; var hash: String; var js: String? }
-let only = Set(CommandLine.arguments.dropFirst())
+struct Job { var shot: String; var hash: String; var js: String?; var eval: String? = nil }
+let args = Array(CommandLine.arguments.dropFirst())
+let evalExpr: String? = args.firstIndex(of: "--eval").flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
+let evalScene: String = args.firstIndex(of: "--scene").flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil } ?? "week"
+let only = evalExpr == nil ? Set(args) : []
 var seen = Set<String>()
 var jobs: [Job] = []
 for name in states.keys.sorted() {
@@ -28,6 +35,7 @@ for name in states.keys.sorted() {
     let shot = (s["shot"] as? String) ?? m.replacingOccurrences(of: "&", with: "-").replacingOccurrences(of: "=", with: "-")
     if seen.insert(shot).inserted { jobs.append(Job(shot: shot, hash: m, js: s["js"] as? String)) }
 }
+if let evalExpr { jobs = [Job(shot: "eval", hash: evalScene, js: nil, eval: evalExpr)] }
 if jobs.isEmpty { print("no mockup scenes to render"); exit(0) }
 
 let page = root.appendingPathComponent(mockupDir).appendingPathComponent("index.html")
@@ -79,6 +87,18 @@ final class Renderer: NSObject, WKNavigationDelegate {
 
     func loaded() {
         let job = jobs[0]
+        if let expr = job.eval {
+            web.callAsyncJavaScript(isolate + "\nawait document.fonts.ready;\nreturn String(\(expr));", arguments: [:], in: nil, in: .page) { result in
+                MainActor.assumeIsolated {
+                    switch result {
+                    case .success(let v): print(v as? String ?? "")
+                    case .failure(let e): FileHandle.standardError.write(Data("eval failed: \(e)\n".utf8)); self.failed += 1
+                    }
+                    self.done()
+                }
+            }
+            return
+        }
         let script = isolate + "\nawait document.fonts.ready;\n" + (job.js.map { "\($0);\n" } ?? "") +
             "await new Promise(r => setTimeout(r, 100));   // no requestAnimationFrame: the window is never on screen\nreturn document.querySelector('.desk') ? 'ok' : 'no desk';"
         web.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in

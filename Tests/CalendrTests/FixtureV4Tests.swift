@@ -68,4 +68,16 @@ struct FixtureV4Tests {
         #expect(all.count > 10)
         for a in all { #expect(ok(a), "\(a) is not a reserved example domain") }
     }
+
+    @Test func wednesdayEveningGivesOnePlusOneAt1815WithTheV5Layout() {
+        let math = DemoDataV4.math
+        let wed = math.addDays(DemoDataV4.weekStart, 2)
+        let items = DemoDataV4.buildEvents().filter { !$0.isAllDay && math.isSameDay($0.start, wed) }.map {
+            V5Item(id: $0.id, startMinute: math.minutesSinceMidnight($0.start), endMinute: math.minutesSinceMidnight($0.end), isUnaccepted: $0.isUnaccepted)
+        }
+        let unaccepted = Set(items.filter(\.isUnaccepted).map(\.id))
+        #expect(unaccepted == ["v4.w3", "v4.w5"])
+        let r = OverlapV5.layout(items)
+        #expect(r.groups == [OverflowGroup(startMinute: 18 * 60 + 15, ids: ["v4.c5"])])
+    }
 }
