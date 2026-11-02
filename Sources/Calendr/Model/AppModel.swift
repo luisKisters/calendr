@@ -62,7 +62,7 @@ final class AppModel {
     var overlay: Overlay? {
         didSet {
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
-            if oldValue == .command && overlay != .command { searchText = "" }
+            if oldValue == .command && overlay != .command { searchText = chromeState.columnQuery.trimmingCharacters(in: .whitespaces) }
             if overlay == nil && oldValue != nil {
                 // Submitting with Return re-focuses the field after the action returns, so resign now and again once the event is done.
                 resignTextFocus()
@@ -634,6 +634,7 @@ final class AppModel {
 
     /// Menu bar: open main window at that event.
     func open(event e: CalendarEvent) {
+        chromeState.columnQuery = ""
         searchText = ""
         openSearchResult(e)
         NSApp.activate(ignoringOtherApps: true)

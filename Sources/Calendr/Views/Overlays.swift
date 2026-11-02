@@ -9,7 +9,7 @@ extension AnyTransition {
     static var toast: AnyTransition { .offset(y: 10).combined(with: .opacity) }
 }
 
-/// Floating surfaces over the whole window: the command menu (top 168), the sheets (centred), all over the scrim.
+/// Floating surfaces over the whole window: the command menu (top 102, as in design/mockup-v4), the sheets (centred), all over the scrim.
 struct OverlayHost: View {
     @Environment(AppModel.self) private var model
 
@@ -19,7 +19,7 @@ struct OverlayHost: View {
             if let o = model.overlay {
                 Theme.scrim.ignoresSafeArea().onTapGesture { model.closeOverlay() }.transition(.opacity)
                 switch o {
-                case .command: CommandMenu().padding(.top, 168).transition(.palette)
+                case .command: CommandMenu().padding(.top, 102).transition(.palette)
                 case .shortcuts: ShortcutsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .settings: SettingsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .deleteRecurring(let id): DeleteRecurringDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)

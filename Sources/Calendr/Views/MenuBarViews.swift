@@ -399,3 +399,83 @@ struct MenuBarScreenPreview: View {
         .background(Color(red: 20 / 255, green: 18 / 255, blue: 28 / 255).opacity(0.42))
     }
 }
+
+// MARK: Call logos (design/mockup-v4 `meetLogo`, `zoomLogo`): brand art, so its colours stay here, not in Theme.
+
+/// The call's logo: Google Meet, Zoom, or a video glyph for any other host. `size` is the width; Meet is 22 x 18 in its box.
+struct CallLogo: View {
+    let kind: CallLink.Kind
+    var size: CGFloat = 16
+    var glyphColor: Color = .primary
+
+    static let meet: [(String, String)] = [
+        ("#00832d", "M12.4 9 14.5 11.4 17.4 13.2 17.9 9 17.4 4.9 14.6 6.5z"),
+        ("#0066da", "M0 12.8v3.6C0 17.3.7 18 1.6 18h3.6l.7-2.6-.7-2.6-2.5-.7z"),
+        ("#e94235", "M5.2 0 0 5.2l2.6.7 2.6-.7.8-2.4z"),
+        ("#2684fc", "M5.2 5.2H0v7.6h5.2z"),
+        ("#00ac47", "M20.9 2.2 17.4 4.9v8.3l3.5 2.7c.5.4 1.3 0 1.3-.7V2.9c0-.7-.8-1.1-1.3-.7zM12.4 9v3.8H5.2V18h10.6c.9 0 1.6-.7 1.6-1.6v-3.2z"),
+        ("#ffba00", "M15.8 0H5.2v5.2h7.2V9l5-4.1V1.6C17.4.7 16.7 0 15.8 0z"),
+    ]
+    static let zoomBlue = "#2D8CFF"
+    static let zoomCamera = "M3.5 5.5h5.2c.7 0 1.3.6 1.3 1.3v3.7H4.8c-.7 0-1.3-.6-1.3-1.3zM10.5 7.2l2-1.5v4.6l-2-1.5z"
+
+    var body: some View {
+        switch kind {
+        case .meet:
+            Canvas { ctx, sz in
+                let k = sz.width / 22
+                for (hex, d) in Self.meet { ctx.fill(SVGPath.parse(d).applying(CGAffineTransform(scaleX: k, y: k)), with: .color(Color(hex: hex))) }
+            }
+            .frame(width: size, height: size * 18 / 22)
+        case .zoom:
+            Canvas { ctx, sz in
+                let k = sz.width / 16
+                ctx.fill(Path(roundedRect: CGRect(origin: .zero, size: sz), cornerRadius: Radius.check * k), with: .color(Color(hex: Self.zoomBlue)))
+                ctx.fill(SVGPath.parse(Self.zoomCamera).applying(CGAffineTransform(scaleX: k, y: k)), with: .color(.white))
+            }
+            .frame(width: size, height: size)
+        case .teams, .other:
+            Image(systemName: "video.fill").font(.system(size: size * 0.7)).foregroundStyle(glyphColor).frame(width: size, height: size)
+        }
+    }
+}
+
+/// Just enough SVG path syntax for the logos: M L H V C Z, absolute and relative, with implicit repeats.
+enum SVGPath {
+    static func parse(_ d: String) -> Path {
+        var tokens: [String] = []
+        var num = ""
+        func flush() { if !num.isEmpty { tokens.append(num); num = "" } }
+        for ch in d {
+            if ch.isLetter { flush(); tokens.append(String(ch)) }
+            else if ch == "-" { flush(); num = "-" }
+            else if ch == "." { if num.contains(".") { flush() }; num.append(ch) }
+            else if ch.isNumber { num.append(ch) }
+            else { flush() }
+        }
+        flush()
+        var p = Path()
+        var i = 0, cmd: Character = "M"
+        var cur = CGPoint.zero, start = CGPoint.zero
+        func n() -> CGFloat { defer { i += 1 }; return CGFloat(Double(tokens[i]) ?? 0) }
+        while i < tokens.count {
+            if let c = tokens[i].first, c.isLetter { cmd = c; i += 1; if c == "z" || c == "Z" { p.closeSubpath(); cur = start; continue } }
+            guard i < tokens.count else { break }
+            let rel = cmd.isLowercase
+            let o = rel ? cur : .zero
+            switch cmd.uppercased() {
+            case "M":
+                let x = n(), y = n(); cur = CGPoint(x: o.x + x, y: o.y + y); start = cur; p.move(to: cur)
+                cmd = rel ? "l" : "L"
+            case "L": let x = n(), y = n(); cur = CGPoint(x: o.x + x, y: o.y + y); p.addLine(to: cur)
+            case "H": let x = n(); cur.x = (rel ? cur.x : 0) + x; p.addLine(to: cur)
+            case "V": let y = n(); cur.y = (rel ? cur.y : 0) + y; p.addLine(to: cur)
+            case "C":
+                let a = CGPoint(x: o.x + n(), y: o.y + n()), b = CGPoint(x: o.x + n(), y: o.y + n()), e = CGPoint(x: o.x + n(), y: o.y + n())
+                p.addCurve(to: e, control1: a, control2: b); cur = e
+            default: i += 1
+            }
+        }
+        return p
+    }
+}

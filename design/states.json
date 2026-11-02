@@ -81,6 +81,12 @@
       "shot": "allday-expanded",
       "js": "document.querySelector('.ad .tog').click()",
       "fixture": "v4"
+    },
+    "v4-search": {
+      "mockup": "week",
+      "shot": "search",
+      "js": "const i=document.querySelector('[data-f=search]'); i.value='walk'; i.dispatchEvent(new Event('input',{bubbles:true}))",
+      "fixture": "v4"
     }
   }
 }

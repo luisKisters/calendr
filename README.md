@@ -47,13 +47,15 @@ Single keys only fire when no text field is focused.
 |---|---|---|---|
 | `T` | Go to today | `C` | Create event at the next free half hour |
 | `J` or `Right` | Next period | `F` | Meet with... (stores that share availability) |
-| `K` or `Left` | Previous period | `/` or `Cmd F` | Search events |
+| `K` or `Left` | Previous period | `/` or `Cmd F` | Search events (the field on top of the right column) |
 | `.` | Go to date ("oct 12", "12.10.", "next friday", "2026-12-24") | `?` | All keyboard shortcuts |
 | `D` `W` `M` | Day / Week / Month | `Delete` | Delete selected event (recurring: this / all) |
 | `` ` `` or `Cmd \` | Toggle sidebar | `Esc` | Leave the field / deselect / close |
 | `Cmd K` | Command menu | `Cmd Z` | Undo create / move / resize / delete |
 | `Ctrl Cmd K` | Open the menu bar menu | `Cmd R` | Refresh calendars |
 | `Cmd 1` | Main window | `Cmd ,` | Settings |
+
+Search lives at the top of the right column: while it has text, the matches replace Today, grouped by day; Return opens the first one, Esc leaves the field, a second Esc (with nothing selected) clears it. Under Today the column lists a few useful shortcuts; each row runs its shortcut.
 
 Mouse: click an empty slot to select it, drag on the grid to create (15 minute snap), drag an event to move it across days, drag its bottom edge to resize, double-click to edit the title.
 

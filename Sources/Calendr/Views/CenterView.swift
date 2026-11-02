@@ -30,7 +30,8 @@ struct CenterView: View {
     }
 }
 
-/// Title left, controls right: "Sep – Oct 2026  W40  [with Maya ×]  ...  Day Week Month  ‹ Today ›  [Search ⌘K]".
+/// Title left (18 pt Instrument Sans), controls right: "Sep – Oct 2026  W40  [with Maya ×]  ...  [Day Week Month]  ‹ Today ›".
+/// v4: no search button; search is the right column's field (`/`, Command-F).
 struct ToolbarView: View {
     @Environment(AppModel.self) private var model
 
@@ -48,7 +49,6 @@ struct ToolbarView: View {
                 TodayButton()
                 IconButton(name: "chevron.right", help: "Next \(model.viewMode.title.lowercased())  J") { model.next() }
             }
-            SearchButton()
         }
         .padding(.leading, model.sidebarVisible ? 20 : ChromeDim.headerInsetNoSidebar).padding(.trailing, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -126,29 +126,6 @@ struct ViewTabs: View {
     var body: some View {
         Segmented(options: Self.modes.map { ($0.0, $0.1) }, selection: model.viewMode.baseMode,
                   helps: Self.modes.map { "\($0.1) view  \($0.2)" }) { model.setMode($0) }
-    }
-}
-
-/// Line button that opens the command menu: glyph, "Search", ⌘K.
-struct SearchButton: View {
-    @Environment(AppModel.self) private var model
-    @State private var hover = false
-    var body: some View {
-        Button { model.openPalette(.all) } label: {
-            HStack(spacing: Space.s) {
-                ChromeIcon(name: .search, color: Theme.fg2)
-                Text("Search").font(.text).foregroundStyle(Theme.fg2).padding(.trailing, Space.s)
-                Keycap(text: "\u{2318}K")
-            }
-            .padding(.horizontal, Space.s).frame(height: Dim.row)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.hover : .clear))
-            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.hair2, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
-        .help("Search, go to a date, run a command  \u{2318}K")
     }
 }
 

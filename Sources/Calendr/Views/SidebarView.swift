@@ -14,7 +14,6 @@ struct SidebarView: View {
             .padding(.horizontal, 12).frame(height: 56)
 
             MiniMonth().padding(.horizontal, 14)
-            Hairline().padding(.horizontal, 16).padding(.top, 14)
 
             if model.authState != .authorized {
                 SidebarSkeleton()
@@ -28,7 +27,7 @@ struct SidebarView: View {
         }
         .frame(width: ChromeDim.sidebarWidth)
         .background(Theme.bg)
-        .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair2).frame(width: 1) }
+        .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair).frame(width: 1) }
     }
 }
 
@@ -81,7 +80,7 @@ struct MiniMonth: View {
                 Button { model.miniMonth = math.startOfMonth(model.visibleStart) } label: {
                     (Text(verbatim: model.fmt.monthLong(month)).font(.textSemibold).foregroundColor(Theme.fg)
                      + Text(verbatim: " " + String(math.year(month))).font(.textTab).foregroundColor(Theme.fg3))
-                        .padding(.leading, 8).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                        .padding(.leading, 2).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).help("Back to the visible \(model.viewMode.title.lowercased())")
                 IconButton(name: "chevron.left", small: true) { model.stepMiniMonth(-1) }
@@ -274,25 +273,37 @@ struct CalendarList: View {
     }
 }
 
+/// `.acct`: the account's name without the domain ("sam.rivera"), 11.5 / 600 fg3 on the glyph line; on hover the domain follows in fg3.
 struct AccountSection: View {
     @Environment(AppModel.self) private var model
     let account: CalendarAccount
     @State private var hover = false
     var body: some View {
+        let hot = hover || HoverProbe.shared.target == "acct:\(account.id)"
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(MicroLabel.sentence(model.shortName(of: account))).font(.small).foregroundStyle(Theme.fg3)
-                Text(account.name.split(separator: "@").last.map(String.init) ?? "").font(.small).foregroundStyle(Theme.fg3)
-                    .lineLimit(1).truncationMode(.tail).opacity(hover ? 1 : 0)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text(AccountName.display(account.name)).font(.smallSemibold).foregroundStyle(Theme.fg3)
+                Text(account.name.split(separator: "@", maxSplits: 1).dropFirst().first.map { "@" + $0 } ?? "").font(.small).foregroundStyle(Theme.fg3)
+                    .lineLimit(1).truncationMode(.tail).opacity(hot ? 1 : 0)
+                Spacer(minLength: 0)
             }
             .lineLimit(1)
-            .padding(.leading, 17).padding(.trailing, 16).padding(.top, 14).padding(.bottom, 4)
+            .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset).frame(height: 22)
+            .padding(.top, Space.l).padding(.bottom, Space.xs)
+            .contentShape(Rectangle())
+            .onHover { hover = $0 }
             .help(account.name)
             ForEach(account.calendars) { CalendarRow(cal: $0) }
         }
-        .onHover { hover = $0 }
-        .animation(Motion.base, value: hover)
+        .animation(Motion.base, value: hot)
     }
+}
+
+/// Sidebar columns (DECISIONS round 2): leading glyphs at 16, text at 40, trailing buttons end at 220.
+enum SidebarDim {
+    static let glyph: CGFloat = 16
+    static let text: CGFloat = 40
+    static let trailingInset: CGFloat = ChromeDim.sidebarWidth - 220
 }
 
 /// 14 pt rounded checkbox in the calendar colour: filled with a dark check when shown, an fg3 outline when hidden.
@@ -317,46 +328,48 @@ struct CalendarRow: View {
     @State private var hover = false
     var body: some View {
         let off = model.hiddenCalendars.contains(cal.id)
+        let hot = hover || HoverProbe.shared.target == "cal:\(cal.id)"
         Button { model.toggleCalendar(cal.id) } label: {
-            HStack(spacing: 10) {
-                CalendarCheckbox(color: Palettes.cc(cal.colorHex, dark: scheme == .dark).color, on: !off).padding(.leading, -2)
+            HStack(spacing: SidebarDim.text - SidebarDim.glyph - 14) {
+                CalendarCheckbox(color: Palettes.cc(cal.colorHex, dark: scheme == .dark).color, on: !off)
                 Text(cal.title).font(.text).foregroundStyle(off ? Theme.fg3 : Theme.fg).lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
-                if cal.icon == .feed { SFIcon(name: "dot.radiowaves.up.forward", size: 9.5, color: Theme.fg3).opacity(hover ? 1 : 0) }
-                if cal.isDefault { Text("default").font(.small).foregroundStyle(Theme.fg3) }
+                if cal.icon == .feed { SFIcon(name: "dot.radiowaves.up.forward", size: 9.5, color: Theme.fg3).opacity(hot ? 1 : 0) }
+                if cal.isDefault { Text("default").font(.small).foregroundStyle(Theme.fg3).opacity(hot ? 1 : 0) }
             }
-            .padding(.leading, 17).padding(.trailing, 12)
-            .frame(height: 28)
-            .background(hover ? Theme.hover : Color.clear)
+            .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset)
+            .frame(height: Dim.row)
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hover : Color.clear).padding(.horizontal, Space.s))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
+        .animation(Motion.fast, value: hot)
         .help("\(off ? "Show" : "Hide") \(cal.title)\(cal.icon == .feed ? " (read-only feed)" : "")")
     }
 }
 
-/// 40 pt foot row: gear, "Settings", ⌘, on hover.
+/// `.side .foot`: 28 pt, gear on the glyph line, "Settings" on the text line, the ⌘ , hint in grey at the trailing edge.
 struct SidebarFoot: View {
     @Environment(AppModel.self) private var model
     @State private var hover = false
     var body: some View {
+        let hot = hover || HoverProbe.shared.target == "settings"
         Button { model.overlay = .settings } label: {
-            HStack(spacing: 9) {
-                SFIcon(name: "gearshape", size: 12.5, color: Theme.fg3)
-                Text("Settings").font(.text).foregroundStyle(hover ? Theme.fg : Theme.fg2)
+            HStack(spacing: 0) {
+                SFIcon(name: "gearshape", size: 10.5, color: hot ? Theme.fg : Theme.fg3).frame(width: 14)
+                Text("Settings").font(.text).foregroundStyle(hot ? Theme.fg : Theme.fg2).padding(.leading, SidebarDim.text - SidebarDim.glyph - 14)
                 Spacer(minLength: 0)
-                Keycaps(keys: ["\u{2318}", ","]).opacity(hover ? 1 : 0)
+                Keycaps(keys: ["\u{2318}", ","])
             }
-            .padding(.leading, 16).padding(.trailing, 12).frame(height: 40)
-            .background(hover ? Theme.hover : Color.clear)
-            .overlay(alignment: .top) { Hairline() }
+            .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset).frame(height: Dim.row)
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hover : Color.clear).padding(.horizontal, Space.s))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
+        .animation(Motion.fast, value: hot)
+        .padding(.vertical, 6)
         .help("Settings  \u{2318},")
     }
 }

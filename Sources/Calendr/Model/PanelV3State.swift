@@ -36,8 +36,11 @@ struct PanelToday: Equatable {
         // Today's events, and one that started before today and still runs.
         let list = events.filter { !$0.isAllDay && $0.status != .declined && (math.isSameDay($0.start, now) || $0.start <= now && $0.end > now) }
             .sorted { $0.start != $1.start ? $0.start < $1.start : $0.end < $1.end }
+        // The cards skip short items (15 min or less: reminders, tasks), as the mockup's `todayCol` does; they stay in Later.
+        let short = { (e: CalendarEvent) in e.end.timeIntervalSince(e.start) <= 15 * 60 }
         let rest = list.filter { $0.start > now }
-        return PanelToday(live: list.first { $0.start <= now && $0.end > now }, next: rest.first, later: Array(rest.dropFirst()))
+        let next = rest.first { !short($0) }
+        return PanelToday(live: list.first { !short($0) && $0.start <= now && $0.end > now }, next: next, later: rest.filter { $0 != next })
     }
 }
 

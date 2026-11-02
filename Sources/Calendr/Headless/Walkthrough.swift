@@ -24,7 +24,9 @@ enum Walkthrough {
         case "v4-c-2": WalkthroughV4.c2(d, model)
         case "v4-c-3": WalkthroughV4.c3(d, model)
         case "v4-c-4": WalkthroughV4.c4(d, model)
-        case let t?: print("unknown tour \(t) (tours: v4-a, v4-b, v4-c-1 ... v4-c-4)"); return 2
+        case "v4-d-1": WalkthroughV4.d1(d, model)
+        case "v4-d-2": WalkthroughV4.d2(d, model)
+        case let t?: print("unknown tour \(t) (tours: v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-3)"); return 2
         }
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }
@@ -185,9 +187,9 @@ enum Walkthrough {
         d.hold(0.6)
         d.say("Search events", keys: ["/"])
         d.play(0.4) { d.key("/") }
-        d.check(m.overlay == .command && m.chromeState.paletteMode == .search, "/ opens event search")
+        d.check(m.overlay == nil && m.chromeState.searchFocused, "/ focuses the right column's search field")
         d.type("calc")
-        d.check(m.paletteRows.contains { if case .event = $0.kind { return true }; return false }, "search finds events")
+        d.check(m.chromeState.columnQuery == "calc" && m.columnResults.contains { $0.events.contains { $0.title == "Calculus" } }, "search finds Calculus")
         d.hold(0.6)
         d.say("Return opens the first result", keys: ["\u{21A9}"])
         d.play(0.7) { d.special("return") }
@@ -195,6 +197,8 @@ enum Walkthrough {
         d.hold(1.0)
         d.play(0.4) { d.special("esc") }
         d.check(m.selectedEventID == nil, "Esc closes the detail")
+        d.play(0.4) { d.special("esc") }
+        d.check(!m.columnSearching, "Esc again clears the search")
         d.say("Meet with overlays a teammate", keys: ["F"])
         d.play(0.4) { d.key("f") }
         d.check(m.overlay == .command && m.chromeState.paletteMode == .meet, "F opens Meet with")
