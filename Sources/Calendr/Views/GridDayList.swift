@@ -123,9 +123,9 @@ struct GridDayListPopover: View {
         let fmt = model.fmt
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(fmt.weekdayLong(day)) \(model.math.day(day)) \(fmt.monthLong(day))").font(.ui(12.5, .semibold)).foregroundStyle(Theme.fg)
+                Text("\(fmt.weekdayLong(day)) \(model.math.day(day)) \(fmt.monthLong(day))").font(.textSemibold).foregroundStyle(Theme.fg)
                 Spacer(minLength: 8)
-                Text("\(events.count)").font(.calMono(11)).foregroundStyle(Theme.fg3)
+                Text("\(events.count)").font(.smallTab).foregroundStyle(Theme.fg3)
             }
             .padding(.horizontal, 9)
             .frame(height: Self.headerHeight)
@@ -155,10 +155,10 @@ private struct GridDayListRow: View {
         let selected = model.selectedEventID == e.id
         Button { model.pickFromDayList(e.id) } label: {
             HStack(spacing: 8) {
-                Text(e.isAllDay ? "all day" : model.fmt.time(e.start)).font(.calMono(11)).foregroundStyle(Theme.fg2)
+                Text(e.isAllDay ? "all day" : model.fmt.time(e.start)).font(.smallTab).foregroundStyle(Theme.fg2)
                     .frame(width: 40, alignment: .leading)
-                RoundedRectangle(cornerRadius: 2).fill(Color(hex: model.hexColor(of: e))).frame(width: 3, height: 14)
-                Text(e.title.isEmpty ? "(No title)" : e.title).font(.ui(12.5)).foregroundStyle(past ? Theme.fg3 : Theme.fg)
+                RoundedRectangle(cornerRadius: Radius.bar).fill(Color(hex: model.hexColor(of: e))).frame(width: 3, height: 14)
+                Text(e.title.isEmpty ? "(No title)" : e.title).font(.text).foregroundStyle(past ? Theme.fg3 : Theme.fg)
                     .lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
             }

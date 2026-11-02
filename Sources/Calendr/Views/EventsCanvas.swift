@@ -34,7 +34,7 @@ struct EventsCanvas: View {
                 }
                 if let p = preview {
                     if creating {
-                        var s = EventStyle(palette: Palettes.palette(barHex: "#888888", fillHex: nil, dark: dark), past: false, selected: false, overlapping: false)
+                        var s = EventStyle(palette: Palettes.palette(barHex: InkRGB.neutralHex, fillHex: nil, dark: dark), past: false, selected: false, overlapping: false)
                         s.draft = true; s.isDark = dark
                         EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: s, fmt: fmt, dayView: dayView)
                     } else {
@@ -62,25 +62,26 @@ enum TextCache {
     private static var lines: [Key: (CTLine, CGFloat, CGFloat, CGFloat)] = [:]   // line, width, ascent, descent
 
     static func font(_ k: Kind) -> CTFont {
-        func f(_ size: CGFloat, _ w: Int, _ tab: Bool = false) -> CTFont { Typeface.ctFont(size, weight: w, tabular: tab) }
+        // SF Pro throughout (v4); sizes are the type tokens.
+        func f(_ size: CGFloat, _ w: Int, _ tab: Bool = false) -> CTFont { SF.ctFont(size, weight: w, tabular: tab) }
         switch k {
-        case .title: return f(11.5, 600)
-        case .titleMedium: return f(11.5, 500)
-        case .time: return f(10.5, 400, true)
-        case .hour: return f(10.5, 400, true)
-        case .hourBold: return f(10.5, 600, true)
-        case .header: return f(12.5, 400)
-        case .headerToday: return f(12.5, 600)
-        case .headerNum: return f(12.5, 600, true)
-        case .headerNumToday: return f(12.5, 650, true)
-        case .headerPast: return f(12.5, 450, true)
-        case .allDayLabel: return f(9.5, 400)
-        case .more: return f(11, 400, true)
-        case .monthTitle: return f(11.5, 400)
-        case .monthNum: return f(12, 500, true)
-        case .monthNumToday: return f(12, 650, true)
-        case .micro: return f(10.5, 600)
-        case .dayNum: return f(12, 500, true)
+        case .title: return f(TypeSize.event, 500)
+        case .titleMedium: return f(TypeSize.event, 500)
+        case .time: return f(TypeSize.eventTime, 400, true)
+        case .hour: return f(TypeSize.eventTime, 400, true)
+        case .hourBold: return f(TypeSize.eventTime, 600, true)
+        case .header: return f(TypeSize.small, 400)
+        case .headerToday: return f(TypeSize.small, 600)
+        case .headerNum: return f(TypeSize.small, 600, true)
+        case .headerNumToday: return f(TypeSize.small, 600, true)
+        case .headerPast: return f(TypeSize.small, 400, true)
+        case .allDayLabel: return f(TypeSize.eventTime, 400)
+        case .more: return f(TypeSize.small, 400, true)
+        case .monthTitle: return f(TypeSize.small, 400)
+        case .monthNum: return f(TypeSize.small, 500, true)
+        case .monthNumToday: return f(TypeSize.small, 600, true)
+        case .micro: return f(TypeSize.small, 600)
+        case .dayNum: return f(TypeSize.small, 500, true)
         }
     }
 
@@ -216,7 +217,7 @@ enum EventPainter {
         return p
     }
 
-    /// CoreGraphics forms of the ink tokens for the current appearance (values as in `Theme`).
+    /// CoreGraphics forms of the ink tokens for the current appearance (from `InkRGB`, like `Theme`).
     struct Ink {
         let dark: Bool
         let bg, bg1, bg2, bg3, fg, fg2, fg3, act, onAct, actWash, ring, hair, hair2, hover, live, pastTitle, liftShadow: CGColor
@@ -226,18 +227,18 @@ enum EventPainter {
         var hazeDim: CGColor { fg3 }
         private init(build dark: Bool) {
             self.dark = dark
-            func c(_ d: String, _ l: String) -> CGColor { RGB(hex: dark ? d : l).cg }
-            fg = c("#EDECF1", "#1B1A20"); fg2 = c("#A19FAC", "#5C5A65"); fg3 = c("#6D6B78", "#918E99")
-            bg = c("#0E0E11", "#FBFAF6"); bg1 = c("#15151A", "#F5F3ED"); bg2 = c("#1E1E24", "#ECE9E1"); bg3 = c("#2B2B33", "#DFDBD1")
+            let t = InkRGB.of(dark)
+            fg = t.fg.cg; fg2 = t.fg2.cg; fg3 = t.fg3.cg
+            bg = t.bg.cg; bg1 = t.bg1.cg; bg2 = t.bg2.cg; bg3 = t.bg3.cg
             act = fg; onAct = bg
             actWash = fg.copy(alpha: 0.09) ?? fg
             ring = fg.copy(alpha: 0.82) ?? fg
-            hair2 = fg.copy(alpha: dark ? 0.13 : 0.15) ?? fg
-            hair = fg.copy(alpha: dark ? 0.065 : 0.075) ?? fg
-            hover = fg.copy(alpha: dark ? 0.055 : 0.05) ?? fg
-            live = c("#FF453A", "#E5342A")
+            hair2 = fg.copy(alpha: t.hair2Alpha) ?? fg
+            hair = fg.copy(alpha: t.hairAlpha) ?? fg
+            hover = fg.copy(alpha: t.hoverAlpha) ?? fg
+            live = t.live.cg
             // `.is-past .ev__t`: fg2 78 percent over the window colour.
-            pastTitle = RGB(hex: dark ? "#A19FAC" : "#5C5A65").mixed(with: RGB(hex: dark ? "#0E0E11" : "#FBFAF6"), 0.22).cg
+            pastTitle = t.fg2.mixed(with: t.bg, 0.22).cg
             liftShadow = dark ? CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.45) : CGColor(srgbRed: 40 / 255, green: 34 / 255, blue: 20 / 255, alpha: 0.16)
         }
         private static let darkInk = Ink(build: true)

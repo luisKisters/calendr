@@ -1,6 +1,6 @@
 # Calendr
 
-A native macOS SwiftUI calendar. It keeps what makes Notion Calendar good (dense week grid, keyboard-first command menu, menu bar list) and has its own identity (design v3, locked in `design/LOCKED.md`, specified by `design/mockup-v3/`): an ink ramp with no accent colour (selection and today are inverted ink), `live` red only for now, and Instrument Sans (bundled, tabular figures for every time) throughout. The only other colours are your calendars'. Week, day and month views; a 320 pt right panel that is always present and swaps between today (now, up next, later), the selected event and a new event; an hour scale that fits the week's events and zooms from the gutter; overlapping events that cascade; a command menu for commands, events and dates; undo pills; teammate overlays; a real `NSStatusItem` with a native `NSMenu` in the menu bar; and two stores: your real Google / iCloud / local calendars through EventKit, or fictional demo data. Tasks are an ordinary calendar: its entries are plain events, titles as they arrive.
+A native macOS SwiftUI calendar. It keeps what makes Notion Calendar good (dense week grid, keyboard-first command menu, menu bar list) and has its own identity (design v4, locked in `design/mockup-v4/DECISIONS.md`, specified by `design/mockup-v4/`; it builds on v3 in `design/LOCKED.md`): OLED black surfaces with an ink ramp and no accent colour (selection and today are inverted ink), Paper as the light theme, `live` red only for now, SF Pro for text and events (tabular figures for every time) and the bundled Instrument Sans only for 18 pt titles. The only other colours are your calendars'. Week, day and month views; a 320 pt right panel that is always present and swaps between today (now, up next, later), the selected event and a new event; an hour scale that fits the week's events and zooms from the gutter; overlapping events that cascade; a command menu for commands, events and dates; undo pills; teammate overlays; a real `NSStatusItem` with a native `NSMenu` in the menu bar; and two stores: your real Google / iCloud / local calendars through EventKit, or fictional demo data. Tasks are an ordinary calendar: its entries are plain events, titles as they arrive.
 
 Time format (12 or 24 hour) and the first day of the week follow System Settings > General > Language & Region. Demo mode pins 24-hour time and a Monday week start so snapshots are deterministic.
 
@@ -67,8 +67,8 @@ Sources/Calendr      SwiftUI + AppKit shell. AppModel (@Observable @MainActor) o
                      views are thin bindings. Stores/ has CalendarStore, EventKitStore, DemoStore.
   Views/             Sidebar, header, grid, right panel, command menu, settings, menu bar. The event grid, the hour lines,
                      the day header row and the mini calendar are Canvas/CoreGraphics; the menu bar is an NSStatusItem with
-                     an NSMenu; everything else is native SwiftUI. Theme.swift holds the v3 tokens, Typeface.swift the
-                     bundled Instrument Sans (Resources/Fonts).
+                     an NSMenu; everything else is native SwiftUI. Theme.swift holds the v4 tokens (InkRGB, Dim, Space, Radius), Typeface.swift the type tokens (SF Pro, and the
+                     bundled Instrument Sans for titles, Resources/Fonts).
   Headless/          --snapshot, --walkthrough, --perf drivers (offscreen window, video writer).
 Tests/CalendrTests   App-level tests (model, gestures entry points, demo data vs the reference screenshot).
 design/              LOCKED.md (the v3 decisions) and mockup-v3 (the specification), DESIGN.md (v2, superseded),

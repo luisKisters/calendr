@@ -37,9 +37,9 @@ struct SidebarSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach([132, 96, 118], id: \.self) { w in
-                RoundedRectangle(cornerRadius: 5).fill(Theme.hair).frame(width: CGFloat(w), height: 10).padding(.bottom, 9)
+                RoundedRectangle(cornerRadius: Radius.row).fill(Theme.hair).frame(width: CGFloat(w), height: 10).padding(.bottom, 9)
             }
-            Text("Your calendars appear here once Calendr can read them.").font(.ui(12)).foregroundStyle(Theme.fg2).lineSpacing(3).padding(.top, 4)
+            Text("Your calendars appear here once Calendr can read them.").font(.text).foregroundStyle(Theme.fg2).lineSpacing(3).padding(.top, 4)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -79,8 +79,8 @@ struct MiniMonth: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Button { model.miniMonth = math.startOfMonth(model.visibleStart) } label: {
-                    (Text(verbatim: model.fmt.monthLong(month)).font(.ui(12.5, .semibold)).foregroundColor(Theme.fg)
-                     + Text(verbatim: " " + String(math.year(month))).font(.calMono(12.5)).foregroundColor(Theme.fg3))
+                    (Text(verbatim: model.fmt.monthLong(month)).font(.textSemibold).foregroundColor(Theme.fg)
+                     + Text(verbatim: " " + String(math.year(month))).font(.textTab).foregroundColor(Theme.fg3))
                         .padding(.leading, 8).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).help("Back to the visible \(model.viewMode.title.lowercased())")
@@ -93,7 +93,7 @@ struct MiniMonth: View {
                 if weeks { Color.clear.frame(width: 24) }
                 ForEach(0..<7, id: \.self) { i in
                     Text(String(Fmt.weekdayShort[(first - 1 + i) % 7].prefix(1)))
-                        .font(.ui(10, .medium)).foregroundStyle(Theme.fg3).frame(maxWidth: .infinity)
+                        .font(.small).foregroundStyle(Theme.fg3).frame(maxWidth: .infinity)
                 }
             }
             .frame(height: 22)
@@ -125,7 +125,7 @@ struct MiniMonth: View {
                                 .help(model.chromeDay(d, long: true))
                         }
                     }
-                    .background(RoundedRectangle(cornerRadius: 8).fill(band.map { math.isSameDay($0, week[0]) } == true ? Theme.actWash : .clear))
+                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(band.map { math.isSameDay($0, week[0]) } == true ? Theme.actWash : .clear))
                     .frame(height: visible ? Self.cell : 0, alignment: .top)
                     .opacity(visible ? 1 : 0)
                     .allowsHitTesting(visible)
@@ -234,7 +234,7 @@ private struct MiniMonthNumerals: View, Equatable, Animatable {
     }
 
     private func numeral(_ n: Int, today: Bool, color: Color) -> some View {
-        Text(verbatim: String(n)).font(.calMono(11.5, today ? .semibold : .regular)).foregroundStyle(color).frame(width: 22, height: 22)
+        Text(verbatim: String(n)).font((today ? .smallTabSemibold : .smallTab)).foregroundStyle(color).frame(width: 22, height: 22)
     }
 }
 
@@ -250,10 +250,10 @@ private struct MiniWeekNumber: View, Equatable {
 
     var body: some View {
         Button(action: action) {
-            Text(verbatim: String(number)).font(.calMono(9.5))
+            Text(verbatim: String(number)).font(.tinyTab)
                 .foregroundStyle(hovered ? Theme.fg : Theme.fg3)
                 .frame(width: 24, height: MiniMonth.cell)
-                .background(RoundedRectangle(cornerRadius: 6).fill(hovered ? Theme.hover : .clear))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hovered ? Theme.hover : .clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -281,8 +281,8 @@ struct AccountSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(model.shortName(of: account).uppercased()).font(.ui(10.5, .semibold)).tracking(0.53).foregroundStyle(Theme.fg3)
-                Text(account.name.split(separator: "@").last.map(String.init) ?? "").font(.ui(10.5)).foregroundStyle(Theme.fg3)
+                Text(MicroLabel.sentence(model.shortName(of: account))).font(.small).foregroundStyle(Theme.fg3)
+                Text(account.name.split(separator: "@").last.map(String.init) ?? "").font(.small).foregroundStyle(Theme.fg3)
                     .lineLimit(1).truncationMode(.tail).opacity(hover ? 1 : 0)
             }
             .lineLimit(1)
@@ -301,9 +301,9 @@ struct CalendarCheckbox: View {
     let on: Bool
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 4).fill(on ? color : Color.clear)
-            RoundedRectangle(cornerRadius: 4).strokeBorder(on ? Color.clear : Theme.fg3, lineWidth: 1.5)
-            Image(systemName: "checkmark").font(.system(size: 7.5, weight: .bold)).foregroundStyle(Color.dyn("#121216", "#15151A")).opacity(on ? 1 : 0)
+            RoundedRectangle(cornerRadius: Radius.check).fill(on ? color : Color.clear)
+            RoundedRectangle(cornerRadius: Radius.check).strokeBorder(on ? Color.clear : Theme.fg3, lineWidth: 1.5)
+            Image(systemName: "checkmark").font(.system(size: 7.5, weight: .bold)).foregroundStyle(Theme.tick).opacity(on ? 1 : 0)
         }
         .frame(width: 14, height: 14)
         .animation(Motion.base, value: on)
@@ -320,10 +320,10 @@ struct CalendarRow: View {
         Button { model.toggleCalendar(cal.id) } label: {
             HStack(spacing: 10) {
                 CalendarCheckbox(color: Palettes.cc(cal.colorHex, dark: scheme == .dark).color, on: !off).padding(.leading, -2)
-                Text(cal.title).font(.ui(12.5)).foregroundStyle(off ? Theme.fg3 : Theme.fg).lineLimit(1).truncationMode(.tail)
+                Text(cal.title).font(.text).foregroundStyle(off ? Theme.fg3 : Theme.fg).lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
                 if cal.icon == .feed { SFIcon(name: "dot.radiowaves.up.forward", size: 9.5, color: Theme.fg3).opacity(hover ? 1 : 0) }
-                if cal.isDefault { Text("default").font(.ui(10.5)).foregroundStyle(Theme.fg3) }
+                if cal.isDefault { Text("default").font(.small).foregroundStyle(Theme.fg3) }
             }
             .padding(.leading, 17).padding(.trailing, 12)
             .frame(height: 28)
@@ -345,7 +345,7 @@ struct SidebarFoot: View {
         Button { model.overlay = .settings } label: {
             HStack(spacing: 9) {
                 SFIcon(name: "gearshape", size: 12.5, color: Theme.fg3)
-                Text("Settings").font(.ui(12.5)).foregroundStyle(hover ? Theme.fg : Theme.fg2)
+                Text("Settings").font(.text).foregroundStyle(hover ? Theme.fg : Theme.fg2)
                 Spacer(minLength: 0)
                 Keycaps(keys: ["\u{2318}", ","]).opacity(hover ? 1 : 0)
             }

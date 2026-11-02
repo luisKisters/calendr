@@ -190,7 +190,7 @@ private struct MenuEventRow: View {
             Group {
                 if row.tentative && !hl { MenuBarStripes(color: Color(hex: row.colorHex)) } else { Rectangle().fill(hl ? .white : Color(hex: row.colorHex)) }
             }
-            .frame(width: 3, height: 14).clipShape(RoundedRectangle(cornerRadius: 1.5))
+            .frame(width: 3, height: 14).clipShape(RoundedRectangle(cornerRadius: Radius.bar))
             Text(row.start).font(NativeMenu.font).monospacedDigit().foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.time)
                 .fixedSize().frame(width: MenuBarColumns.timeWidth, alignment: .leading)
             Text(MenuBarColumns.truncate(row.title)).font(NativeMenu.font).lineLimit(1).fixedSize()
@@ -209,7 +209,7 @@ private struct MenuEventRow: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 9).frame(height: NativeMenu.rowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 5).fill(hl ? NativeMenu.highlight : .clear))
+        .background(RoundedRectangle(cornerRadius: Radius.nativeRow).fill(hl ? NativeMenu.highlight : .clear))
     }
 }
 
@@ -240,9 +240,9 @@ private struct MenuBarStripes: View {
 
 private extension View {
     func menuSurface() -> some View {
-        background(RoundedRectangle(cornerRadius: 10).fill(NativeMenu.surface))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5))
-            .overlay(RoundedRectangle(cornerRadius: 10).inset(by: -1).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
+        background(RoundedRectangle(cornerRadius: Radius.nativeMenu).fill(NativeMenu.surface))
+            .overlay(RoundedRectangle(cornerRadius: Radius.nativeMenu).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: Radius.nativeMenu).inset(by: -1).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 25, y: 18)
     }
 }
@@ -254,7 +254,7 @@ struct MenuBarItemPreview: View {
     var body: some View {
         HStack(spacing: 6) {
             if let f = menu.focus, display != .icon {
-                RoundedRectangle(cornerRadius: 1.5).fill(Color(hex: menu.head?.colorHex ?? "#8A8A8A")).frame(width: 3, height: 13)
+                RoundedRectangle(cornerRadius: Radius.bar).fill(Color(hex: menu.head?.colorHex ?? "#8A8A8A")).frame(width: 3, height: 13)
                 if display == .titleAndCountdown, let t = menu.itemTitle {
                     Text(t)
                     Text("\u{00B7}").opacity(0.5).padding(.horizontal, -2)
@@ -290,8 +290,8 @@ struct MenuBarScreenPreview: View {
             desktop
             if let backdrop {
                 Image(nsImage: backdrop).resizable().frame(width: 1150, height: 1150 * 900 / 1440)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.nativeMenu))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.nativeMenu).strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
                     .saturation(open ? 0.8 : 1).opacity(open ? 0.5 : 1)
                     .shadow(color: .black.opacity(0.6), radius: 40, y: 30)
                     .offset(x: 80, y: 64)
@@ -369,7 +369,7 @@ struct MenuBarScreenPreview: View {
             Spacer(minLength: 0)
             MenuBarItemPreview(menu: menu, display: display)
                 .padding(.horizontal, 9).frame(height: 22)
-                .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(open ? 0.2 : 0)))
+                .background(RoundedRectangle(cornerRadius: Radius.nativeRow).fill(Color.white.opacity(open ? 0.2 : 0)))
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { itemX = $0 }
             ForEach(["wifi", "battery.100percent", "switch.2"], id: \.self) {
                 Image(systemName: $0).font(.system(size: 14)).opacity(0.92).padding(.horizontal, 7)

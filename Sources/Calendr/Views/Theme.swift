@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-// Values come from design/mockup-v3/app.css (the locked v3 design).
+// Values come from design/mockup-v4 (DECISIONS.md and the `.ds` design-system block): `PALETTES` 'oled' dark, Paper light (Q4).
 
 extension Color {
     init(hex: String) {
@@ -11,44 +11,77 @@ extension Color {
         self.init(.sRGB, red: Double((v >> 16) & 255) / 255, green: Double((v >> 8) & 255) / 255, blue: Double(v & 255) / 255, opacity: 1)
     }
     /// Dynamic color following the effective appearance (dark first).
-    static func dyn(_ dark: String, _ light: String) -> Color {
-        Color(nsColor: NSColor(name: nil) { ap in
-            let isDark = ap.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            return NSColor(Color(hex: isDark ? dark : light))
-        })
-    }
     static func dyn(_ dark: Color, _ light: Color) -> Color {
         Color(nsColor: NSColor(name: nil) { ap in
             NSColor(ap.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light)
         })
     }
+    /// One `InkRGB` role in both appearances.
+    static func ink(_ role: (InkRGB) -> RGB) -> Color { dyn(role(.dark).color, role(.light).color) }
+    /// One `InkRGB` role at an alpha (the alpha may differ per appearance).
+    static func ink(_ role: (InkRGB) -> RGB, _ darkAlpha: Double, _ lightAlpha: Double) -> Color {
+        dyn(role(.dark).color.opacity(darkAlpha), role(.light).color.opacity(lightAlpha))
+    }
 }
 
-/// Calendr v3 tokens (design/mockup-v3/app.css: `ink` dark, `paper` light, accent "None, ink only"). Dark first.
-enum Theme {
-    static func a(_ hex: String, _ alpha: Double) -> Color { Color(hex: hex).opacity(alpha) }
+/// The one colour table. `Theme` (SwiftUI), `EventPainter.Ink` (CoreGraphics) and `Palettes` (event tints) all derive from it.
+/// Dark is the mockup's `PALETTES` 'oled' line (TokenTests compares them); light stays Paper with the same roles.
+struct InkRGB: Equatable {
+    /// bg: window, sidebar, right column · bg1: cards · bg2: fields, raised controls · bg3: knobs, pills · pop: menus and dialogs.
+    let bg, bg1, bg2, bg3, pop, fg, fg2, fg3: RGB
+    /// Red, only for now.
+    let live: RGB
+    /// The selected segment of a `Segmented`.
+    let thumb: RGB
+    /// Alphas of fg for hair, hair2 and hover.
+    let hairAlpha, hair2Alpha, hoverAlpha: Double
 
-    static let bg = Color.dyn("#0E0E11", "#FBFAF6")
-    static let bg1 = Color.dyn("#15151A", "#F5F3ED")
-    static let bg2 = Color.dyn("#1E1E24", "#ECE9E1")
-    static let bg3 = Color.dyn("#2B2B33", "#DFDBD1")
-    static let fg = Color.dyn("#EDECF1", "#1B1A20")
-    static let fg2 = Color.dyn("#A19FAC", "#5C5A65")
-    static let fg3 = Color.dyn("#6D6B78", "#918E99")
-    static let hair = Color.dyn(a("#EDECF1", 0.065), a("#1B1A20", 0.075))
-    static let hair2 = Color.dyn(a("#EDECF1", 0.13), a("#1B1A20", 0.15))
-    static let hover = Color.dyn(a("#EDECF1", 0.055), a("#1B1A20", 0.05))
-    static let scrim = Color.dyn(a("#040407", 0.52), a("#28241E", 0.26))
-    static let live = Color.dyn("#FF453A", "#E5342A")
+    static let dark: InkRGB = {
+        let bg3 = RGB(hex: "#1F1F1F"), fg = RGB(hex: "#F2F2F2")
+        return InkRGB(bg: RGB(hex: "#000000"), bg1: RGB(hex: "#0A0A0A"), bg2: RGB(hex: "#141414"), bg3: bg3, pop: RGB(hex: "#0C0C0C"),
+                      fg: fg, fg2: RGB(hex: "#A0A0A0"), fg3: RGB(hex: "#6A6A6A"), live: RGB(hex: "#FF453A"),
+                      thumb: bg3.mixed(with: fg, 0.08), hairAlpha: 0.065, hair2Alpha: 0.13, hoverAlpha: 0.055)
+    }()
+    static let light = InkRGB(bg: RGB(hex: "#FBFAF6"), bg1: RGB(hex: "#F5F3ED"), bg2: RGB(hex: "#ECE9E1"), bg3: RGB(hex: "#DFDBD1"), pop: RGB(hex: "#FFFFFF"),
+                              fg: RGB(hex: "#1B1A20"), fg2: RGB(hex: "#5C5A65"), fg3: RGB(hex: "#918E99"), live: RGB(hex: "#E5342A"),
+                              thumb: RGB(hex: "#FFFFFF"), hairAlpha: 0.075, hair2Alpha: 0.15, hoverAlpha: 0.05)
+    static func of(_ dark: Bool) -> InkRGB { dark ? .dark : .light }
+    /// What `--cc` darkens toward on Paper.
+    static let paperShade = RGB(hex: "#15151A")
+    /// A calendar with no colour.
+    static let neutralHex = "#888888"
+}
+
+/// Calendr v4 tokens. Dark first.
+enum Theme {
+    static let bg = Color.ink(\.bg)
+    static let bg1 = Color.ink(\.bg1)
+    /// Fields and raised controls.
+    static let bg2 = Color.ink(\.bg2)
+    static let bg3 = Color.ink(\.bg3)
+    /// Menus, popovers and dialogs.
+    static let pop = Color.ink(\.pop)
+    static let fg = Color.ink(\.fg)
+    static let fg2 = Color.ink(\.fg2)
+    static let fg3 = Color.ink(\.fg3)
+    static let hair = Color.ink(\.fg, InkRGB.dark.hairAlpha, InkRGB.light.hairAlpha)
+    static let hair2 = Color.ink(\.fg, InkRGB.dark.hair2Alpha, InkRGB.light.hair2Alpha)
+    static let hover = Color.ink(\.fg, InkRGB.dark.hoverAlpha, InkRGB.light.hoverAlpha)
+    static let scrim = Color.dyn(Color.black.opacity(0.6), InkRGB.light.fg.color.opacity(0.22))
+    static let live = Color.ink(\.live)
+    /// The selected segment of a `Segmented` (`--thumb`).
+    static let thumb = Color.ink(\.thumb)
+    /// The tick on a filled calendar checkbox: always dark.
+    static let tick = Color.dyn(InkRGB.dark.bg.color, InkRGB.paperShade.color)
 
     // Accent: none, ink only. Selection and today are inverted ink.
     static let act = fg
     static let onAct = bg
-    static let actWash = Color.dyn(a("#EDECF1", 0.09), a("#1B1A20", 0.09))
+    static let actWash = Color.ink(\.fg, 0.09, 0.09)
     /// Hover of a filled `act` control: act 88 percent over the window colour.
-    static let actHover = Color.dyn("#D2D1D6", "#36353A")
-    static let ring = Color.dyn(a("#EDECF1", 0.82), a("#1B1A20", 0.82))
-    static let focus = Color.dyn(a("#EDECF1", 0.46), a("#1B1A20", 0.46))
+    static let actHover = Color.dyn(InkRGB.dark.fg.mixed(with: InkRGB.dark.bg, 0.12).color, InkRGB.light.fg.mixed(with: InkRGB.light.bg, 0.12).color)
+    static let ring = Color.ink(\.fg, 0.82, 0.82)
+    static let focus = Color.ink(\.fg, 0.46, 0.46)
 
     // v2 names still used by the root and onboarding views.
     static let ink900 = bg
@@ -67,26 +100,63 @@ enum Theme {
 enum Dim {
     static let sidebarWidth: CGFloat = 236
     static let panelWidth: CGFloat = 320
-    static let hourGutter: CGFloat = 56
+    static let hourGutter: CGFloat = 58
     static let toolbarHeight: CGFloat = 60
     static let dayHeaderHeight: CGFloat = 38
     static let inset: CGFloat = 16
+    /// List rows, menu rows, small buttons, sidebar rows.
+    static let row: CGFloat = 28
+    /// Panel rows, buttons, fields, search.
+    static let field: CGFloat = 32
+    /// Panel and header icon buttons (16 pt glyph).
+    static let iconButton: CGFloat = 26
+    static let iconGlyph: CGFloat = 16
+    /// Sidebar and row icon buttons (14 pt glyph).
+    static let iconButtonSmall: CGFloat = 22
+    static let iconGlyphSmall: CGFloat = 14
+    /// One `Segmented` segment.
+    static let segment: CGFloat = 22
 }
 
-/// Corners: soft (events 6, controls 7, rows 7, surfaces 12).
+/// Spacing scale: 4 · 8 · 12 · 16 · 24.
+enum Space {
+    static let xs: CGFloat = 4
+    static let s: CGFloat = 8
+    static let m: CGFloat = 12
+    static let l: CGFloat = 16
+    static let xl: CGFloat = 24
+}
+
+/// Corners: 6 rows, events, icon buttons, segments · 8 buttons, fields, segmented controls · 12 menus, dialogs, cards.
+/// The small fixed shapes (calendar bars, checkboxes, swatches) have their own names so no view writes a number.
 enum Radius {
+    static let row: CGFloat = 6
     static let event: CGFloat = 6
-    static let chip: CGFloat = 5
-    static let control: CGFloat = 7
-    static let row: CGFloat = 7
+    static let control: CGFloat = 8
     static let card: CGFloat = 12
     static let surface: CGFloat = 12
+    /// The 3 pt calendar colour bar.
+    static let bar: CGFloat = 1.5
+    /// Rules and the now line.
+    static let rule: CGFloat = 1
+    /// Calendar checkboxes.
+    static let check: CGFloat = 4
+    /// The teammate swatch.
+    static let swatch: CGFloat = 3
+    /// The native menu bar menu (`NSMenu` look) and its rows.
+    static let nativeMenu: CGFloat = 10
+    static let nativeRow: CGFloat = 5
 }
 
 /// Shadows only exist on surfaces above the window.
 extension View {
-    func popShadow() -> some View { shadow(color: Color.dyn(Color.black.opacity(0.6), Color(hex: "#282214").opacity(0.20)), radius: 30, y: 22) }
-    func liftShadow() -> some View { shadow(color: Color.dyn(Color.black.opacity(0.45), Color(hex: "#282214").opacity(0.16)), radius: 11, y: 8) }
+    func popShadow() -> some View { shadow(color: Color.dyn(Color.black.opacity(0.6), Theme.shadowTint.opacity(0.20)), radius: 30, y: 22) }
+    func liftShadow() -> some View { shadow(color: Color.dyn(Color.black.opacity(0.45), Theme.shadowTint.opacity(0.16)), radius: 11, y: 8) }
+}
+
+extension Theme {
+    /// The warm shadow colour on Paper.
+    static let shadowTint = Color(hex: "#282214")
 }
 
 // MARK: Motion (design/DESIGN.md)
@@ -150,11 +220,11 @@ struct EventPalette: Equatable {
 
 enum Palettes {
     nonisolated(unsafe) private static var cache: [String: EventPalette] = [:]
-    static func bg(_ dark: Bool) -> RGB { dark ? RGB(hex: "#0E0E11") : RGB(hex: "#FBFAF6") }
-    static func fg(_ dark: Bool) -> RGB { dark ? RGB(hex: "#EDECF1") : RGB(hex: "#1B1A20") }
-    static func fg2(_ dark: Bool) -> RGB { dark ? RGB(hex: "#A19FAC") : RGB(hex: "#5C5A65") }
-    /// `--cc`: the calendar colour as drawn. Paper darkens it 22 percent toward #15151A.
-    static func cc(_ hex: String, dark: Bool) -> RGB { dark ? RGB(hex: hex) : RGB(hex: hex).mixed(with: RGB(hex: "#15151A"), 0.22) }
+    static func bg(_ dark: Bool) -> RGB { InkRGB.of(dark).bg }
+    static func fg(_ dark: Bool) -> RGB { InkRGB.of(dark).fg }
+    static func fg2(_ dark: Bool) -> RGB { InkRGB.of(dark).fg2 }
+    /// `--cc`: the calendar colour as drawn. Paper darkens it 22 percent toward `InkRGB.paperShade`.
+    static func cc(_ hex: String, dark: Bool) -> RGB { dark ? RGB(hex: hex) : RGB(hex: hex).mixed(with: InkRGB.paperShade, 0.22) }
 
     /// `barHex` is the calendar color, `fillHex` an optional per-event override of the tint.
     static func palette(barHex: String, fillHex: String?, dark: Bool) -> EventPalette {
@@ -169,9 +239,14 @@ enum Palettes {
     }
 }
 
-/// Small caps section label: 10.5 / 600, +0.06em.
+/// Section label: sentence case, small (11.5), fg3.
 struct MicroLabel: View {
     let text: String
-    var color: Color = Theme.hazeDim
-    var body: some View { Text(text.uppercased()).font(.calMicro).tracking(0.63).foregroundStyle(color) }
+    var color: Color = Theme.fg3
+    var body: some View { Text(Self.sentence(text)).font(.small).foregroundStyle(color) }
+    /// "SIDE PROJECT" or "side project" -> "Side project".
+    static func sentence(_ s: String) -> String {
+        let l = s.lowercased()
+        return l.prefix(1).uppercased() + l.dropFirst()
+    }
 }
