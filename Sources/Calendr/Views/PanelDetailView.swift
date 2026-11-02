@@ -94,7 +94,7 @@ struct PanelDetailView: View {
                 row(.users) {
                     PanelFlow(spacing: 4) {
                         ForEach(Array(e.participants.enumerated()), id: \.offset) { i, g in
-                            PanelGuestChip(name: g, removable: canGuests) { model.updateSelected { $0.participants.remove(at: i) } }
+                            PanelGuestChip(name: g, removable: canGuests) { model.updateSelected { $0.removeGuest(at: i) } }
                                 .padding(.trailing, i == e.participants.count - 1 ? 8 : 0)
                         }
                         if canGuests {
@@ -111,7 +111,7 @@ struct PanelDetailView: View {
             }
             if model.panelShows(.video, e) {
                 row(.video) {
-                    if e.conferencing.isEmpty {
+                    if e.conferencing.isEmpty && CallLink.parse(e) == nil {
                         if writable && model.canInventVideoLink {
                             PanelLineButton(title: "Create a video link") { model.createVideoLink() }
                         } else if writable {
@@ -119,13 +119,15 @@ struct PanelDetailView: View {
                                              commit: { model.setVideoLink($0) }, onReturn: submit)
                         }
                     } else {
+                        // A call (CallLink) gets Join; any other web address is a plain link.
+                        let call = CallLink.parse(e)
                         HStack(spacing: 10) {
-                            Button { model.joinCall(e) } label: {
-                                Text(e.conferencing).font(.text).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
+                            Button { if call != nil { model.joinCall(e) } else { model.openConferencingLink(e) } } label: {
+                                Text(call?.display ?? e.conferencing).font(.text).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
                                     .underline(color: Theme.fg.opacity(0.4))
                             }
                             .buttonStyle(.plain)
-                            PanelFillButton(title: "Join", small: true) { model.joinCall(e) }
+                            if call != nil { PanelFillButton(title: "Join", small: true) { model.joinCall(e) } }
                         }
                     }
                 }
@@ -133,14 +135,16 @@ struct PanelDetailView: View {
             if !e.participants.isEmpty || e.status != .confirmed {
                 row(.help) {
                     if model.canChangeResponse {
-                        Segmented(options: [(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], selection: e.status, enabled: writable) { s in
+                        // My own events: I am going, nothing to answer.
+                        Segmented(options: [(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], selection: e.myReply,
+                                  enabled: writable && !e.iAmOrganizer) { s in
                             model.updateSelected { $0.status = s }
                         }
                     } else {
                         // The store cannot write the answer: show it.
                         HStack(spacing: 6) {
                             Text("Going?").font(.text).foregroundStyle(Theme.fg3)
-                            Text(PanelText.response(e.status)).font(.text).foregroundStyle(Theme.fg)
+                            Text(PanelText.response(e.myReply)).font(.text).foregroundStyle(Theme.fg)
                         }
                     }
                 }

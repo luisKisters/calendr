@@ -60,7 +60,7 @@ enum DemoDataV4 {
 
     // MARK: Replies
 
-    /// The mockup's reply values. `none` (no answer yet) has no `ResponseStatus` until Phase 2 adds one.
+    /// The mockup's reply values. `none` is invited, not answered yet.
     enum Reply: String { case yes, maybe, no, none }
 
     /// The one mapping from a mockup reply to the event status.
@@ -69,7 +69,7 @@ enum DemoDataV4 {
         case .yes: .confirmed
         case .maybe: .tentative
         case .no: .declined
-        case .none: .confirmed      // Phase 2 adds a "not answered" status; until then it reads as accepted.
+        case .none: .needsAction
         }
     }
 
@@ -178,8 +178,14 @@ enum DemoDataV4 {
         return CalendarEvent(id: "v4.\(s.id)", seriesID: s.repeatWeekday.map { _ in "v4.series.\(s.id)" }, calendarID: calendarIDs[s.cal]!, title: s.title,
                              start: start, end: end, isAllDay: s.allDay, status: status(s.myReply), location: s.location, notes: s.notes,
                              recurrence: s.repeatWeekday.map { Recurrence(frequency: .weekly, weekdays: [$0]) },
-                             participants: s.guests.map { person($0.key).name }, conferencing: call, reminderMinutes: s.reminders.first,
+                             attendees: s.guests.map(attendee), conferencing: call, reminders: s.reminders,
                              availability: s.free ? .free : .busy, colorHex: s.color)
+    }
+
+    /// A guest as an `Attendee`: only the `me` key is Sam's own entry (Sam's other addresses are guests, as in the mockup).
+    static func attendee(_ g: Guest) -> Attendee {
+        let p = person(g.key)
+        return Attendee(email: p.email, name: p.name, isOrganizer: g.organizer, isMe: g.key == "me", status: status(g.reply))
     }
 
     static func buildEvents() -> [CalendarEvent] {

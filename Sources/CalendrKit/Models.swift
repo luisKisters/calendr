@@ -1,6 +1,7 @@
 import Foundation
 
-public enum ResponseStatus: String, Sendable, Hashable, CaseIterable { case confirmed, tentative, declined }
+/// My answer to an event. `needsAction`: invited, not answered yet.
+public enum ResponseStatus: String, Sendable, Hashable, CaseIterable { case confirmed, tentative, declined, needsAction }
 public enum Availability: String, Sendable, Hashable, CaseIterable { case busy, free }
 public enum EventVisibility: String, Sendable, Hashable, CaseIterable { case standard, `public`, `private` }
 
@@ -61,13 +62,18 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
     /// Exclusive end. For all-day events this is the start of the day after the last day.
     public var end: Date
     public var isAllDay: Bool
-    public var status: ResponseStatus
+    /// My answer. Kept in step with my own entry in `attendees`.
+    public var status: ResponseStatus {
+        didSet { if let i = attendees.firstIndex(where: \.isMe) { attendees[i].status = status } }
+    }
     public var location: String
     public var notes: String
     public var recurrence: Recurrence?
-    public var participants: [String]
+    /// The guest list, my own entry and the organizer included.
+    public var attendees: [Attendee]
     public var conferencing: String
-    public var reminderMinutes: Int?
+    /// Minutes before the start, unique and sorted.
+    public var reminders: [Int] { didSet { if reminders != Self.normalized(reminders) { reminders = Self.normalized(reminders) } } }
     public var availability: Availability
     public var visibility: EventVisibility
     public var timeZoneID: String
@@ -81,20 +87,70 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
     public init(id: String = UUID().uuidString, seriesID: String? = nil, calendarID: String, title: String,
                 start: Date, end: Date, isAllDay: Bool = false,
                 status: ResponseStatus = .confirmed, location: String = "", notes: String = "",
-                recurrence: Recurrence? = nil, participants: [String] = [], conferencing: String = "",
-                reminderMinutes: Int? = nil, availability: Availability = .busy,
+                recurrence: Recurrence? = nil, participants: [String] = [], attendees: [Attendee]? = nil, conferencing: String = "",
+                reminderMinutes: Int? = nil, reminders: [Int]? = nil, availability: Availability = .busy,
                 visibility: EventVisibility = .standard, timeZoneID: String = "Europe/Berlin",
                 ownerEmail: String? = nil, colorHex: String? = nil, secondaryBarHex: String? = nil) {
         self.id = id; self.seriesID = seriesID; self.calendarID = calendarID; self.title = title
         self.start = start; self.end = max(end, start); self.isAllDay = isAllDay
         self.status = status; self.location = location; self.notes = notes; self.recurrence = recurrence
-        self.participants = participants; self.conferencing = conferencing; self.reminderMinutes = reminderMinutes
+        self.attendees = attendees ?? participants.compactMap { Attendee.parse($0) }
+        if let i = self.attendees.firstIndex(where: \.isMe) { self.attendees[i].status = status }
+        self.conferencing = conferencing
+        self.reminders = Self.normalized(reminders ?? reminderMinutes.map { [$0] } ?? [])
         self.availability = availability; self.visibility = visibility; self.timeZoneID = timeZoneID
         self.ownerEmail = ownerEmail; self.colorHex = colorHex; self.secondaryBarHex = secondaryBarHex
     }
 
     public var durationMinutes: Int { Int((end.timeIntervalSince(start) / 60).rounded()) }
     public var isRecurring: Bool { recurrence != nil || seriesID != nil }
+
+    static func normalized(_ r: [Int]) -> [Int] { Array(Set(r.filter { $0 >= 0 })).sorted() }
+
+    /// The smallest reminder (the one closest to the start). Setting it leaves exactly that one reminder, which is what the
+    /// one-reminder editor means; a multi-reminder editor sets `reminders`.
+    public var reminderMinutes: Int? {
+        get { reminders.first }
+        set { reminders = newValue.map { [$0] } ?? [] }
+    }
+
+    /// The other guests' labels (name, else address), my own entry left out. Until the editor works on `attendees`
+    /// (v4 Phase 7), setting it keeps the old entries in order wherever the labels still match one after the other, and adds
+    /// the others as not answered. To remove one of two guests with the same name, use `removeGuest(at:)`.
+    public var participants: [String] {
+        get { attendees.filter { !$0.isMe }.map(\.label) }
+        set {
+            let old = attendees.filter { !$0.isMe }
+            var j = 0
+            let kept: [Attendee] = newValue.compactMap { l in
+                if let k = old[j...].firstIndex(where: { $0.label == l }) { j = k + 1; return old[k] }
+                return Attendee.parse(l)
+            }
+            attendees = attendees.filter(\.isMe) + kept
+        }
+    }
+
+    /// Removes the other guest at `index` of `participants`.
+    public mutating func removeGuest(at index: Int) {
+        let others = attendees.indices.filter { !attendees[$0].isMe }
+        guard others.indices.contains(index) else { return }
+        attendees.remove(at: others[index])
+    }
+
+    /// Adds a typed guest ("Name <address>", an address or a name) as not answered.
+    public mutating func addGuest(_ text: String) {
+        if let a = Attendee.parse(text) { attendees.append(a) }
+    }
+
+    /// The organizer's entry, when the guest list has one.
+    public var organizer: Attendee? { attendees.first { $0.isOrganizer } }
+    /// My own entry is the organizer's.
+    public var iAmOrganizer: Bool { attendees.contains { $0.isMe && $0.isOrganizer } }
+
+    /// My answer as the grid and the "+N" stack read it: the organizer counts as accepted (mockup `myResp`).
+    public var myReply: ResponseStatus { iAmOrganizer ? .confirmed : status }
+    /// Declined or not answered: these go on the right half and never push accepted events (v4 overlap layout).
+    public var isUnaccepted: Bool { myReply == .declined || myReply == .needsAction }
 }
 
 public enum ViewMode: Hashable, Sendable {

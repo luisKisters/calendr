@@ -34,6 +34,7 @@ enum HeadlessRunner {
         guard let out = o.out else { print("--snapshot needs --out"); return 2 }
         KeyRouter.shared.install(model: model)
         if let code = SnapshotMenuBar.run(state, model, o, out: out) { return code }
+        if let code = SnapshotV4Layout.run(state, model, o, out: out) { return code }
         let w = OffscreenWindow(RootView().environment(model), size: o.size, dark: true)
         keep.append(w)
         w.settle(6)

@@ -16,9 +16,11 @@ extension AppModel {
     /// EventKit cannot set the user's own attendee status; the demo store can.
     var canChangeResponse: Bool { store is DemoStore }
 
-    /// The guests' addresses: written in the participant, or a teammate's of that name.
+    /// The other guests' addresses: their own, or a teammate's of that name.
     func menuBarGuestAddresses(_ e: CalendarEvent) -> [String] {
-        e.participants.compactMap { p in MenuBarMenu.guestAddress(p) ?? store.teammates.first { $0.name == p }?.email }
+        e.attendees.filter { !$0.isMe }.compactMap { a in
+            a.email.isEmpty ? MenuBarMenu.guestAddress(a.label) ?? store.teammates.first { $0.name == a.label }?.email : a.email
+        }
     }
 
     func menuBarSubmenu(for e: CalendarEvent) -> [MenuBarSubItem] {

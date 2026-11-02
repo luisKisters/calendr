@@ -87,4 +87,93 @@ enum WalkthroughV4 {
         d.hold(1.4)
         d.endCaption()
     }
+
+    /// PR B, the data model and OverlapV5. What the current UI already shows: an unanswered invitation has no Going? answer,
+    /// the call row and Join come from `CallLink`, the organizer counts as accepted, the menu bar's Join comes from the same link.
+    /// The v5 layout is not in the grid until PR C: the tour ends on its debug picture (`--snapshot v4-b-layout`).
+    static func b(_ d: Driver, _ m: AppModel) {
+        d.section("No reply")
+        d.check(m.viewMode == .week && m.math.day(m.now) == 4, "v4 fixture: the week of Sun 4 Oct")
+        m.gridState.scrollTarget = SnapshotV4.eveningScroll
+        m.gridState.scrollTick += 1
+        d.settle(8)
+        guard let board = Walkthrough.placed(m, "Club board meeting", day: 2) else { d.check(false, "Club board meeting is on Wednesday"); return }
+        d.say("v4 data: an invitation Sam has not answered")
+        d.clickGrid(Walkthrough.centerOf(d, board))
+        guard let e = m.selectedEvent, e.title == "Club board meeting" else { d.check(false, "click selects Club board meeting"); return }
+        d.check(e.status == .needsAction && e.myReply == .needsAction && e.isUnaccepted, "Club board meeting: myReply is needsAction")
+        d.check(e.organizer?.label == "Nils Bauer" && e.participants == ["Nils Bauer", "Ida Sommer", "Tom Richter"], "guests from attendees, Sam left out")
+        d.hold(0.8)
+        d.say("Going? shows no answer yet")
+        d.moveCursor(to: CGPoint(x: 1233, y: 304), duration: 0.5)
+        d.check(![ResponseStatus.confirmed, .tentative, .declined].contains(m.selectedEvent?.status ?? .confirmed), "no Going? segment is selected")
+        d.hold(1.4)
+
+        d.section("Call link")
+        let call = CallLink.parse(e)
+        d.check(call?.kind == .meet && call?.code == "oet-mzpa-wdr" && call?.display == "meet.google.com/oet-mzpa-wdr", "CallLink: Meet oet-mzpa-wdr")
+        d.say("The call row and Join come from the call link")
+        d.moveCursor(to: CGPoint(x: 1260, y: 270), duration: 0.5)
+        d.hold(0.6)
+        d.click(at: CGPoint(x: 1386, y: 270)) { m.joinCall(e) }
+        d.check(m.toast?.text == "Opens Google Meet in your browser", "Join opens Google Meet (\(m.toast?.text ?? "no toast"))")
+        d.hold(1.4)
+
+        d.section("Organizer")
+        guard let dinner = Walkthrough.placed(m, "Flat dinner", day: 6) else { d.check(false, "Flat dinner is on Sunday"); return }
+        d.say("Sam organises Flat dinner: it counts as accepted")
+        d.clickGrid(Walkthrough.centerOf(d, dinner))
+        let fd = m.selectedEvent
+        d.check(fd?.title == "Flat dinner" && fd?.iAmOrganizer == true && fd?.myReply == .confirmed && fd?.isUnaccepted == false, "Flat dinner: organizer, accepted")
+        d.check(fd?.attendees.contains { $0.status == .needsAction } == true, "a guest of Flat dinner has not answered")
+        d.hold(1.4)
+
+        d.section("Menu bar")
+        d.play(0.5) { m.toast = nil }      // the Join toast above times out (the frozen clock keeps it otherwise)
+        let backdrop = d.win.image(scale: 2).map { NSImage(cgImage: $0, size: NSSize(width: 1440, height: 900)) }
+        let menu = m.menuBarMenu
+        let f = m.fmt
+        let clock = "\(f.weekdayShort(m.now)) \(m.math.day(m.now)) \(f.monthShort(m.now))  \(f.time(m.now))"
+        func screen(highlight: Int?, submenu: [MenuBarSubItem]?, sub: Int? = nil) -> AnyView {
+            AnyView(MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock, backdrop: backdrop, highlight: highlight,
+                                         submenu: submenu, open: true, subHighlight: sub))
+        }
+        guard let i = menu.rows.firstIndex(where: { $0.title == "Flat dinner" }) else { d.check(false, "Flat dinner is in the menu"); return }
+        let row = menu.rows[i].event
+        let sub = m.menuBarSubmenu(for: row)
+        guard let j = sub.firstIndex(where: { if case .join = $0 { true } else { false } }) else { d.check(false, "Flat dinner menu has Join call"); return }
+        d.check(sub[j] == .join(URL(string: "https://meet.google.com/cmv-hjhb-qgb")!), "Flat dinner menu: Join call to its Meet link")
+        let bar = OffscreenWindow(screen(highlight: i, submenu: sub), size: CGSize(width: 1440, height: 900), chrome: false)
+        bar.settle(6)
+        d.source = bar
+        d.say("The menu bar's Join call uses the same link")
+        d.cursor = CGPoint(x: 1180, y: 32 + Double(MenuBarMenuPreview.rowTop(i, in: menu)) + 11)
+        d.frame(hold: 0.6)
+        let joinY = Double(MenuBarScreenPreview.submenuItemTop(j, items: sub, row: i, in: menu))
+        d.moveCursor(to: CGPoint(x: 940, y: joinY), duration: 0.5)
+        bar.host.rootView = screen(highlight: i, submenu: sub, sub: j)
+        bar.settle(4)
+        d.refreshFrame()
+        d.hold(0.8)
+        d.say("Click Join call: Google Meet opens")
+        d.recordClick()
+        d.play(0.2) {}
+        d.source = d.win
+        d.play(0.4) { m.joinCall(row) }
+        d.check(m.toast?.text == "Opens Google Meet in your browser", "the menu's Join call opens Google Meet (\(m.toast?.text ?? "no toast"))")
+        d.hold(1.6)
+
+        d.section("OverlapV5")
+        let shot = OffscreenWindow(SnapshotV4Layout.view(m), size: CGSize(width: 1440, height: 900), dark: true, chrome: false)
+        shot.settle(6)
+        d.source = shot
+        let r = SnapshotV4Layout.wednesday(m).result
+        d.check(r.groups == [OverflowGroup(startMinute: 18 * 60 + 15, ids: ["v4.c5"])], "OverlapV5: Wednesday has one +1 at 18:15")
+        d.say("OverlapV5 (in the grid with PR C): Wednesday's +1 at 18:15")
+        d.cursor = CGPoint(x: 680, y: 316)
+        d.frame(hold: 1.0)
+        d.moveCursor(to: CGPoint(x: 950, y: 340), duration: 0.6)
+        d.hold(2.6)
+        d.endCaption()
+    }
 }

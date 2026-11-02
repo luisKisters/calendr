@@ -3,10 +3,10 @@ import CalendrKit
 
 /// Snapshot states of the v4 mockup scenes (design/mockup-v4/index.html `preset()`), rendered with `--fixture v4` (design/states.json
 /// sets it) so they compare one to one with design/mockup-v4/shots. `SnapshotStates.apply` falls through to this for names it does not know.
-/// "v4-menubar" is a menu bar screen: `SnapshotMenuBar.run` draws it.
+/// "v4-menubar" is a menu bar screen: `SnapshotMenuBar.run` draws it. "v4-b-layout" is the OverlapV5 debug screen: `SnapshotV4Layout.run` draws it.
 @MainActor
 enum SnapshotV4 {
-    static let states = ["v4-week", "v4-overlap", "v4-status", "v4-event", "v4-cmd", "v4-settings", "v4-menubar", "v4-delete"]
+    static let states = ["v4-week", "v4-overlap", "v4-status", "v4-event", "v4-cmd", "v4-settings", "v4-menubar", "v4-delete", "v4-b-layout"]
 
     /// Mockup `A.gridScroll`: 7.5 hours down by default, 16.4 for the busy evening.
     static let defaultScroll = 7.5 * DemoDataV4.hourHeight
@@ -31,6 +31,7 @@ enum SnapshotV4 {
         case "v4-delete":
             if let e = event(m, "wg") { m.select(eventID: e.id); m.requestDeleteSelected() }
             scroll(m, to: defaultScroll)
+        case "v4-b-layout": break      // a whole screen: SnapshotV4Layout.run
         default: return false
         }
         return true
