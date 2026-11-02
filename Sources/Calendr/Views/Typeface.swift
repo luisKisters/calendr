@@ -100,7 +100,7 @@ enum Typeface {
     }
 }
 
-// MARK: Type tokens (design/mockup-v4 `.ds`: 18 titles · 12.5 text · 11.5 small · events 11.5 / 500)
+// MARK: Type tokens (DECISIONS.md design system: 18 titles · 12.5 text · 11.5 small · events 11.5 / 500; no other sizes)
 
 /// SF Pro (the system font) for text and events; tabular variants use `monospacedDigitSystemFont`. Instrument Sans 600 only for 18 pt titles.
 enum SF {
@@ -126,10 +126,6 @@ enum TypeSize {
     static let text: CGFloat = 12.5
     static let small: CGFloat = 11.5
     static let event: CGFloat = 11.5
-    /// Event times, hour labels and the all-day label: the mockup's `--fs-evt` (10.5 at size 's').
-    static let eventTime: CGFloat = 10.5
-    /// Mini-month week numbers and avatar initials.
-    static let tiny: CGFloat = 9.5
 }
 
 extension Font {
@@ -156,10 +152,6 @@ extension Font {
 
     /// Event titles: SF 11.5 / 500.
     static let event = sf(TypeSize.event, 500)
-    static let eventTab = sf(TypeSize.eventTime, tabular: true)
-
-    /// Week numbers and avatar initials: SF 9.5.
-    static let tiny = sf(TypeSize.tiny)
-    static let tinyTab = sf(TypeSize.tiny, tabular: true)
-    static let tinySemibold = sf(TypeSize.tiny, 600)
+    /// Event times: SF 11.5 tabular. DECISIONS.md allows only 18 / 12.5 / 11.5, so the mockup CSS's 10.5 `--fs-evt` is not used.
+    static let eventTab = sf(TypeSize.small, tabular: true)
 }

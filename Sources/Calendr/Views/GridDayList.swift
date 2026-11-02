@@ -112,12 +112,12 @@ struct GridDayListHost: View {
 struct GridDayListPopover: View {
     @Environment(AppModel.self) private var model
     static let width: CGFloat = 286
-    static let rowHeight: CGFloat = 30
-    static let headerHeight: CGFloat = 30
+    static let rowHeight: CGFloat = Dim.row
+    static let headerHeight: CGFloat = Dim.row
     let day: Date
     let events: [CalendarEvent]
 
-    static func height(rows: Int) -> CGFloat { min(420, 12 + headerHeight + CGFloat(rows) * rowHeight) }
+    static func height(rows: Int) -> CGFloat { min(420, 2 * Space.xs + headerHeight + CGFloat(rows) * rowHeight) }
 
     var body: some View {
         let fmt = model.fmt
@@ -127,7 +127,7 @@ struct GridDayListPopover: View {
                 Spacer(minLength: 8)
                 Text("\(events.count)").font(.smallTab).foregroundStyle(Theme.fg3)
             }
-            .padding(.horizontal, 9)
+            .padding(.horizontal, Space.s)
             .frame(height: Self.headerHeight)
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
@@ -136,9 +136,9 @@ struct GridDayListPopover: View {
             }
             .scrollIndicators(.never)
         }
-        .padding(6)
+        .padding(Space.xs)
         .frame(width: Self.width, height: Self.height(rows: events.count), alignment: .top)
-        .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.bg1))
+        .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.pop))
         .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
         .popShadow()
     }
@@ -162,9 +162,9 @@ private struct GridDayListRow: View {
                     .lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 9)
+            .padding(.horizontal, Space.s)
             .frame(height: GridDayListPopover.rowHeight)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected ? Theme.actWash : hover ? Theme.hover : .clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected || hover ? Theme.hover : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

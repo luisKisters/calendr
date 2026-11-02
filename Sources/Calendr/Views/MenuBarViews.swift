@@ -209,7 +209,7 @@ private struct MenuEventRow: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 9).frame(height: NativeMenu.rowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Radius.nativeRow).fill(hl ? NativeMenu.highlight : .clear))
+        .background(RoundedRectangle(cornerRadius: Radius.row).fill(hl ? NativeMenu.highlight : .clear))
     }
 }
 
@@ -240,9 +240,9 @@ private struct MenuBarStripes: View {
 
 private extension View {
     func menuSurface() -> some View {
-        background(RoundedRectangle(cornerRadius: Radius.nativeMenu).fill(NativeMenu.surface))
-            .overlay(RoundedRectangle(cornerRadius: Radius.nativeMenu).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5))
-            .overlay(RoundedRectangle(cornerRadius: Radius.nativeMenu).inset(by: -1).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
+        background(RoundedRectangle(cornerRadius: Radius.surface).fill(NativeMenu.surface))
+            .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: Radius.surface).inset(by: -1).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 25, y: 18)
     }
 }
@@ -290,8 +290,8 @@ struct MenuBarScreenPreview: View {
             desktop
             if let backdrop {
                 Image(nsImage: backdrop).resizable().frame(width: 1150, height: 1150 * 900 / 1440)
-                    .clipShape(RoundedRectangle(cornerRadius: Radius.nativeMenu))
-                    .overlay(RoundedRectangle(cornerRadius: Radius.nativeMenu).strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.surface))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
                     .saturation(open ? 0.8 : 1).opacity(open ? 0.5 : 1)
                     .shadow(color: .black.opacity(0.6), radius: 40, y: 30)
                     .offset(x: 80, y: 64)
@@ -369,7 +369,7 @@ struct MenuBarScreenPreview: View {
             Spacer(minLength: 0)
             MenuBarItemPreview(menu: menu, display: display)
                 .padding(.horizontal, 9).frame(height: 22)
-                .background(RoundedRectangle(cornerRadius: Radius.nativeRow).fill(Color.white.opacity(open ? 0.2 : 0)))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(Color.white.opacity(open ? 0.2 : 0)))
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { itemX = $0 }
             ForEach(["wifi", "battery.100percent", "switch.2"], id: \.self) {
                 Image(systemName: $0).font(.system(size: 14)).opacity(0.92).padding(.horizontal, 7)

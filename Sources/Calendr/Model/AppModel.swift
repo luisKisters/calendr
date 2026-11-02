@@ -133,6 +133,8 @@ final class AppModel {
     init(store: CalendarStore, options: LaunchOptions, persist: Bool = true) {
         self.store = store
         self.options = options
+        // The v4 fixture is a fixed demo (46 pt hours, pinned clock): it never reads or writes the user's settings.
+        let persist = persist && options.fixture != .v4
         self.persist = persist
         var s = persist ? AppSettings.load() : AppSettings()
         if options.fixture == .v4 { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46

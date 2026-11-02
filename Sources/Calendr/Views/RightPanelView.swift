@@ -118,8 +118,8 @@ struct PanelLaterRow: View {
                 Text(event.title).font(.text).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 9).frame(height: 30)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected ? Theme.actWash : (hover ? Theme.hover : Color.clear)))
+            .padding(.horizontal, Space.s).frame(height: Dim.row)
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected ? Theme.hover : (hover ? Theme.hover : Color.clear)))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

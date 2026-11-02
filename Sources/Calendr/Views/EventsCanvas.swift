@@ -67,15 +67,15 @@ enum TextCache {
         switch k {
         case .title: return f(TypeSize.event, 500)
         case .titleMedium: return f(TypeSize.event, 500)
-        case .time: return f(TypeSize.eventTime, 400, true)
-        case .hour: return f(TypeSize.eventTime, 400, true)
-        case .hourBold: return f(TypeSize.eventTime, 600, true)
+        case .time: return f(TypeSize.small, 400, true)
+        case .hour: return f(TypeSize.small, 400, true)
+        case .hourBold: return f(TypeSize.small, 600, true)
         case .header: return f(TypeSize.small, 400)
         case .headerToday: return f(TypeSize.small, 600)
         case .headerNum: return f(TypeSize.small, 600, true)
         case .headerNumToday: return f(TypeSize.small, 600, true)
         case .headerPast: return f(TypeSize.small, 400, true)
-        case .allDayLabel: return f(TypeSize.eventTime, 400)
+        case .allDayLabel: return f(TypeSize.small, 400)
         case .more: return f(TypeSize.small, 400, true)
         case .monthTitle: return f(TypeSize.small, 400)
         case .monthNum: return f(TypeSize.small, 500, true)
@@ -239,7 +239,7 @@ enum EventPainter {
             live = t.live.cg
             // `.is-past .ev__t`: fg2 78 percent over the window colour.
             pastTitle = t.fg2.mixed(with: t.bg, 0.22).cg
-            liftShadow = dark ? CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.45) : CGColor(srgbRed: 40 / 255, green: 34 / 255, blue: 20 / 255, alpha: 0.16)
+            liftShadow = dark ? InkRGB.black.cg.copy(alpha: 0.45)! : InkRGB.paperShadow.cg.copy(alpha: 0.16)!
         }
         private static let darkInk = Ink(build: true)
         private static let lightInk = Ink(build: false)

@@ -23,18 +23,20 @@ struct PressStyle: ButtonStyle {
     }
 }
 
-/// `.ibtn`: 26 pt square (22 small), radius 6, fg2 glyph, hover wash and fg.
+/// `.ibtn`: 26 pt square with a 16 pt icon (panel, header), or 22 with a 14 pt icon (`small`: sidebar, rows); radius 6, fg2 glyph,
+/// hover wash and fg. An SF Symbol at point size p is about 1.33 p tall, so the icon box of g points uses a symbol of 0.75 g.
 struct IconButton: View {
     let name: String
-    var size: CGFloat = 13
-    var box: CGFloat = Dim.iconButton
+    var small = false
     var color: Color = Theme.fg2
     var help: String?
     let action: () -> Void
     @State private var hover = false
     var body: some View {
+        let glyph = small ? Dim.iconGlyphSmall : Dim.iconGlyph, box = small ? Dim.iconButtonSmall : Dim.iconButton
         Button(action: action) {
-            SFIcon(name: name, size: size, color: hover ? Theme.fg : color)
+            SFIcon(name: name, size: glyph * 0.75, color: hover ? Theme.fg : color)
+                .frame(width: glyph, height: glyph)
                 .frame(width: box, height: box)
                 .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hover : Color.clear))
                 .contentShape(Rectangle())
@@ -134,12 +136,15 @@ struct Segmented<T: Hashable>: View {
     let selection: T
     var minWidth: CGFloat = 0
     var enabled = true
+    /// Optional tooltip per option (same order as `options`).
+    var helps: [String] = []
     let onSelect: (T) -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(Array(options.enumerated()), id: \.offset) { _, o in
+            ForEach(Array(options.enumerated()), id: \.offset) { i, o in
                 SegmentButton(title: o.1, on: o.0 == selection, minWidth: minWidth, enabled: enabled) { onSelect(o.0) }
+                    .help(i < helps.count ? helps[i] : "")
             }
         }
         .segmentedFrame()
@@ -147,7 +152,7 @@ struct Segmented<T: Hashable>: View {
     }
 }
 
-extension View {
+private extension View {
     /// The frame of `Segmented`: padding 2, 1 pt hair2 edge inside, radius 8.
     func segmentedFrame() -> some View {
         padding(2)

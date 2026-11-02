@@ -82,7 +82,7 @@ struct ToastView: View {
                 .onHover { hoverUndo = $0 }
                 .animation(Motion.fast, value: hoverUndo)
             }
-            IconButton(name: "xmark", size: 9.5, box: 24, color: Theme.fg3) { model.dismissToast() }.clipShape(Circle())
+            IconButton(name: "xmark", small: true, color: Theme.fg3) { model.dismissToast() }.clipShape(Circle())
         }
         .padding(.leading, 14).padding(.trailing, 5).frame(height: 38)
         .background(Capsule().fill(Theme.bg2))
@@ -94,7 +94,7 @@ struct ToastView: View {
 
 // MARK: Command menu
 
-/// One field for commands, dates, events and people. 620 pt, 50 pt input row, 34 pt rows with leading icons, footer hints.
+/// One field for commands, dates, events and people. 620 pt, 50 pt input row, 32 pt rows with leading icons, footer hints.
 struct CommandMenu: View {
     @Environment(AppModel.self) private var model
     @FocusState private var focused: Bool
@@ -104,7 +104,7 @@ struct CommandMenu: View {
         let rows = model.paletteRows
         let idx = min(model.chromeState.paletteIndex, max(0, rows.count - 1))
         VStack(spacing: 0) {
-            HStack(spacing: 11) {
+            HStack(spacing: Space.m) {
                 ChromeIcon(name: .search)
                 if let crumb = Self.crumb(mode) {
                     Text(crumb).font(.textMedium).foregroundStyle(Theme.fg)
@@ -181,12 +181,12 @@ struct CommandMenu: View {
         }
     }
 
-    /// Rows are 34 pt, section labels 13 pt of text with their padding; the list stops growing at 392.
+    /// Rows are 32 pt, section labels 13 pt of text with their padding; the list stops growing at 392.
     static func listHeight(_ rows: [PaletteRow]) -> CGFloat {
         var h: CGFloat = 12
         for (i, r) in rows.enumerated() {
             if i == 0 || rows[i - 1].section != r.section { h += (i == 0 ? 5 : 10) + 13 + 5 }
-            h += 34
+            h += PaletteRowView.height
         }
         return min(392, h)
     }
@@ -204,12 +204,14 @@ struct Hint: View {
 }
 
 struct PaletteRowView: View {
+    /// `.ds .cmd .it`: 32 pt.
+    static let height: CGFloat = 32
     let row: PaletteRow
     let current: Bool
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: Space.m) {
                 ChromeIcon(name: row.icon, color: row.colorHex.map { Color(hex: $0) } ?? Theme.fg3).frame(width: 16)
                 Text(row.title + (row.more ? "\u{2026}" : "")).font(.text).foregroundStyle(row.past ? Theme.fg2 : Theme.fg)
                     .lineLimit(1).truncationMode(.tail)
@@ -218,8 +220,8 @@ struct PaletteRowView: View {
                 Spacer(minLength: 0)
                 if !row.keys.isEmpty { Keycaps(keys: row.keys) }
             }
-            .padding(.leading, 10).padding(.trailing, 9).frame(height: 34)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(current ? Theme.actWash : .clear))
+            .padding(.horizontal, Space.m).frame(height: PaletteRowView.height)
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(current ? Theme.hover : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -261,9 +263,9 @@ struct SheetFrame<Content: View>: View {
             HStack {
                 Text(title).font(.title18).tracking(-0.37).foregroundStyle(Theme.fg)
                 Spacer()
-                if closable { IconButton(name: "xmark", size: 10, box: 24) { model.closeOverlay() } }
+                if closable { IconButton(name: "xmark") { model.closeOverlay() } }
             }
-            .frame(height: 24)
+            .frame(height: Dim.iconButton)
             content
         }
         .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, bottom)

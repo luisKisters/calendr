@@ -48,6 +48,10 @@ struct InkRGB: Equatable {
     static func of(_ dark: Bool) -> InkRGB { dark ? .dark : .light }
     /// What `--cc` darkens toward on Paper.
     static let paperShade = RGB(hex: "#15151A")
+    static let black = RGB(0, 0, 0)
+    /// The warm tint of the scrim and the shadows on Paper.
+    static let paperScrim = RGB(hex: "#28241E")
+    static let paperShadow = RGB(hex: "#282214")
     /// A calendar with no colour.
     static let neutralHex = "#888888"
 }
@@ -67,12 +71,12 @@ enum Theme {
     static let hair = Color.ink(\.fg, InkRGB.dark.hairAlpha, InkRGB.light.hairAlpha)
     static let hair2 = Color.ink(\.fg, InkRGB.dark.hair2Alpha, InkRGB.light.hair2Alpha)
     static let hover = Color.ink(\.fg, InkRGB.dark.hoverAlpha, InkRGB.light.hoverAlpha)
-    static let scrim = Color.dyn(Color.black.opacity(0.6), InkRGB.light.fg.color.opacity(0.22))
+    static let scrim = Color.dyn(InkRGB.black.color.opacity(0.5), InkRGB.paperScrim.color.opacity(0.26))
     static let live = Color.ink(\.live)
     /// The selected segment of a `Segmented` (`--thumb`).
     static let thumb = Color.ink(\.thumb)
-    /// The tick on a filled calendar checkbox: always dark.
-    static let tick = Color.dyn(InkRGB.dark.bg.color, InkRGB.paperShade.color)
+    /// The tick on a filled calendar checkbox.
+    static let tick = fg
 
     // Accent: none, ink only. Selection and today are inverted ink.
     static let act = fg
@@ -143,20 +147,12 @@ enum Radius {
     static let check: CGFloat = 4
     /// The teammate swatch.
     static let swatch: CGFloat = 3
-    /// The native menu bar menu (`NSMenu` look) and its rows.
-    static let nativeMenu: CGFloat = 10
-    static let nativeRow: CGFloat = 5
 }
 
 /// Shadows only exist on surfaces above the window.
 extension View {
-    func popShadow() -> some View { shadow(color: Color.dyn(Color.black.opacity(0.6), Theme.shadowTint.opacity(0.20)), radius: 30, y: 22) }
-    func liftShadow() -> some View { shadow(color: Color.dyn(Color.black.opacity(0.45), Theme.shadowTint.opacity(0.16)), radius: 11, y: 8) }
-}
-
-extension Theme {
-    /// The warm shadow colour on Paper.
-    static let shadowTint = Color(hex: "#282214")
+    func popShadow() -> some View { shadow(color: Color.dyn(InkRGB.black.color.opacity(0.6), InkRGB.paperShadow.color.opacity(0.20)), radius: 30, y: 22) }
+    func liftShadow() -> some View { shadow(color: Color.dyn(InkRGB.black.color.opacity(0.45), InkRGB.paperShadow.color.opacity(0.16)), radius: 11, y: 8) }
 }
 
 // MARK: Motion (design/DESIGN.md)

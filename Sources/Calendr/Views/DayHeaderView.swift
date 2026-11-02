@@ -85,7 +85,7 @@ struct AllDayView: View {
         let height = rows == 0 ? 0 : CGFloat(rows) * Self.row + 3
         let dark = scheme == .dark
         HStack(spacing: 0) {
-            Text("all-day").font(.tiny).tracking(0.19).foregroundStyle(Theme.fg3)
+            Text("all-day").font(.small).tracking(0.19).foregroundStyle(Theme.fg3)
                 .frame(width: Theme.gutterWidth - 10, height: 22, alignment: .trailing)
                 .padding(.trailing, 10)
                 .frame(maxHeight: .infinity, alignment: .top)

@@ -37,16 +37,16 @@ struct ToolbarView: View {
     var body: some View {
         HStack(spacing: 10) {
             if !model.sidebarVisible {
-                IconButton(name: "sidebar.left", size: 14, help: "Show sidebar  `") { model.toggleSidebar() }.padding(.trailing, 2)
+                IconButton(name: "sidebar.left", help: "Show sidebar  `") { model.toggleSidebar() }.padding(.trailing, 2)
             }
             HeaderTitle()
             ForEach(model.shownTeammates) { MateChip(mate: $0).fixedSize() }
             Spacer(minLength: 0)
             ViewTabs()
             HStack(spacing: 2) {
-                IconButton(name: "chevron.left", size: 12, help: "Previous \(model.viewMode.title.lowercased())  K") { model.previous() }
+                IconButton(name: "chevron.left", help: "Previous \(model.viewMode.title.lowercased())  K") { model.previous() }
                 TodayButton()
-                IconButton(name: "chevron.right", size: 12, help: "Next \(model.viewMode.title.lowercased())  J") { model.next() }
+                IconButton(name: "chevron.right", help: "Next \(model.viewMode.title.lowercased())  J") { model.next() }
             }
             SearchButton()
         }
@@ -119,18 +119,13 @@ struct MateChip: View {
     }
 }
 
-/// Day / Week / Month: the `Segmented` look (its segments carry their own shortcut help).
+/// Day / Week / Month: the one `Segmented`.
 struct ViewTabs: View {
     @Environment(AppModel.self) private var model
+    static let modes: [(ViewMode, String, String)] = [(.day, "Day", "D"), (.week, "Week", "W"), (.month, "Month", "M")]
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach([(ViewMode.day, "Day", "D"), (ViewMode.week, "Week", "W"), (ViewMode.month, "Month", "M")], id: \.1) { mode, title, key in
-                SegmentButton(title: title, on: model.viewMode.baseMode == mode) { model.setMode(mode) }
-                    .help("\(title) view  \(key)")
-            }
-        }
-        .segmentedFrame()
-        .animation(Motion.fast, value: model.viewMode.baseMode)
+        Segmented(options: Self.modes.map { ($0.0, $0.1) }, selection: model.viewMode.baseMode,
+                  helps: Self.modes.map { "\($0.1) view  \($0.2)" }) { model.setMode($0) }
     }
 }
 
@@ -140,12 +135,12 @@ struct SearchButton: View {
     @State private var hover = false
     var body: some View {
         Button { model.openPalette(.all) } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: Space.s) {
                 ChromeIcon(name: .search, color: Theme.fg2)
-                Text("Search").font(.text).foregroundStyle(Theme.fg2).padding(.trailing, 8)
+                Text("Search").font(.text).foregroundStyle(Theme.fg2).padding(.trailing, Space.s)
                 Keycap(text: "\u{2318}K")
             }
-            .padding(.leading, 9).padding(.trailing, 8).frame(height: Dim.row)
+            .padding(.horizontal, Space.s).frame(height: Dim.row)
             .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.hover : .clear))
             .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.hair2, lineWidth: 1))
             .contentShape(Rectangle())

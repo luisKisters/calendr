@@ -10,3 +10,5 @@ artifacts/*.sb-*
 artifacts/mockup-v3/
 artifacts/*.mov
 artifacts/snapshots/
+artifacts/perf.txt
+artifacts/*.mov.*.json

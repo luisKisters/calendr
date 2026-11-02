@@ -24,8 +24,8 @@ struct PanelInputChrome: ViewModifier {
         content
             .padding(.horizontal, 7)
             .frame(height: height)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(focused ? Theme.bg : (hover && editable ? Theme.hover : Color.clear)))
-            .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(bad ? Theme.live : (focused ? Theme.focus : Color.clear), lineWidth: 1.5))
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(focused ? Theme.bg : (hover && editable ? Theme.hover : Color.clear)))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(bad ? Theme.live : (focused ? Theme.focus : Color.clear), lineWidth: 1.5))
             .padding(.vertical, 1)
             .padding(.leading, hang ? -7 : 0)
             .onHover { hover = $0 }
@@ -197,7 +197,7 @@ struct PanelIconButton: View {
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            PanelIcon(name: icon, color: hover ? Theme.fg : Theme.fg2)
+            PanelIcon(name: icon, size: Dim.iconGlyph, color: hover ? Theme.fg : Theme.fg2)
                 .frame(width: Dim.iconButton, height: Dim.iconButton)
                 .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hover : Color.clear))
                 .contentShape(Rectangle())
@@ -237,7 +237,7 @@ struct PanelGuestChip: View {
     @State private var hover = false
     var body: some View {
         HStack(spacing: 6) {
-            Text(PanelText.initials(name)).font(.tinySemibold).tracking(0.17).foregroundStyle(Theme.fg2)
+            Text(PanelText.initials(name)).font(.smallSemibold).tracking(0.17).foregroundStyle(Theme.fg2)
                 .frame(width: 18, height: 18).background(Circle().fill(Theme.bg3))
             Text(name).font(.text).foregroundStyle(Theme.fg).lineLimit(1)
             if removable {

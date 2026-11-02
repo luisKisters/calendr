@@ -9,7 +9,7 @@ struct SidebarView: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
-                IconButton(name: "sidebar.left", size: 14, help: "Hide sidebar  `") { model.toggleSidebar() }
+                IconButton(name: "sidebar.left", small: true, help: "Hide sidebar  `") { model.toggleSidebar() }
             }
             .padding(.horizontal, 12).frame(height: 56)
 
@@ -84,8 +84,8 @@ struct MiniMonth: View {
                         .padding(.leading, 8).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).help("Back to the visible \(model.viewMode.title.lowercased())")
-                IconButton(name: "chevron.left", size: 11, box: 24) { model.stepMiniMonth(-1) }
-                IconButton(name: "chevron.right", size: 11, box: 24) { model.stepMiniMonth(1) }
+                IconButton(name: "chevron.left", small: true) { model.stepMiniMonth(-1) }
+                IconButton(name: "chevron.right", small: true) { model.stepMiniMonth(1) }
             }
             .frame(height: 28).padding(.bottom, 4)
 
@@ -125,7 +125,7 @@ struct MiniMonth: View {
                                 .help(model.chromeDay(d, long: true))
                         }
                     }
-                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(band.map { math.isSameDay($0, week[0]) } == true ? Theme.actWash : .clear))
+                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(band.map { math.isSameDay($0, week[0]) } == true ? Theme.hover : .clear))
                     .frame(height: visible ? Self.cell : 0, alignment: .top)
                     .opacity(visible ? 1 : 0)
                     .allowsHitTesting(visible)
@@ -250,7 +250,7 @@ private struct MiniWeekNumber: View, Equatable {
 
     var body: some View {
         Button(action: action) {
-            Text(verbatim: String(number)).font(.tinyTab)
+            Text(verbatim: String(number)).font(.smallTab)
                 .foregroundStyle(hovered ? Theme.fg : Theme.fg3)
                 .frame(width: 24, height: MiniMonth.cell)
                 .background(RoundedRectangle(cornerRadius: Radius.row).fill(hovered ? Theme.hover : .clear))
