@@ -249,7 +249,12 @@ final class AppModel {
             pal = Palettes.palette(barHex: calendarColorHex(of: e), fillHex: e.colorHex, dark: dark)
             styleCache[key] = pal
         }
-        return EventStyle(palette: pal, past: e.end <= now && !(e.end == e.start && e.start > now), selected: selected, overlapping: overlapping)
+        // A short item (15 min or less) is past once it has started (mockup `isPast`).
+        let short = !e.isAllDay && e.end.timeIntervalSince(e.start) <= Double(OverlapV5.shortLimit) * 60
+        var s = EventStyle(palette: pal, past: short ? e.start < now : e.end <= now, selected: selected, overlapping: overlapping)
+        s.reply = EventReply(e)
+        s.isShort = short
+        return s
     }
 
     func isWritable(_ e: CalendarEvent) -> Bool {

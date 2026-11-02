@@ -88,18 +88,13 @@ enum TextCache {
     private static var cuts: [Key: CTLine] = [:]
     private static var wraps: [Key: [(CTLine, CGFloat, CGFloat)]] = [:]
     /// Cached word wrapping for event titles (typesetting per frame was measurable), as CSS line-clamp does it: a word wider than
-    /// the line gets a line of its own and an ellipsis, and the last line ends with an ellipsis when text is left over.
-    static func wrapped(_ text: String, _ kind: Kind, width: CGFloat, maxLines: Int) -> [(line: CTLine, ascent: CGFloat, descent: CGFloat)] {
-        let key = Key(text: text + "\u{2}\(Int(width.rounded(.down)))\u{2}\(maxLines)", kind: kind.rawValue)
+    /// the line gets a line of its own and an ellipsis, and the last line ends with an ellipsis when text is left over. With
+    /// `hyphenate` (`hyphens: auto`, the mockup's `lang="en"`) a word that does not fit breaks at a syllable with a hyphen.
+    /// Everything is cached per (text, width, lines), so hyphenation costs nothing after the first frame.
+    static func wrapped(_ text: String, _ kind: Kind, width: CGFloat, maxLines: Int, hyphenate: Bool = false) -> [(line: CTLine, ascent: CGFloat, descent: CGFloat)] {
+        let key = Key(text: text + "\u{2}\(Int(width.rounded(.down)))\u{2}\(maxLines)\(hyphenate ? "h" : "")", kind: kind.rawValue)
         if let c = wraps[key] { return c.map { ($0.0, $0.1, $0.2) } }
-        var words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
-        var texts: [String] = []
-        while !words.isEmpty && texts.count < maxLines {
-            if texts.count == maxLines - 1 { texts.append(words.joined(separator: " ")); break }
-            var cur = words.removeFirst()
-            while let w = words.first, line(cur + " " + w, kind).width <= width { cur += " " + w; words.removeFirst() }
-            texts.append(cur)
-        }
+        let texts = wrapTexts(text, kind, width: width, maxLines: maxLines, hyphenate: hyphenate)
         let out: [(CTLine, CGFloat, CGFloat)] = texts.map { t in
             let l = line(t, kind)
             return (l.width <= width ? l.line : truncated(t, kind, width: width) ?? l.line, l.ascent, l.descent)
@@ -108,12 +103,51 @@ enum TextCache {
         wraps[key] = out
         return out.map { ($0.0, $0.1, $0.2) }
     }
+
+    /// The text of each line (the last one may still be too wide: it is truncated with an ellipsis).
+    static func wrapTexts(_ text: String, _ kind: Kind, width: CGFloat, maxLines: Int, hyphenate: Bool) -> [String] {
+        var words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        var texts: [String] = []
+        var cur = ""
+        func fits(_ t: String) -> Bool { line(t, kind).width <= width }
+        while let w = words.first, texts.count < maxLines {
+            let candidate = cur.isEmpty ? w : cur + " " + w
+            if fits(candidate) { cur = candidate; words.removeFirst(); continue }
+            if texts.count == maxLines - 1 { break }           // the last line: the rest is cut with an ellipsis below
+            if hyphenate, let (head, tail) = hyphenSplit(w, fitting: { fits(cur.isEmpty ? $0 : cur + " " + $0) }) {
+                texts.append(cur.isEmpty ? head : cur + " " + head)
+                words[0] = tail; cur = ""
+                continue
+            }
+            if cur.isEmpty { cur = w; words.removeFirst() }      // a word wider than the line: a line of its own
+            texts.append(cur); cur = ""
+        }
+        if !words.isEmpty { cur = cur.isEmpty ? words.joined(separator: " ") : cur + " " + words.joined(separator: " ") }
+        if !cur.isEmpty && texts.count < maxLines { texts.append(cur) }
+        return texts
+    }
+
+    private static let hyphenLocale = Locale(identifier: "en_US") as CFLocale
+    /// The longest syllable prefix of `word` that, with a hyphen, passes `fits`; the head ends with "-".
+    static func hyphenSplit(_ word: String, fitting fits: (String) -> Bool) -> (String, String)? {
+        let ns = word as NSString
+        let cf = word as CFString
+        var before = ns.length
+        while before > 2 {
+            let loc = CFStringGetHyphenationLocationBeforeIndex(cf, before, CFRange(location: 0, length: ns.length), 0, hyphenLocale, nil)
+            guard loc != kCFNotFound, loc >= 2, loc < ns.length - 1 else { return nil }
+            let head = ns.substring(to: loc) + "-"
+            if fits(head) { return (head, ns.substring(from: loc)) }
+            before = loc
+        }
+        return nil
+    }
     private static var ranges: [Int: String] = [:]
-    /// "10:10 – 11:50"
+    /// "10:10–11:50" (mockup `grid()`: no spaces around the dash).
     static func range(_ fmt: Fmt, _ a: Int, _ b: Int) -> String {
         let k = (a * 1441 + b) * 2 + (fmt.use24h ? 1 : 0)
         if let t = ranges[k] { return t }
-        let t = "\(fmt.time(minutes: a)) \u{2013} \(fmt.time(minutes: b))"; ranges[k] = t; return t
+        let t = "\(fmt.time(minutes: a))\u{2013}\(fmt.time(minutes: b))"; ranges[k] = t; return t
     }
     private static var times: [Int: String] = [:]
     static func time(_ fmt: Fmt, minutes: Int) -> String {
@@ -175,10 +209,14 @@ enum EventPainter {
 
     /// Like `text` but ends with an ellipsis when wider than `maxWidth` (returns the drawn width).
     @MainActor @discardableResult
-    static func truncated(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, box: CGFloat = 14, color: CGColor, maxWidth: CGFloat, strike: Bool = false) -> CGFloat {
+    /// `clipped`: when not even an ellipsis fits, draw the whole line and let the caller's clip cut it (CSS `overflow: hidden`).
+    static func truncated(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, box: CGFloat = 14, color: CGColor, maxWidth: CGFloat, strike: Bool = false, clipped: Bool = false) -> CGFloat {
         let l = TextCache.line(s, kind)
         if l.width <= maxWidth { return text(cg, s, kind, x: x, top: top, box: box, color: color, strike: strike) }
-        guard maxWidth > 4, let cut = TextCache.truncated(s, kind, width: maxWidth) else { return 0 }
+        let token = TextCache.line("\u{2026}", kind).width
+        guard maxWidth > max(4, token), let cut = TextCache.truncated(s, kind, width: maxWidth) else {
+            return clipped ? text(cg, s, kind, x: x, top: top, box: box, color: color, strike: strike) : 0
+        }
         let cw = CGFloat(CTLineGetTypographicBounds(cut, nil, nil, nil))
         draw(cg, cut, width: cw, ascent: l.ascent, descent: l.descent, x: x, top: top, box: box, color: color, strike: strike)
         return cw
@@ -186,10 +224,10 @@ enum EventPainter {
 
     /// Wraps `s` to at most `maxLines` lines of `lineHeight` inside `width`; returns the number of lines drawn.
     @MainActor
-    static func wrapped(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, width: CGFloat, maxLines: Int, lineHeight: CGFloat, color: CGColor, strike: Bool = false) -> Int {
+    static func wrapped(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, width: CGFloat, maxLines: Int, lineHeight: CGFloat, color: CGColor, strike: Bool = false, hyphenate: Bool = false) -> Int {
         let l = TextCache.line(s, kind)
-        if l.width <= width || maxLines == 1 { truncated(cg, s, kind, x: x, top: top, box: lineHeight, color: color, maxWidth: width, strike: strike); return 1 }
-        let lines = TextCache.wrapped(s, kind, width: width, maxLines: maxLines)
+        if l.width <= width || maxLines == 1 { truncated(cg, s, kind, x: x, top: top, box: lineHeight, color: color, maxWidth: width, strike: strike, clipped: true); return 1 }
+        let lines = TextCache.wrapped(s, kind, width: width, maxLines: maxLines, hyphenate: hyphenate)
         for (n, ln) in lines.enumerated() {
             let w = CGFloat(CTLineGetTypographicBounds(ln.line, nil, nil, nil))
             draw(cg, ln.line, width: w, ascent: ln.ascent, descent: ln.descent, x: x, top: top + CGFloat(n) * lineHeight, box: lineHeight, color: color, strike: strike)
@@ -246,84 +284,97 @@ enum EventPainter {
         static func of(_ dark: Bool) -> Ink { dark ? darkInk : lightInk }
     }
 
-    /// One event block (app.css `.ev`): tint and bar. Sizes by height: under 30 pt one line (title, start time), under 50 pt title
-    /// and range, taller a two-line title then the range.
+    /// The 135 degree stripes of a maybe block (`repeating-linear-gradient(135deg, fill 0 6px, stripe 6px 12px)`): the band at
+    /// distance d = (x + y) / sqrt 2 from the top-left corner is `fill` when d mod 12 < 6. One path per block, drawn under its clip.
+    static func stripes(_ cg: CGContext, _ r: CGRect, color: CGColor) {
+        let step = 12 * 2.0.squareRoot(), band = 6 * 2.0.squareRoot(), h = r.height
+        let p = CGMutablePath()
+        var a = 0.0
+        while a < r.width + h {
+            let b = a + band
+            p.move(to: CGPoint(x: r.minX + a, y: r.minY)); p.addLine(to: CGPoint(x: r.minX + b, y: r.minY))
+            p.addLine(to: CGPoint(x: r.minX + b - h, y: r.maxY)); p.addLine(to: CGPoint(x: r.minX + a - h, y: r.maxY)); p.closeSubpath()
+            a += step
+        }
+        cg.addPath(p); cg.setFillColor(color); cg.fillPath()
+    }
+
+    /// The rings outside a block: cut (1.5 pt of window colour) and selected (that plus 1.5 pt of fg, `0 0 0 1.5px bg, 0 0 0 3px fg`).
+    static func rings(_ cg: CGContext, _ path: (CGFloat) -> CGPath, selected: Bool, cut: Bool, ink: Ink) {
+        if selected {
+            cg.addPath(path(-2.25)); cg.setStrokeColor(ink.fg); cg.setLineWidth(1.5); cg.strokePath()
+        }
+        if selected || cut {
+            cg.addPath(path(-0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
+        }
+    }
+
+    /// Line height of event text: 11.5 pt at `line-height: 1.25`.
+    static let lineHeight: CGFloat = 14.4
+
+    /// One event block (mockup-v4 `.ev`): fill in its reply state, bar, title and time as `BlockText.plan` lays them out.
     @MainActor
     static func draw(_ cg: CGContext, event e: CalendarEvent, start: Int, end: Int, rect r: CGRect, style: EventStyle, fmt: Fmt, dayView: Bool) {
-        let pal = style.palette
         let ink = Ink.of(style.isDark)
         let shape = roundedPath(r, Radius.event)
-        let declined = e.status == .declined && !style.draft
+        let c = style.colors
         cg.saveGState()
         defer { cg.restoreGState() }
 
-        // Fill, outline and shadow.
+        // Rings, fill, stripes, outline.
+        rings(cg, { roundedPath(r.insetBy(dx: $0, dy: $0), Radius.event - $0) }, selected: style.selected && !style.draft, cut: style.over, ink: ink)
         if style.draft {
             cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
             cg.saveGState()
             cg.addPath(roundedPath(r.insetBy(dx: 0.75, dy: 0.75), Radius.event - 0.75))
             cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
             cg.restoreGState()
-        } else if declined {
-            cg.addPath(shape); cg.setFillColor(ink.bg); cg.fillPath()
-            cg.addPath(roundedPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event - 0.5))
-            cg.setStrokeColor(pal.barRGB.cg.copy(alpha: 0.4) ?? pal.barRGB.cg); cg.setLineWidth(1); cg.strokePath()
         } else {
-            if style.over && !style.selected {
-                cg.addPath(roundedPath(r.insetBy(dx: -0.75, dy: -0.75), Radius.event + 0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
-            }
-            let fill = style.past && !style.selected ? pal.pastFillRGB : (style.selected || style.hovered ? pal.hoverFillRGB : pal.fillRGB)
-            if style.selected {
-                cg.saveGState()
-                cg.setShadow(offset: CGSize(width: 0, height: 8), blur: 22, color: ink.liftShadow)
-                cg.addPath(shape); cg.setFillColor(fill.cg); cg.fillPath()
-                cg.restoreGState()
-            }
-            cg.addPath(shape); cg.setFillColor(fill.cg); cg.fillPath()
+            cg.addPath(shape); cg.setFillColor((c.stripe ?? c.fill).cg); cg.fillPath()
         }
-        if style.selected && !style.draft {
-            cg.addPath(roundedPath(r.insetBy(dx: -0.75, dy: -0.75), Radius.event + 0.75)); cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.strokePath()
-        }
-
         cg.addPath(shape); cg.clip()
-        // Bar: 3 pt, inset 3 pt from top, bottom and left.
-        if !style.draft && !declined {
+        if !style.draft {
+            if c.stripe != nil { stripes(cg, r, color: c.fill.cg) }
+            if let o = c.outline {
+                cg.addPath(roundedPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event - 0.5)); cg.setStrokeColor(o.cg); cg.setLineWidth(1); cg.strokePath()
+            }
+            // Bar: 3 pt, inset 3 pt from top, bottom and left.
             let bar = CGRect(x: r.minX + 3, y: r.minY + 3, width: 3, height: max(0, r.height - 6))
-            let color = style.past && !style.selected ? (pal.barRGB.cg.copy(alpha: 0.5) ?? pal.barRGB.cg) : pal.barRGB.cg
-            cg.saveGState()
-            cg.addPath(roundedPath(bar, 1.5)); cg.clip()
-            cg.setFillColor(color)
-            if e.status == .tentative {
-                var y = bar.minY
-                while y < bar.maxY { cg.fill(CGRect(x: bar.minX, y: y, width: 3, height: min(3, bar.maxY - y))); y += 6 }
-            } else { cg.fill(bar) }
-            cg.restoreGState()
+            cg.addPath(roundedPath(bar, Radius.bar)); cg.setFillColor(c.bar.cg.copy(alpha: c.barAlpha) ?? c.bar.cg); cg.fillPath()
         }
 
         // Text.
         let title = e.title.isEmpty ? (style.draft || e.id.isEmpty ? "New event" : "(No title)") : e.title
-        let titleColor: CGColor, timeColor: CGColor
-        if style.draft { titleColor = ink.fg; timeColor = ink.fg2 }
-        else if declined { titleColor = ink.fg3; timeColor = ink.fg3 }
-        else if style.selected { titleColor = ink.fg; timeColor = pal.timeRGB.cg }
-        else if style.past { titleColor = ink.pastTitle; timeColor = ink.fg3.copy(alpha: 0.8) ?? ink.fg3 }
-        else { titleColor = pal.titleRGB.cg; timeColor = pal.timeRGB.cg }
-        let titleKind: TextCache.Kind = declined ? .titleMedium : .title
-        let x = r.minX + (style.draft ? 8 : 11)
-        let w = max(1, r.maxX - 6 - x)
-        if r.height < 30 {
-            let startS = TextCache.time(fmt, minutes: start)
-            let tw = r.width > 118 ? TextCache.line(startS, .time).width : 0
-            let top = r.minY + (r.height - 15) / 2
-            let drawn = truncated(cg, title, titleKind, x: x, top: top, box: 15, color: titleColor, maxWidth: tw > 0 ? max(1, w - tw - 6) : w, strike: declined)
-            if tw > 0 { text(cg, startS, .time, x: x + drawn + 6, top: r.minY + (r.height - 14) / 2, box: 14, color: timeColor) }
+        let titleColor = style.draft ? ink.fg : c.title.cg, timeColor = style.draft ? ink.fg2 : c.time.cg
+        let strike = c.strike && !style.draft
+        let plan = BlockText.plan(height: Double(r.height), width: Double(r.width), isShort: style.isShort)
+        let x = r.minX + 10
+        let lh = lineHeight
+        let timeText: String? = switch plan.time {
+        case .range: TextCache.range(fmt, start, end)
+        case .start: TextCache.time(fmt, minutes: start)
+        case .none: nil
+        }
+        if plan.lines == .one {
+            let right = r.maxX - 5
+            let top = plan.centered ? r.minY + (r.height - lh) / 2 : r.minY + 3
+            let tw = timeText.map { TextCache.line($0, .time).width } ?? 0
+            let titleMax = max(1, right - x - (tw > 0 ? tw + 4 : 0))
+            let drawn = truncated(cg, title, .title, x: x, top: top, box: lh, color: titleColor, maxWidth: titleMax, strike: strike, clipped: true)
+            if let t = timeText { text(cg, t, .time, x: x + drawn + 4, top: top, box: lh, color: timeColor, strike: strike) }
         } else {
-            let lines = wrapped(cg, title, titleKind, x: x, top: r.minY + 4, width: w, maxLines: r.height < 50 ? 1 : 2, lineHeight: 15, color: titleColor, strike: declined)
-            var y = r.minY + 4 + CGFloat(lines) * 15
-            truncated(cg, TextCache.range(fmt, start, end), .time, x: x, top: y, box: 14, color: timeColor, maxWidth: w)
-            y += 14
-            if dayView && r.height > 66 && !e.location.isEmpty && !declined {
-                truncated(cg, e.location.components(separatedBy: "\n")[0], .time, x: x, top: y, box: 14, color: timeColor, maxWidth: w)
+            let w = max(1, r.maxX - 7 - x)
+            let top = r.minY + (plan.compact ? 2 : 4)
+            let lines = wrapped(cg, title, .title, x: x, top: top, width: w, maxLines: plan.maxTitleLines, lineHeight: lh, color: titleColor,
+                                strike: strike, hyphenate: plan.hyphenate)
+            var y = top + CGFloat(lines) * lh + (plan.compact ? 0 : 1)
+            if let t = timeText {
+                if plan.narrow { text(cg, t, .time, x: x, top: y, box: lh, color: timeColor, strike: strike) }
+                else { truncated(cg, t, .time, x: x, top: y, box: lh, color: timeColor, maxWidth: w, strike: strike) }
+            }
+            y += lh
+            if dayView && r.height > 66 && !e.location.isEmpty && !strike {
+                truncated(cg, e.location.components(separatedBy: "\n")[0], .time, x: x, top: y, box: lh, color: timeColor, maxWidth: w)
             }
         }
     }

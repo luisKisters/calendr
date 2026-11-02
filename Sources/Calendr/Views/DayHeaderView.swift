@@ -33,14 +33,15 @@ struct DayHeaderView: View {
                         let wd = fmt.weekdayShort(d), num = "\(math.day(d))"
                         let wdKind: TextCache.Kind = today ? .headerToday : past ? .headerPast : .header
                         let numKind: TextCache.Kind = today ? .headerNumToday : past ? .headerPast : .headerNum
-                        let x = x0 + 11
+                        let x = x0 + 12
                         let w1 = EventPainter.text(cg, wd, wdKind, x: x, top: 0, box: size.height, color: today ? ink.fg : past ? ink.fg3 : ink.fg2)
                         let nx = x + w1 + 6
                         if today {
+                            // `.dh .c.today .n`: the accent pill, radius 6, 1 pt above and below the text and 6 pt either side.
                             let nw = TextCache.line(num, numKind).width
-                            let pill = CGRect(x: nx - 1, y: (size.height - 22) / 2, width: max(22, nw + 10), height: 22)
-                            cg.addPath(EventPainter.roundedPath(pill, 11)); cg.setFillColor(ink.act); cg.fillPath()
-                            EventPainter.text(cg, num, numKind, x: pill.midX - nw / 2, top: 0, box: size.height, color: ink.onAct)
+                            let pill = CGRect(x: nx, y: (size.height - EventPainter.lineHeight) / 2 - 1, width: nw + 12, height: EventPainter.lineHeight + 2)
+                            cg.addPath(EventPainter.roundedPath(pill, Radius.row)); cg.setFillColor(ink.act); cg.fillPath()
+                            EventPainter.text(cg, num, numKind, x: pill.minX + 6, top: 0, box: size.height, color: ink.onAct)
                         } else {
                             EventPainter.text(cg, num, numKind, x: nx, top: 0, box: size.height, color: past ? ink.fg3 : ink.fg)
                         }
@@ -101,7 +102,7 @@ struct AllDayView: View {
                             var s = model.style(for: e, dark: dark, now: model.now, selected: e.id == model.selectedEventID, overlapping: false)
                             s.isDark = dark
                             s.draft = e.id == model.draftEventID
-                            AllDayPainter.chip(cg, title: e.title, status: e.status, rect: chipRect(p, dw), style: s, openLeft: p.clippedLeft, openRight: p.clippedRight)
+                            AllDayPainter.chip(cg, title: e.title, reply: s.reply, rect: chipRect(p, dw), style: s, openLeft: p.clippedLeft, openRight: p.clippedRight)
                         }
                         let ink = EventPainter.Ink.of(dark)
                         for (d, count) in hidden.enumerated() where count > 0 {
@@ -151,52 +152,43 @@ struct AllDayView: View {
 }
 
 enum AllDayPainter {
-    /// An all-day chip (`.ev--ad`): tint and bar, title only; square ends where it continues past the visible range.
+    /// An all-day chip (mockup-v4 `.adi`): 18 pt, radius 6, fill and bar, the title in 11.5 / 500; square ends where it continues past
+    /// the visible range. Replies (round 2 `.adi.st-*`): not answered is hollow with a 1.5 pt dashed `dash` outline, declined is fill
+    /// 32 percent over the window colour with struck fg3 text, maybe looks accepted. Selected: the bg and fg rings of a block.
     @MainActor
-    static func chip(_ cg: CGContext, title raw: String, status: ResponseStatus, rect r: CGRect, style: EventStyle, openLeft: Bool, openRight: Bool) {
-        let pal = style.palette
+    static func chip(_ cg: CGContext, title raw: String, reply: EventReply, rect r: CGRect, style: EventStyle, openLeft: Bool, openRight: Bool) {
         let ink = EventPainter.Ink.of(style.isDark)
-        let shape = EventPainter.chipPath(r, Radius.event, squareLeft: openLeft, squareRight: openRight)
-        let declined = status == .declined && !style.draft
+        let path = { (inset: CGFloat) in EventPainter.chipPath(r.insetBy(dx: inset, dy: inset), Radius.row - inset, squareLeft: openLeft, squareRight: openRight) }
+        let shape = path(0)
+        var c = style.palette.colors(reply: reply == .maybe ? .accepted : reply, past: style.past)
+        var dashed = false
+        if reply == .notAnswered { c.outline = nil; dashed = true }
+        if reply == .declined { c.fill = style.palette.bgRGB.mixed(with: style.palette.fillRGB, 0.32); c.barAlpha = 1 }
+        if style.hovered { c.fill = Palettes.brighter(c.fill) }
         cg.saveGState()
         defer { cg.restoreGState() }
+        EventPainter.rings(cg, path, selected: style.selected && !style.draft, cut: false, ink: ink)
         if style.draft {
             cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
             cg.saveGState()
-            cg.addPath(EventPainter.chipPath(r.insetBy(dx: 0.75, dy: 0.75), Radius.event - 0.75, squareLeft: openLeft, squareRight: openRight))
-            cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
+            cg.addPath(path(0.75)); cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
             cg.restoreGState()
-        } else if declined {
-            cg.addPath(shape); cg.setFillColor(ink.bg); cg.fillPath()
-            cg.addPath(EventPainter.chipPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event - 0.5, squareLeft: openLeft, squareRight: openRight))
-            cg.setStrokeColor(pal.barRGB.cg.copy(alpha: 0.4) ?? pal.barRGB.cg); cg.setLineWidth(1); cg.strokePath()
         } else {
-            let fill = style.past && !style.selected ? pal.pastFillRGB : style.selected ? pal.hoverFillRGB : pal.fillRGB
-            if style.selected {
+            cg.addPath(shape); cg.setFillColor(c.fill.cg); cg.fillPath()
+            if dashed {
                 cg.saveGState()
-                cg.setShadow(offset: CGSize(width: 0, height: 8), blur: 22, color: ink.liftShadow)
-                cg.addPath(shape); cg.setFillColor(fill.cg); cg.fillPath()
+                cg.addPath(path(0.75)); cg.setStrokeColor(style.palette.dashRGB.cg); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
                 cg.restoreGState()
-                cg.addPath(EventPainter.chipPath(r.insetBy(dx: -0.75, dy: -0.75), Radius.event + 0.75, squareLeft: openLeft, squareRight: openRight))
-                cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.strokePath()
             }
-            cg.addPath(shape); cg.setFillColor(fill.cg); cg.fillPath()
         }
         cg.addPath(shape); cg.clip()
-        if !style.draft && !declined && !openLeft {
+        if !style.draft && !openLeft {
             let bar = CGRect(x: r.minX + 3, y: r.minY + 3, width: 3, height: r.height - 6)
-            cg.saveGState()
-            cg.addPath(EventPainter.roundedPath(bar, 1.5)); cg.clip()
-            cg.setFillColor(style.past && !style.selected ? (pal.barRGB.cg.copy(alpha: 0.5) ?? pal.barRGB.cg) : pal.barRGB.cg)
-            if status == .tentative {
-                var y = bar.minY
-                while y < bar.maxY { cg.fill(CGRect(x: bar.minX, y: y, width: 3, height: min(3, bar.maxY - y))); y += 6 }
-            } else { cg.fill(bar) }
-            cg.restoreGState()
+            cg.addPath(EventPainter.roundedPath(bar, Radius.bar)); cg.setFillColor(c.bar.cg.copy(alpha: c.barAlpha) ?? c.bar.cg); cg.fillPath()
         }
         let title = raw.isEmpty ? (style.draft ? "New event" : "(No title)") : raw
-        let color: CGColor = style.draft || style.selected ? ink.fg : declined ? ink.fg3 : style.past ? ink.pastTitle : pal.titleRGB.cg
-        let x = r.minX + (style.draft ? 8 : 11)
-        EventPainter.truncated(cg, title, declined ? .titleMedium : .title, x: x, top: r.minY + 3, box: 15, color: color, maxWidth: max(1, r.maxX - 6 - x), strike: declined)
+        let color: CGColor = style.draft || dashed ? ink.fg : c.title.cg
+        let x = r.minX + 10
+        EventPainter.truncated(cg, title, .title, x: x, top: r.minY, box: r.height, color: color, maxWidth: max(1, r.maxX - 7 - x), strike: c.strike && !style.draft)
     }
 }
