@@ -51,6 +51,7 @@ extension AppModel {
     func wireServices() {
         let g = services.google
         g.onError = { [weak self] m in self?.showToast(m) }
+        g.onPeople = { [weak self] p in self?.services.setGooglePeople(p) }
         // demo runs (fake Google server): every write shows the request it made, as a debug line
         if options.demo { g.onRequest = { [weak self] line in self?.showToast(line) } }
         guard let c = store as? CompositeStore else { return }

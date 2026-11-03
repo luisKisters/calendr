@@ -192,3 +192,53 @@ extension WalkthroughV4 {
         d.settle(3)
     }
 }
+
+@MainActor
+extension WalkthroughV4 {
+    // MARK: v4-e-4
+
+    /// Google contacts (People API, fake server): a bare address gets its Google name without Contacts, the guest field suggests
+    /// Google people (and "other contacts"), then Allow Contacts names the rest (Apple Contacts first, then Google).
+    static func e4(_ d: Driver, _ m: AppModel) {
+        d.section("Google contacts")
+        d.say("A Google account: its contacts come along (People API, fake server)")
+        m.connectDemoGoogle()
+        d.check(m.services.googlePeople.count >= 10 && m.services.google.accounts.first?.peopleCount == m.services.googlePeople.count,
+                "\(m.services.googlePeople.count) people from contacts and other contacts")
+        scrollGrid(d, m, to: SnapshotV4.defaultScroll + 9 * DemoDataV4.hourHeight)
+        d.settle(4)
+        d.hold(0.6)
+        d.say("Flat dinner: Google names Dion, one address stays bare")
+        guard openOnGrid(d, m, "Flat dinner", day: 6) else { return }
+        let shown = m.displayed(m.selectedEvent!.attendees)
+        d.check(shown.first { $0.email == "dion.k@example.com" }?.name == "Dion Kraft" && EditorRows.withoutName(shown) == 1 && !m.services.contacts.isAllowed,
+                "Dion Kraft from Google contacts, 1 without a name")
+        hoverKey(d, m, "guest:dion.k@example.com", fx: 0.3, hold: 0.8)
+        HoverProbe.shared.target = nil
+        d.hold(0.4)
+
+        d.section("Guest suggestions")
+        d.say("Add participant: people you emailed are suggested too")
+        if let p = menuSpot(m, .guests, fx: 0.3) { d.click(at: p) { m.focusEditorField(.guest); m.panelMenus.open = .guests } }
+        d.settle(3)
+        d.type("Pi")
+        let s = m.guestSuggestions("Pi")
+        d.check(m.panelMenus.open == .guests && s.first?.name == "Pia Neumann" && m.peopleSource(s[0]) == .google, "Pia Neumann, a Google \u{201C}other contact\u{201D}")
+        d.hold(1.4)
+        if let t = s.first { pick(d, m, "menu:guest:\(t.email)", hold: 0.4) { m.addGuest(t) } }
+        d.check(m.selectedEvent!.attendees.contains { $0.email == "pia.neumann@example.net" && $0.name == "Pia Neumann" }, "Pia is added with her name")
+        d.hold(0.8)
+
+        d.section("Apple Contacts first")
+        d.say("Allow Contacts: Apple Contacts names the last bare address")
+        if let p = spot(m, "namehint", fx: 0.85) {
+            probe(d, "namehint", at: p, hold: 0.4)
+            d.click(at: p) { HoverProbe.shared.target = nil; m.allowContacts() }
+        } else { d.check(false, "the name hint is on screen") }
+        d.settle(4)
+        let all = m.displayed(m.selectedEvent!.attendees)
+        d.check(EditorRows.withoutName(all) == 0 && all.first { $0.email == "sam@example.net" }?.name == "Sam Rivera", "everyone has a name")
+        d.hold(1.6)
+        d.endCaption()
+    }
+}

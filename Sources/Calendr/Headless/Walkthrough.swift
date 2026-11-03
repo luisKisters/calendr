@@ -33,6 +33,7 @@ enum Walkthrough {
         case "v4-e-1": WalkthroughV4.e1(d, model)
         case "v4-e-2": WalkthroughV4.e2(d, model)
         case "v4-e-3": WalkthroughV4.e3(d, model)
+        case "v4-e-4": WalkthroughV4.e4(d, model)
         case let t?: print("unknown tour \(t) (tours: v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-6, v4-e-1 ... v4-e-4)"); return 2
         }
         rec?.finish()

@@ -68,8 +68,33 @@ final class GoogleAccounts {
         s.onRequest = { [weak self] line in self?.lastRequest = line; self?.onRequest?(line) }
         composite?.add(s)
         s.sync()
+        loadPeople(s)
         onConnected?(s)
         refreshInfo()
+    }
+
+    // MARK: People (Phase 8c)
+
+    @ObservationIgnored private var peopleByAccount: [String: [Teammate]] = [:]
+    /// Google contacts of every account, merged (the first account wins for an address).
+    @ObservationIgnored var onPeople: (([Teammate]) -> Void)?
+
+    /// Reads the account's contacts and other contacts (People API) in the background.
+    func loadPeople(_ s: GoogleStore) {
+        let api = GooglePeopleAPI(http: s.api.http, token: s.api.token)
+        let email = s.email
+        s.track(+1)
+        Task.detached {
+            let r = try? await api.people()
+            s.deliver { [weak self] in
+                s.track(-1)
+                guard let self, let r else { return }
+                self.peopleByAccount[email] = r
+                self.peopleCounts[email] = r.count
+                self.onPeople?(PeopleMapping.merge(self.stores.map(\.email).compactMap { self.peopleByAccount[$0] }))
+                self.refreshInfo()
+            }
+        }
     }
 
     /// "Connect Google account". Without a client ID: explains and does nothing else.
@@ -105,6 +130,8 @@ final class GoogleAccounts {
         composite?.remove(email: email)
         tokens.remove(email)
         peopleCounts[email] = nil
+        peopleByAccount[email] = nil
+        onPeople?(PeopleMapping.merge(stores.compactMap { peopleByAccount[$0.email] }))
         refreshInfo()
     }
 

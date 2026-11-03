@@ -316,6 +316,9 @@ final class GoogleStore: CalendarStore {
         after(0.5) { [weak self] in self?.sync() }
     }
 
+    /// Work outside the store that the tests and tours wait for (the People API read).
+    func track(_ d: Int) { inFlight += d }
+
     /// Tests: waits until every request has come back.
     func idle() async {
         while inFlight > 0 { try? await Task.sleep(nanoseconds: 2_000_000) }

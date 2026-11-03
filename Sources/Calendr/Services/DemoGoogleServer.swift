@@ -48,8 +48,24 @@ final class DemoGoogleServer: @unchecked Sendable {
 
     private func json<T: Encodable>(_ v: T, _ status: Int = 200) -> (Data, Int) { ((try? JSONEncoder().encode(v)) ?? Data(), status) }
 
+    /// The account's Google contacts (People API): the fixture's people with a Google name, Dion Kraft (whose invitations carry only
+    /// the address), and two "other contacts" (people Sam emailed).
+    static let connections: [GPeoplePerson] = DemoDataV4.people.filter { !$0.contactsOnly && !["me", "svc"].contains($0.key) }
+        .map { GPeoplePerson(resourceName: "people/\($0.key)", names: [GPeopleName(displayName: $0.name)], emailAddresses: [GPeopleEmail(value: $0.email)]) }
+        + [GPeoplePerson(resourceName: "people/dion", names: [GPeopleName(displayName: "Dion Kraft")], emailAddresses: [GPeopleEmail(value: "dion.k@example.com")])]
+    static let otherContacts: [GPeoplePerson] = [
+        GPeoplePerson(resourceName: "otherContacts/pia", names: [GPeopleName(displayName: "Pia Neumann")], emailAddresses: [GPeopleEmail(value: "pia.neumann@example.net")]),
+        GPeoplePerson(resourceName: "otherContacts/ola", names: [GPeopleName(displayName: "Ola Berg")], emailAddresses: [GPeopleEmail(value: "ola.berg@example.com")]),
+        GPeoplePerson(resourceName: "otherContacts/x", emailAddresses: [GPeopleEmail(value: "newsletter@example.org")]),
+    ]
+
     func handle(_ r: FakeHTTPClient.Sent) -> (Data, Int) {
         lock.lock(); defer { lock.unlock() }
+        if r.url.host == GooglePeopleAPI.base.host {
+            if r.path.hasSuffix("/people/me/connections") { return json(GConnectionsPage(connections: Self.connections)) }
+            if r.path.hasSuffix("/otherContacts") { return json(GOtherContactsPage(otherContacts: Self.otherContacts)) }
+            return (Data(), 404)
+        }
         let parts = r.path.replacingOccurrences(of: GoogleCalendarAPI.base.path, with: "").split(separator: "/").map(String.init)
         if parts == ["users", "me", "calendarList"] { return json(GCalendarList(items: calendars)) }
         guard parts.count >= 3, parts[0] == "calendars", parts[2] == "events" else { return (Data(), 404) }
