@@ -234,4 +234,25 @@ enum DemoDataV4 {
             }
         }.sorted { $0.start < $1.start }
     }
+
+    // MARK: Dense data for --perf
+
+    /// 300 deterministic events a week for 120 weeks around the showcase week, on the fixture's calendars: the perf run's load.
+    static func denseEvents() -> [CalendarEvent] {
+        var out: [CalendarEvent] = []
+        var seed: UInt64 = 99
+        func rnd(_ n: Int) -> Int { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return Int((seed >> 33) % UInt64(n)) }
+        let cals = [personal, family, tasks, club, work, side]
+        var week = math.addDays(weekStart, -60 * 7)
+        for w in 0..<120 {
+            for k in 0..<300 {
+                let d = math.addDays(week, rnd(7))
+                let start = rnd(23 * 4) * 15
+                out.append(CalendarEvent(id: "dense.\(w).\(k)", calendarID: cals[rnd(cals.count)], title: "Dense event \(k)", start: math.date(on: d, minutes: start),
+                                         end: math.date(on: d, minutes: start + [15, 30, 45, 60, 90, 120][rnd(6)])))
+            }
+            week = math.addDays(week, 7)
+        }
+        return out
+    }
 }

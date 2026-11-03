@@ -38,7 +38,7 @@ struct LaunchOptions {
                 if i + 1 < args.count, !args[i + 1].hasPrefix("-") { o.tour = value() }
             case "--fixture": o.demo = true; o.fixture = value().flatMap(DemoFixture.init(rawValue:)) ?? .v4
             case "--record": o.record = value()
-            case "--perf": o.perf = true; o.demo = true; o.freezeClock = true; o.fixture = .v3
+            case "--perf": o.perf = true; o.demo = true; o.freezeClock = true
             case "--freeze-clock": o.freezeClock = true
             case "--print-launch": o.printLaunch = true
             case "--scale": o.scale = value().flatMap { Double($0) }.map { CGFloat($0) } ?? 2
