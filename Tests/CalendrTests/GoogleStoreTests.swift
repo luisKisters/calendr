@@ -7,7 +7,7 @@ import CalendrKit
 @MainActor
 @Suite("Google store")
 struct GoogleStoreTests {
-    let zone = DemoData.math.timeZone
+    let zone = DemoDataV4.math.timeZone
 
     /// A store on the demo server, synced. `wrap` may answer some requests itself (a 410, an error).
     func store(_ wrap: (@Sendable (FakeHTTPClient.Sent) -> (Data, Int)?)? = nil) async -> (GoogleStore, FakeHTTPClient) {

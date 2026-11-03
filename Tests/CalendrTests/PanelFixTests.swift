@@ -7,11 +7,11 @@ import CalendrKit
 @Suite("Panel fixes: the in-memory draft, settling, fields")
 struct PanelFixTests {
     func draft(_ m: AppModel, day: Int = 1, hour: Int = 12) -> CalendarEvent {
-        let s = m.math.date(on: DemoData.day(10, day), minutes: hour * 60)
+        let s = m.math.date(on: DemoDataV4.day(10, day), minutes: hour * 60)
         return m.createEvent(start: s, end: s.addingTimeInterval(3600))!
     }
     func inStore(_ m: AppModel, _ id: String) -> Bool {
-        m.store.events(in: DateInterval(start: DemoData.day(1, 1), end: DemoData.day(1, 1, year: 2028))).contains { $0.id == id }
+        m.store.events(in: DateInterval(start: DemoDataV4.day(1, 1), end: DemoDataV4.day(1, 1, year: 2028))).contains { $0.id == id }
     }
 
     @Test func theDraftIsOnlyWrittenWhenSaved() {
@@ -65,7 +65,7 @@ struct PanelFixTests {
         #expect(m.draftEventID == nil && inStore(m, b.id) && m.selectedEventID == nil)
         m.setMode(.week)
         let c = draft(m)
-        m.go(to: DemoData.day(11, 20))
+        m.go(to: DemoDataV4.day(11, 20))
         #expect(m.draftEventID == nil && !inStore(m, c.id))
     }
 
@@ -74,7 +74,7 @@ struct PanelFixTests {
         let e = draft(m)
         #expect(m.setSelectedDay("oct 14"))
         #expect(m.draftEventID == e.id && m.isDraftOpen && !inStore(m, e.id))
-        #expect(m.visibleDays.contains { m.math.isSameDay($0, DemoData.day(10, 14)) })
+        #expect(m.visibleDays.contains { m.math.isSameDay($0, DemoDataV4.day(10, 14)) })
         #expect(m.layout.timed.flatMap { $0 }.contains { $0.event.id == e.id })
     }
 
@@ -90,7 +90,7 @@ struct PanelFixTests {
         let m = makeModel()
         let e = draft(m)
         m.updateSelected { $0.title = "Titled" }
-        let other = SnapshotStates.find(m, "Thursday sync", day: 3)!
+        let other = SnapshotStates.find(m, "Club committee", day: 3)!
         m.select(eventID: other.id)
         #expect(m.draftEventID == nil && inStore(m, e.id) && m.selectedEventID == other.id)
     }
@@ -106,25 +106,25 @@ struct PanelFixTests {
     @Test func monthViewDrawsAnAllDayDraft() {
         let m = makeModel()
         m.setMode(.month)
-        m.createAllDay(on: DemoData.day(9, 24))
+        m.createAllDay(on: DemoDataV4.day(10, 8))
         let id = m.draftEventID!
         #expect(m.monthEvents.contains { cell in cell.contains { $0.id == id } })
         #expect(!inStore(m, id))
     }
 
     @Test func coalescedTypingReachesTheGridAtOnce() {
-        let store = DemoStore(fixture: .v3)
+        let store = DemoStore()
         store.coalescesTextEdits = true
-        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow; o.fixture = .v3
+        let o = LaunchOptions.parse(["Calendr", "--demo", "--freeze-clock"])
         let m = AppModel(store: store, options: o, persist: false)
-        let e = m.layout.timed[1].first { $0.event.title == "Data Structures" }!.event
+        let e = m.layout.timed[1].first { $0.event.title == "Standup" }!.event
         m.select(eventID: e.id)
         let gen = m.layoutGeneration
         m.updateSelected { $0.title = "Span" }
         #expect(m.layout.timed[1].contains { $0.event.id == e.id && $0.event.title == "Span" })
         #expect(m.flatTimed.contains { $0.event.id == e.id && $0.event.title == "Span" })
         #expect(m.layoutGeneration > gen)
-        #expect(store.events(in: DateInterval(start: e.start, end: e.end)).first { $0.id == e.id }?.title == "Data Structures")
+        #expect(store.events(in: DateInterval(start: e.start, end: e.end)).first { $0.id == e.id }?.title == "Standup")
         m.flushPendingEdit()
     }
 
@@ -138,7 +138,7 @@ struct PanelFixTests {
 
     @Test func refusedTimesAndDates() {
         let m = makeModel()
-        let e = SnapshotStates.find(m, "Thursday sync", day: 3)!
+        let e = SnapshotStates.find(m, "Club committee", day: 3)!
         m.select(eventID: e.id)
         let before = m.selectedEvent!
         #expect(TimeParser.parse("9:5") == nil && TimeParser.parse("25") == nil)
@@ -146,16 +146,16 @@ struct PanelFixTests {
         #expect(!m.setSelectedDay("someday") && !m.setSelectedDay("31 Feb"))
         #expect(m.selectedEvent == before)
         #expect(m.setSelectedEnd(TimeParser.parse("24")!))
-        #expect(m.selectedEvent!.end == DemoData.day(10, 2))
+        #expect(m.selectedEvent!.end == DemoDataV4.day(10, 2))
     }
 
     @Test func aDateWithoutYearKeepsTheEventsYear() {
         let m = makeModel()
-        let e = SnapshotStates.find(m, "Thursday sync", day: 3)!
+        let e = SnapshotStates.find(m, "Club committee", day: 3)!
         m.select(eventID: e.id)
         #expect(m.setSelectedDay("2026-01-06"))
         #expect(m.setSelectedDay("Tue 13 Jan"))
-        #expect(m.math.isSameDay(m.selectedEvent!.start, DemoData.day(1, 13)))
+        #expect(m.math.isSameDay(m.selectedEvent!.start, DemoDataV4.day(1, 13)))
         // words still count from today
         #expect(m.setSelectedDay("tomorrow"))
         #expect(m.math.isSameDay(m.selectedEvent!.start, m.math.addDays(m.math.startOfDay(m.now), 1)))
@@ -167,7 +167,7 @@ struct PanelFixTests {
         #expect(PanelText.videoLink("call me") == nil && PanelText.videoLink("zoom") == nil && PanelText.videoLink("ftp://x.com") == nil)
         let m = makeModel()
         #expect(m.canInventVideoLink)
-        let e = SnapshotStates.find(m, "Thursday sync", day: 3)!
+        let e = SnapshotStates.find(m, "Club committee", day: 3)!
         m.select(eventID: e.id)
         #expect(!m.setVideoLink("tomorrow"))
         #expect(m.setVideoLink("zoom.us/j/42") && m.selectedEvent?.conferencing == "https://zoom.us/j/42")
@@ -186,9 +186,9 @@ struct PanelFixTests {
     @Test func panelCountdownRoundsUp() {
         let m = makeModel()
         let next = m.panelState.today.next!
-        // 11:48 now, 12:00 start
-        #expect(Countdown.minutes(from: m.now, to: next.start) == 12)
-        #expect(Countdown.minutes(from: m.now.addingTimeInterval(30), to: next.start) == 12)
+        // 15:10 now, Weekly review at 17:00
+        #expect(Countdown.minutes(from: m.now, to: next.start) == 110)
+        #expect(Countdown.minutes(from: m.now.addingTimeInterval(30), to: next.start) == 110)
     }
 
     @Test func pressesInTheSidebarAndHeaderSettle() {

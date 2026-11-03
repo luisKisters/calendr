@@ -44,7 +44,7 @@ final class DemoStore: CalendarStore {
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "buildEvents %.0f ms (%d events)", (CFAbsoluteTimeGetCurrent() - t0) * 1000, events.count)) }
         let t1 = CFAbsoluteTimeGetCurrent()
         var byMail: [String: [CalendarEvent]] = [:]
-        for e in v4 ? [] : DemoData.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
+        for e in v4 ? DemoDataV4.teammateEvents() : DemoData.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
         teamEvents = byMail
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "teammates %.0f ms", (CFAbsoluteTimeGetCurrent() - t1) * 1000)) }
         recomputeMax()
