@@ -162,6 +162,7 @@ final class AppModel {
         upcoming = UpcomingSummary(next: nil, sections: [])
         authState = store.authorization
         store.onChange = { [weak self] in self?.storeChanged() }
+        wireServices()
         reload()
         refreshUpcoming()
         if !options.freezeClock { startClock() }
@@ -222,6 +223,7 @@ final class AppModel {
         corpus = nil
         corpusGeneration += 1
         storeVersion += 1
+        services.google.refreshInfo()
         reload()
         refreshUpcoming()
         if !searchText.isEmpty { runSearch() }

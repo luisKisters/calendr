@@ -16,7 +16,7 @@ struct PanelParticipants: View {
         let cur = e.attendees
         let gone = base.map { b in b.attendees.filter { a in !cur.contains { $0.email == a.email && $0.name == a.name } } } ?? []
         let added = base.map { b in Set(cur.filter { a in !b.attendees.contains { $0.email == a.email && $0.name == a.name } }.map(GuestRow.key)) } ?? []
-        let canAdd = canEdit && model.store.canEditParticipants
+        let canAdd = canEdit && model.store.canEditParticipants(calendarID: e.calendarID)
         VStack(alignment: .leading, spacing: 0) {
             if cur.isEmpty && gone.isEmpty {
                 if canAdd { addField(empty: true).padding(.top, -8) } else { Text("No participants").foregroundStyle(Theme.fg3) }
@@ -115,7 +115,7 @@ struct GuestRow: View {
                     if a.isMe {
                         if !isDraft {
                             Segmented(options: [(ResponseStatus.confirmed, "Going"), (.tentative, "Maybe"), (.declined, "Decline")], selection: a.status,
-                                      enabled: model.canRespond && !a.isOrganizer) { model.setMyReply($0) }
+                                      enabled: model.event(id: eventID).map(model.canRespond) == true && !a.isOrganizer) { model.setMyReply($0) }
                                 .padding(.top, 4).padding(.bottom, 2)
                         }
                     } else if shown.name != nil && !a.email.isEmpty {
@@ -135,7 +135,7 @@ struct GuestRow: View {
                             model.panelMenus.expandedGuest = open ? nil : "\(eventID)|\(key)"
                         }
                         .help(open ? "Less" : (a.isMe ? "My reply" : "Details"))
-                        if canEdit && !a.isMe && !a.isOrganizer && model.store.canEditParticipants {
+                        if canEdit && !a.isMe && !a.isOrganizer && model.event(id: eventID).map({ model.store.canEditParticipants(calendarID: $0.calendarID) }) == true {
                             PanelIconButton(icon: .x) { model.removeSelectedGuest(email: a.email, name: a.name) }.help("Remove")
                         }
                     }

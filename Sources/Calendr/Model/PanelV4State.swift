@@ -95,11 +95,13 @@ extension AppModel {
 
     /// Edits to an event I organise with guests wait for "Send update" when the store can send updates (Google). EventKit saves at once.
     func buffersUpdates(_ e: CalendarEvent) -> Bool {
-        store.canSendUpdates && e.iAmOrganizer && e.attendees.contains { !$0.isMe } && draft?.id != e.id
+        store.canSendUpdates(calendarID: e.calendarID) && e.iAmOrganizer && e.attendees.contains { !$0.isMe } && draft?.id != e.id
     }
 
     /// The store writes my reply (Google). EventKit shows Going? read-only.
     var canRespond: Bool { store.canRespond }
+    /// Going? and my own row write my reply for this event's calendar (Google yes, EventKit no).
+    func canRespond(_ e: CalendarEvent) -> Bool { store.canRespond(calendarID: e.calendarID) }
 
     // MARK: Menus
 
@@ -189,7 +191,7 @@ extension AppModel {
 
     /// Deleting an event I organise with guests asks first: guests get a cancellation email, or not.
     func deleteNeedsGuestDialog(_ e: CalendarEvent) -> Bool {
-        store.canSendUpdates && e.iAmOrganizer && e.attendees.contains { !$0.isMe }
+        store.canSendUpdates(calendarID: e.calendarID) && e.iAmOrganizer && e.attendees.contains { !$0.isMe }
     }
 
     func deleteWithGuests(_ id: String, notify: Bool) {
@@ -228,7 +230,7 @@ extension AppModel {
     /// not organise it. A reply is mine, not an update to send: it goes to the store at once, under a held change if there is one.
     func setReply(_ s: ResponseStatus, eventID id: String) {
         // my events (I organise them) have nothing to answer; an invitation with an organizer must list me
-        guard canRespond, var e = event(id: id), !e.iAmOrganizer, e.organizer == nil || e.attendees.contains(where: \.isMe),
+        guard var e = event(id: id), canRespond(e), !e.iAmOrganizer, e.organizer == nil || e.attendees.contains(where: \.isMe),
               isWritable(e), e.status != s else { return }
         if var u = panelState.unsent[id] {
             u.base.status = s; u.edited.status = s
@@ -250,7 +252,7 @@ extension AppModel {
     }
 
     func searchPlaces(_ text: String) {
-        if panelMenus.completer == nil { panelMenus.completer = store is DemoStore ? DemoPlaceCompleter() : MapKitPlaceCompleter() }
+        if panelMenus.completer == nil { panelMenus.completer = store.isDemo ? DemoPlaceCompleter() : MapKitPlaceCompleter() }
         panelMenus.placeQuery = text
         let id = selectedEventID
         panelMenus.completer?.onResults = { [weak self] list in
@@ -300,11 +302,16 @@ extension AppModel {
         closePanelMenu()
         guard let e = selectedEvent else { return }
         if isDraftOpen { panelState.newMeet.insert(e.id); reload(); return }
-        updateSelected { $0.conferencing = "https://meet.google.com/" + Self.meetCode(e.id) }
+        updateSelected { $0.conferencing = newMeetLink(e) }
+    }
+
+    /// "Google Meet": a made-up link in the demo; Google makes the real one when the event is saved (`GoogleMapping.newMeetLink`).
+    func newMeetLink(_ e: CalendarEvent) -> String {
+        store.isDemo ? "https://meet.google.com/" + Self.meetCode(e.id) : GoogleMapping.newMeetLink
     }
 
     /// A made-up Meet code ("abc-defg-hij") from the event id.
-    static func meetCode(_ seed: String) -> String {
+    nonisolated static func meetCode(_ seed: String) -> String {
         var h: UInt64 = 1469598103934665603
         for b in seed.utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }
         let a = Array("abcdefghijkmnopqrstuvwxyz")

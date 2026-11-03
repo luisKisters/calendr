@@ -20,6 +20,8 @@ struct LaunchOptions {
     var printLaunch = false
 
     var isHeadless: Bool { snapshot != nil || walkthrough || perf }
+    /// The PR E tours and Google snapshots: a `CompositeStore` over the demo store, ready for the demo Google account.
+    var googleDemo: Bool { tour?.hasPrefix("v4-e") == true || (snapshot.map(SnapshotServices.googleStates.contains) ?? false) }
 
     static func parse(_ args: [String]) -> LaunchOptions {
         var o = LaunchOptions()

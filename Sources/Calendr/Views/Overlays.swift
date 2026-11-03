@@ -359,9 +359,11 @@ struct SettingsSheet: View {
         let s = model.settings
         let page = model.services.settingsPage
         SheetFrame(title: "Settings", width: 600, bottom: 20,
-                   accessory: AnyView(Segmented(options: SettingsPage.allCases.map { ($0, $0.title) }, selection: page) { model.services.settingsPage = $0 })) {
+                   accessory: AnyView(Segmented(options: SettingsPage.allCases.map { ($0, $0.title) }, selection: page) { model.services.settingsPage = $0 }
+                                        .tourAnchor("settings:pages"))) {
             switch page {
             case .general: general(s)
+            case .accounts: SettingsAccountsPage()
             case .contacts: SettingsContactsPage()
             }
         }
