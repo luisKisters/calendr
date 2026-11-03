@@ -27,11 +27,9 @@ extension AppModel {
         MenuBarMenu.submenu(for: e, canRespond: canChangeResponse, guestAddresses: menuBarGuestAddresses(e))
     }
 
+    /// The editor's reply path (`setReply`): the same guards, and a held change stays held.
     func setResponse(_ status: ResponseStatus, for e: CalendarEvent) {
-        guard canChangeResponse else { return }
-        var cur = event(id: e.id) ?? e
-        cur.status = status
-        _ = try? store.update(cur, span: .this)
+        setReply(status, eventID: e.id)
     }
 }
 
@@ -105,9 +103,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let m = model.menuBarMenu
         let cols = MenuBarColumns(rows: m.rows)
         var index = 0
-        /// The Join row is a custom view (Q5: the native menu stays, one row gets a Join button); every other row is native.
+        /// Rows of today with a call are custom views with Join (Q5: the native menu stays); every other row is native.
         func add(_ r: MenuBarMenuModel.Row) {
-            menu.addItem(index == m.joinIndex ? joinRow(r, cols, focus: index == 0 ? m.focus : nil) : row(r, cols))
+            menu.addItem(m.joinIndices.contains(index) ? joinRow(r, cols, focus: index == 0 ? m.focus : nil) : row(r, cols))
             index += 1
         }
         if let f = m.focus, let head = m.head {

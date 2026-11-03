@@ -108,6 +108,16 @@ extension AppModel {
     }
     func closePanelMenu() { panelMenus.open = nil }
 
+    /// Another event (or none) is selected: menus, the expanded row, typed queries and suggestions belong to the old one.
+    func resetEditorTransients() {
+        panelMenus.open = nil
+        panelMenus.expandedGuest = nil
+        panelMenus.guestQuery = ""
+        panelMenus.places = []
+        panelMenus.placeQuery = ""
+        panelMenus.pastingLink = false
+    }
+
     /// Moves the keyboard to an editor field.
     func focusEditorField(_ f: PanelFocus) { panelMenus.focusRequest = f; panelMenus.focusTick += 1 }
 
@@ -134,14 +144,30 @@ extension AppModel {
 
     /// Send update (notify) or Save without sending: the held change goes to the store.
     func sendUnsent(notify: Bool) {
-        guard let id = selectedEventID, let u = panelState.unsent[id] else { return }
+        guard let id = selectedEventID else { return }
         closePanelMenu()
-        panelState.unsent[id] = nil
+        if sendUnsent(id, notify: notify) { showToast(notify ? "Update sent" : "Saved without sending") }
+    }
+
+    /// Writes one held change. The hold is cleared only once the store took it: a failed write keeps the edits (and says so).
+    @discardableResult
+    func sendUnsent(_ id: String, notify: Bool) -> Bool {
+        guard let u = panelState.unsent[id] else { return false }
         do {
             try store.update(u.edited, span: .this, notify: notify)
-            showToast(notify ? "Update sent" : "Saved without sending")
-        } catch { showToast("Could not save event") }
+        } catch {
+            showToast("Could not save event. Your changes are kept.")
+            return false
+        }
+        panelState.unsent[id] = nil
         storeChanged()
+        return true
+    }
+
+    /// Every held change, for the quit dialog. Returns false when one of them could not be written.
+    @discardableResult
+    func sendAllUnsent(notify: Bool) -> Bool {
+        Array(panelState.unsent.keys).sorted().reduce(true) { ok, id in sendUnsent(id, notify: notify) && ok }
     }
 
     /// Discard: the event goes back to what the store has.
@@ -169,8 +195,13 @@ extension AppModel {
     func deleteWithGuests(_ id: String, notify: Bool) {
         closePanelMenu()
         guard let e = event(id: id) else { overlay = nil; return }
-        panelState.unsent[id] = nil
-        delete(e, span: .this, notify: notify)
+        if delete(e, span: .this, notify: notify) { panelState.unsent[id] = nil }
+    }
+
+    /// The recurring-delete dialog of an event with guests: `notify` says whether guests get the cancellation email.
+    func deleteRecurring(_ id: String, span: EditSpan, notify: Bool) {
+        guard let e = event(id: id) else { overlay = nil; return }
+        if delete(e, span: span, notify: notify) { panelState.unsent[id] = nil }
     }
 
     // MARK: Fields
@@ -189,8 +220,26 @@ extension AppModel {
 
     /// My reply (Going? or my own participant row). Not an update to send: Google patches my entry only.
     func setMyReply(_ s: ResponseStatus) {
-        guard canRespond, let e = selectedEvent, !e.iAmOrganizer else { return }
-        updateSelected { $0.status = s }
+        guard let id = selectedEventID else { return }
+        setReply(s, eventID: id)
+    }
+
+    /// My reply to one event, from the editor or the menu bar: only when the store writes replies, I am on the guest list and I do
+    /// not organise it. A reply is mine, not an update to send: it goes to the store at once, under a held change if there is one.
+    func setReply(_ s: ResponseStatus, eventID id: String) {
+        // my events (I organise them) have nothing to answer; an invitation with an organizer must list me
+        guard canRespond, var e = event(id: id), !e.iAmOrganizer, e.organizer == nil || e.attendees.contains(where: \.isMe),
+              isWritable(e), e.status != s else { return }
+        if var u = panelState.unsent[id] {
+            u.base.status = s; u.edited.status = s
+            e = u.base
+            panelState.unsent[id] = u
+        } else {
+            e.status = s
+        }
+        flushPendingEdit()
+        do { try store.update(e, span: .this) } catch { showToast("Could not save your reply") }
+        storeChanged()
     }
 
     // MARK: Location
@@ -203,8 +252,9 @@ extension AppModel {
     func searchPlaces(_ text: String) {
         if panelMenus.completer == nil { panelMenus.completer = store is DemoStore ? DemoPlaceCompleter() : MapKitPlaceCompleter() }
         panelMenus.placeQuery = text
+        let id = selectedEventID
         panelMenus.completer?.onResults = { [weak self] list in
-            guard let self, self.panelMenus.placeQuery == text else { return }
+            guard let self, self.panelMenus.placeQuery == text, self.selectedEventID == id else { return }
             self.panelMenus.places = list
             if !list.isEmpty { self.panelMenus.open = .places } else if self.panelMenus.open == .places { self.panelMenus.open = nil }
         }
@@ -277,8 +327,10 @@ extension AppModel {
         panelState.newMeet.remove(e.id)
         panelMenus.pastingLink = false
         updateSelected { ev in
+            // the call goes everywhere it was found, or the next parse would bring it back from the notes or the location
             ev.conferencing = ""
-            if let c = CallLink.parse(conferencing: "", notes: ev.notes, location: ""), c.kind == .meet { ev.notes = MeetNotes.visible(ev.notes).text }
+            ev.notes = CallLink.removingCalls(from: MeetNotes.visible(ev.notes).text)
+            ev.location = CallLink.removingCalls(from: ev.location)
         }
         reload()
     }

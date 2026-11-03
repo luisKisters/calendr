@@ -34,14 +34,19 @@ struct MenuBarV4Tests {
         #expect(m.joinIndex == nil && m.joinRow == nil)
     }
 
-    @Test func withoutACallOnTheHeadTheNextCallOfTodayGetsJoin() {
+    @Test func everyTodayRowWithACallGetsJoin() {
         let evs = [ev("Focus", d(2026, 9, 29, 10)), ev("Lunch", d(2026, 9, 29, 12)),
                    ev("Flat dinner", d(2026, 9, 29, 19), link: "meet.google.com/cmv-hjhb-qgb"),
                    ev("Tomorrow call", d(2026, 9, 30, 9), link: "meet.google.com/aaa-bbbb-ccc")]
         let m = build(evs, at: 9, 50)
         #expect(m.head?.title == "Focus" && m.head?.call == nil)
-        #expect(m.joinRow?.title == "Flat dinner" && m.joinIndex == 2)
+        #expect(m.joinRow?.title == "Flat dinner" && m.joinIndices == [2])
         // Nothing today with a call: no Join row (tomorrow's call keeps its row menu only).
-        #expect(build(Array(evs.prefix(2)) + [evs[3]], at: 9, 50).joinIndex == nil)
+        #expect(build(Array(evs.prefix(2)) + [evs[3]], at: 9, 50).joinIndices.isEmpty)
+        // The mockup's menu: Join on each of today's rows with a call, the head row included.
+        let two = [ev("Standup", d(2026, 9, 29, 10), link: "meet.google.com/abc-defg-hij"), ev("Lunch", d(2026, 9, 29, 12)),
+                   ev("Client call", d(2026, 9, 29, 17), link: "https://zoom.us/j/123"), evs[3]]
+        let b = build(two, at: 9, 50)
+        #expect(b.joinIndices == [0, 2] && b.joinIndices.map { b.rows[$0].logo } == ["meet", "zoom"])
     }
 }

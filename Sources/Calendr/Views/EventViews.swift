@@ -91,6 +91,8 @@ struct EventStyle: Equatable {
     var reply: EventReply = .accepted
     /// 15 minutes or less: shows only its start time.
     var isShort = false
+    /// Changes the editor holds that are not sent yet: a small dot in the top-right corner (the editor's "not sent" dot).
+    var unsent = false
 
     init(palette: EventPalette, past: Bool, selected: Bool, overlapping: Bool) {
         self.palette = palette; self.past = past; self.selected = selected; self.over = overlapping

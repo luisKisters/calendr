@@ -35,10 +35,10 @@ struct PanelParticipants: View {
                 .frame(height: 40, alignment: .top)
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(cur.enumerated()), id: \.offset) { _, a in
-                        GuestRow(a: a, gone: false, added: added.contains(GuestRow.key(a)), canEdit: canEdit, isDraft: model.isDraftOpen)
+                        GuestRow(eventID: e.id, a: a, gone: false, added: added.contains(GuestRow.key(a)), canEdit: canEdit, isDraft: model.isDraftOpen)
                     }
                     ForEach(Array(gone.enumerated()), id: \.offset) { _, a in
-                        GuestRow(a: a, gone: true, added: false, canEdit: canEdit, isDraft: model.isDraftOpen)
+                        GuestRow(eventID: e.id, a: a, gone: true, added: false, canEdit: canEdit, isDraft: model.isDraftOpen)
                     }
                 }
                 .padding(.top, 4)
@@ -84,6 +84,7 @@ struct PanelParticipants: View {
 /// `.gr.one`: 28 pt, the reply mark, the name and the role; copy, details and remove show on hover.
 struct GuestRow: View {
     @Environment(AppModel.self) private var model
+    let eventID: String
     let a: Attendee
     let gone: Bool
     let added: Bool
@@ -96,7 +97,8 @@ struct GuestRow: View {
     var body: some View {
         let key = "guest:\(a.isMe ? "me" : (a.email.isEmpty ? a.label : a.email))"
         let h = hover || HoverProbe.shared.target == key
-        let open = model.panelMenus.expandedGuest == key
+        // expanded per event: another event's "me" row never opens by itself
+        let open = model.panelMenus.expandedGuest == "\(eventID)|\(key)"
         HStack(alignment: .center, spacing: 8) {
             ReplyMark(status: gone ? nil : (a.isOrganizer ? .confirmed : a.status)).padding(.top, open ? 0 : 0)
             VStack(alignment: .leading, spacing: 0) {
@@ -127,7 +129,7 @@ struct GuestRow: View {
                     } else {
                         if !a.email.isEmpty { PanelIconButton(icon: .copy) { model.copyGuestAddress(a) }.help("Copy address") }
                         PanelIconButton(icon: open ? .collapse : .expand) {
-                            model.panelMenus.expandedGuest = open ? nil : key
+                            model.panelMenus.expandedGuest = open ? nil : "\(eventID)|\(key)"
                         }
                         .help(open ? "Less" : (a.isMe ? "My reply" : "Details"))
                         if canEdit && !a.isMe && !a.isOrganizer && model.store.canEditParticipants {

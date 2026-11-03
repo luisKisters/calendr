@@ -279,15 +279,18 @@ extension AppModel {
 
     // MARK: Header
 
-    /// "Sep – Oct" / "September" for a week, "Tuesday, 29 September" for a day, the month for a month; the year of the last day.
+    /// The month for a week (the one most of its days fall in, as the mockup's "October 2026" for Mon 28 Sep - Sun 4 Oct),
+    /// "Tuesday, 29 September" for a day, the month for a month; the year of that month.
     var chromeTitle: (main: String, year: String) {
         switch viewMode {
         case .month: return (fmt.monthLong(visibleStart), String(math.year(visibleStart)))
         case .day: return ("\(fmt.weekdayLong(visibleStart)), \(math.day(visibleStart)) \(fmt.monthLong(visibleStart))", String(math.year(visibleStart)))
         default:
-            let a = visibleStart, b = visibleDays.last ?? visibleStart
-            if math.month(a) == math.month(b) { return (fmt.monthLong(a), String(math.year(b))) }
-            return ("\(fmt.monthShort(a)) \u{2013} \(fmt.monthShort(b))", String(math.year(b)))
+            let days = visibleDays.isEmpty ? [visibleStart] : visibleDays
+            let b = days.last!
+            // ties (an even number of custom days) go to the later month
+            let m = days.filter { !math.isSameMonth($0, b) }.count > days.count / 2 ? days[0] : b
+            return (fmt.monthLong(m), String(math.year(m)))
         }
     }
 

@@ -43,9 +43,11 @@ public struct MenuBarMenuModel: Equatable, Sendable {
     public var head: Row?
     /// "Today" (what has not ended), "Tomorrow", and the day after ("Thu 1 Oct"); empty days are left out.
     public var sections: [Section]
-    /// The row drawn with a Join button (index into `rows`): the head row when its event has a call, otherwise the next of today's
-    /// rows that has one. At most one; nil when nothing today has a call.
-    public var joinIndex: Int? = nil
+    /// The rows drawn with a Join button (indices into `rows`), as the mockup's menu: every timed row of today (the head row
+    /// included) whose event has a call. Empty when nothing today has a call.
+    public var joinIndices: [Int] = []
+    /// The first of them.
+    public var joinIndex: Int? { joinIndices.first }
     /// That row.
     public var joinRow: Row? { joinIndex.map { rows[$0] } }
 
@@ -130,16 +132,17 @@ public enum MenuBarMenu {
             sections.append(.init(title: sectionTitle(math.addDays(today, k), k: k, fmt: fmt), rows: list.map { row($0, today: k == 0) }))
         }
         var m = MenuBarMenuModel(focus: f, head: f.map { row($0.event, today: true) }, sections: sections)
-        m.joinIndex = joinIndex(m, today: sectionTitle(today, k: 0, fmt: fmt))
+        m.joinIndices = joinIndices(m, today: sectionTitle(today, k: 0, fmt: fmt))
         return m
     }
 
-    /// The head row if it has a call, else the first timed row of the Today section with one.
-    static func joinIndex(_ m: MenuBarMenuModel, today: String) -> Int? {
-        if let h = m.head { if h.call != nil { return 0 } }
-        guard let first = m.sections.first, first.title == today else { return nil }
+    /// The head row if it has a call, and every timed row of the Today section with one.
+    static func joinIndices(_ m: MenuBarMenuModel, today: String) -> [Int] {
+        var out: [Int] = []
+        if let h = m.head, h.call != nil { out.append(0) }
+        guard let first = m.sections.first, first.title == today else { return out }
         let offset = m.head == nil ? 0 : 1
-        return first.rows.firstIndex { $0.call != nil && !$0.event.isAllDay }.map { $0 + offset }
+        return out + first.rows.indices.filter { first.rows[$0].call != nil && !first.rows[$0].event.isAllDay }.map { $0 + offset }
     }
 
     /// "meet", "zoom", or "video" (Teams and the other hosts).

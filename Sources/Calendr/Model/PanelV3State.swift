@@ -113,14 +113,15 @@ extension AppModel {
     }
 
     /// Return or Save: write the event (untitled becomes "New event"), close it, back to Today.
-    func saveDraft() {
+    /// `notify`: guests get the invitation (Send invite), or not yet (Save without sending invite).
+    func saveDraft(notify: Bool = true) {
         guard var d = draft else { return }
         d.title = d.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if d.title.isEmpty { d.title = "New event" }
         if panelState.newMeet.contains(d.id) { d.conferencing = "https://meet.google.com/" + Self.meetCode(d.id) }
         closeDraft()
         do {
-            let saved = try store.create(d)
+            let saved = try store.create(d, notify: notify)
             undoStack.push(.created(saved))
         } catch { showToast("Could not save event") }
         storeChanged()      // the saved event shows at once, before the store's change notification

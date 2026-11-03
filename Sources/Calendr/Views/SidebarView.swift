@@ -67,7 +67,7 @@ struct MiniMonth: View {
         let math = model.math
         let month = model.miniMonth
         let grid = math.monthGrid(for: month)
-        let rows = grid.indices.filter { $0 < 5 || math.isSameMonth(grid[$0][0], month) }
+        let rows = Array(grid.indices)     // always six rows, as the mockup's mini month (42 cells)
         let weeks = model.settings.showWeekNumbers
         let band = model.viewMode.baseMode == .week ? math.startOfWeek(model.visibleStart) : nil
         let first = math.calendar.firstWeekday
@@ -201,7 +201,7 @@ private struct MiniMonthNumerals: View, Equatable, Animatable {
     private func cells(_ offset: Int) -> [Int] {
         let m = math.addMonths(month, offset)
         let grid = math.monthGrid(for: m)
-        return grid.indices.filter { $0 < 5 || math.isSameMonth(grid[$0][0], m) }.flatMap { r in
+        return grid.indices.flatMap { r in
             grid[r].map { d in math.isSameDay(d, today) ? 200 + math.day(d) : math.isSameMonth(d, m) ? math.day(d) : 100 + math.day(d) }
         }
     }

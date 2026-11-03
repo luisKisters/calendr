@@ -37,7 +37,8 @@ protocol CalendarStore: AnyObject {
     @discardableResult func create(_ event: CalendarEvent) throws -> CalendarEvent
     @discardableResult func update(_ event: CalendarEvent, span: EditSpan) throws -> CalendarEvent
     func delete(_ event: CalendarEvent, span: EditSpan) throws
-    /// `notify`: guests get the update (or the cancellation) by email. Stores that cannot choose ignore it.
+    /// `notify`: guests get the invitation, the update or the cancellation by email. Stores that cannot choose ignore it.
+    @discardableResult func create(_ event: CalendarEvent, notify: Bool) throws -> CalendarEvent
     @discardableResult func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws
     func series(of event: CalendarEvent) -> [CalendarEvent]
@@ -48,6 +49,7 @@ extension CalendarStore {
     var searchCorpusIsAsync: Bool { false }
     var canSendUpdates: Bool { false }
     var canRespond: Bool { false }
+    @discardableResult func create(_ event: CalendarEvent, notify: Bool) throws -> CalendarEvent { try create(event) }
     @discardableResult func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent { try update(event, span: span) }
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws { try delete(event, span: span) }
     func loadSearchCorpus(around date: Date) async -> [CalendarEvent] { searchCorpus(around: date) }

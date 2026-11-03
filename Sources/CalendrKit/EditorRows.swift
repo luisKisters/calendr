@@ -92,9 +92,9 @@ public enum EditorRows {
         [a.isOrganizer ? "organizer" : nil, a.isMe ? "you" : nil, a.isOptional ? "optional" : nil].compactMap { $0 }.joined(separator: " · ")
     }
 
-    /// Guests known only by their address: the "N without a name · Allow Contacts" row counts them.
+    /// Guests known only by their address: the "N without a name · Allow Contacts" row counts them (never me).
     public static func withoutName(_ attendees: [Attendee]) -> Int {
-        attendees.filter { ($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty && !$0.email.isEmpty }.count
+        attendees.filter { !$0.isMe && ($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty && !$0.email.isEmpty }.count
     }
 }
 
@@ -139,6 +139,8 @@ public enum EventColors {
 public enum MeetNotes {
     /// The notes without the Meet block, and whether there was one.
     public static func visible(_ notes: String) -> (text: String, hidden: Bool) {
+        // The editor's own layout (text, a blank line, the block at the end) round-trips exactly, trailing new lines included.
+        if let b = block(notes), notes.hasSuffix("\n\n" + b) { return (String(notes.dropLast(b.count + 2)), true) }
         let s = CallLink.stripMeetBoilerplate(notes)
         return (s.notes, s.hadMeet)
     }

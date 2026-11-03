@@ -61,6 +61,7 @@ extension WalkthroughV4 {
         d.check(m.chromeState.columnQuery == "walk" && groups.map { m.math.day($0.day) } == [28, 30, 1, 4], "walk: Mon, Wed, Thu, Sun (\(groups.count) days)")
         d.hold(1.4)
         if let e = groups.last?.events.first {
+            d.moveCursor(to: ChromePoint.result(3), duration: 0.4)
             d.say("Hover a result")
             probe(d, "row:\(e.id)", at: ChromePoint.result(3), hold: 1.2)
             HoverProbe.shared.target = nil
@@ -88,13 +89,15 @@ extension WalkthroughV4 {
         HoverProbe.shared.target = nil
 
         d.section("Join")
-        d.say("At 18:40 Flat dinner is up next, with its Meet call")
-        d.play(0.6) { m.setNow(m.math.date(on: m.math.startOfDay(m.now), minutes: 18 * 60 + 40)) }
+        d.say("Later that day: the clock moves to 18:40")
+        d.hold(0.6)
+        d.play(0.8) { m.setNow(m.math.date(on: m.math.startOfDay(m.now), minutes: 18 * 60 + 40)) }
+        d.say("Flat dinner is up next, with its Meet call")
         guard let dinner = m.panelState.today.next, dinner.title == "Flat dinner", CallLink.parse(dinner)?.kind == .meet else {
             d.check(false, "Flat dinner with a Meet call is up next at 18:40 (\(m.panelState.today.next?.title ?? "none"))"); return
         }
         d.check(true, "Flat dinner is up next with a Meet call")
-        d.hold(0.6)
+        d.hold(1.2)
         let join = CGPoint(x: 1280, y: m.panelState.today.live == nil ? 172 : 252)
         d.say("Join Google Meet, with the call logo")
         probe(d, "join:\(dinner.id)", at: join, hold: 0.9)
@@ -102,21 +105,25 @@ extension WalkthroughV4 {
         d.check(m.toast?.text == "Opens Google Meet in your browser", "Join opens Google Meet (\(m.toast?.text ?? "no toast"))")
         d.hold(1.0)
         HoverProbe.shared.target = nil
-        d.play(0.4) { m.toast = nil; m.setNow(DemoDataV4.now) }
+        d.play(0.4) { m.toast = nil }      // the clock stays at 18:40 for the rest of the tour
 
         d.section("Useful shortcuts")
         d.say("Useful shortcuts under Today")
         let rows = m.usefulShortcuts
         d.check(rows.map(\.title) == Shortcuts.useful.map(\.title), "six useful shortcuts in order")
-        for i in [0, 2, 3, 5] { probe(d, "short:\(rows[i].title)", at: ChromePoint.shortcut(i), hold: 0.35) }
+        // the rows sit under Today, which is shorter at 18:40: point at where they are now
+        func at(_ i: Int) -> CGPoint { spot(m, "short:\(rows[i].title)", fx: 0.3) ?? ChromePoint.shortcut(i) }
+        for i in [0, 2, 3, 5] { probe(d, "short:\(rows[i].title)", at: at(i), hold: 0.35) }
         d.say("Each row runs its shortcut: Command menu")
-        probe(d, "short:\(rows[0].title)", at: ChromePoint.shortcut(0), hold: 0.3)
-        d.clickPoint(ChromePoint.shortcut(0), seconds: 0.6)
+        probe(d, "short:\(rows[0].title)", at: at(0), hold: 0.3)
+        d.clickPoint(at(0), seconds: 0.6)
         HoverProbe.shared.target = nil
         d.check(m.overlay == .command, "the Command menu row opens the command menu")
         d.hold(1.2)
+        d.say("Esc closes it", keys: ["esc"])
         d.play(0.4) { d.special("esc") }
         d.check(m.overlay == nil, "Esc closes it")
+        d.hold(0.8)
 
         d.section("Settings")
         d.say("Settings: the 12 pt pop surface")
@@ -141,7 +148,7 @@ extension WalkthroughV4 {
         func show(_ menu: MenuBarMenuModel, open: Bool, highlight: Int? = nil, join: Bool = false) {
             let v = MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock(), backdrop: backdrop,
                                          highlight: highlight, open: open, joinHover: join)
-            if let bar { bar.host.rootView = AnyView(v); bar.settle(4) } else {
+            if let bar { bar.host.rootView = AnyView(v); bar.settle(4); d.source = bar } else {
                 let w = OffscreenWindow(AnyView(v), size: CGSize(width: 1440, height: 900), chrome: false)
                 w.settle(6)
                 bar = w
@@ -167,7 +174,7 @@ extension WalkthroughV4 {
         d.play(0.3) { show(menu, open: true) }
         d.hold(0.8)
         let rowY = 32 + Double(MenuBarMenuPreview.rowTop(ji, in: menu)) + Double(MenuJoinRow.height) / 2
-        d.say("One row gets Join with the call logo: the next call today")
+        d.say("Today's rows with a call get Join and the call logo")
         d.moveCursor(to: CGPoint(x: 1150, y: rowY), duration: 0.5)
         show(menu, open: true, highlight: ji)
         d.hold(1.4)
@@ -176,18 +183,21 @@ extension WalkthroughV4 {
         d.moveCursor(to: joinP, duration: 0.4)
         show(menu, open: true, highlight: nil, join: true)
         d.hold(1.0)
-        d.say("Click Join: Google Meet opens")
+        d.say("Click Join: the menu closes, Calendr hands the call to the browser")
         d.recordClick()
         d.play(0.3) { show(menu, open: false) }
-        d.play(0.3) { m.joinCall(jr.event) }
+        d.source = d.win
+        d.play(0.4) { m.joinCall(jr.event) }
         d.check(m.toast?.text == "Opens Google Meet in your browser", "the menu's Join opens Google Meet (\(m.toast?.text ?? "no toast"))")
-        d.hold(1.2)
-        d.play(0.2) { m.toast = nil }
+        d.hold(1.6)
+        d.play(0.3) { m.toast = nil }
 
         d.section("Zoom")
-        d.say("Thursday 17:20: Client call on Zoom is next")
+        d.say("Another moment: the clock goes back to Thursday 17:20")
         let thu = m.math.addDays(m.math.startOfDay(m.now), -3)
-        d.play(0.3) { m.setNow(m.math.date(on: thu, minutes: 17 * 60 + 20)) }
+        d.hold(0.6)
+        d.play(0.8) { m.setNow(m.math.date(on: thu, minutes: 17 * 60 + 20)) }
+        d.say("Thursday 17:20: Client call on Zoom is next")
         snapBackdrop()
         menu = m.menuBarMenu
         guard menu.joinIndex == 0, let zr = menu.joinRow else { d.check(false, "the head row has Join at 17:20 (\(menu.head?.title ?? "none"))"); return }

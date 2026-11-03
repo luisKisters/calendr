@@ -56,7 +56,7 @@ enum Walkthrough {
 
         // 1. The week
         d.section("The week")
-        d.check(m.headerTitle == "September 2026" && m.weekLabel == "W40" && m.viewMode == .week && m.visibleDays.count == 7, "week view of W40")
+        d.check(m.headerTitle == "September 2026" && m.chromeTitle == ("October", "2026") && m.weekLabel == "Week 40" && m.viewMode == .week && m.visibleDays.count == 7, "week view of Week 40, titled October 2026")
         d.check(m.layout.timedCount > 60, "timed events laid out (\(m.layout.timedCount))")
         d.check(m.todayIndex == 1 && m.gridState.fit != nil && m.gridHandHeight == nil, "Today is column 2, hours are fitted")
         d.check(m.panelState.today.next?.title == "Calculus" && m.upcoming.next?.title == "Calculus", "Up next is Calculus")

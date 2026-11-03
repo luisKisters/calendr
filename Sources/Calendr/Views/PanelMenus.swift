@@ -198,7 +198,7 @@ struct PanelMenuContent: View {
                     PanelIcon(name: .help, size: 15).help("Saves the change in Google. Nobody gets an email.")
                 }
             case .inviteSend:
-                PopItem(key: "menu:noinvite", action: { model.closePanelMenu(); model.saveDraft() }) { Text("Save without sending invite") } end: {
+                PopItem(key: "menu:noinvite", action: { model.closePanelMenu(); model.saveDraft(notify: false) }) { Text("Save without sending invite") } end: {
                     PanelIcon(name: .help, size: 15).help("Saves the event. Guests get nothing yet.")
                 }
             case .deleteSend:

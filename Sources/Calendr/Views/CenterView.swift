@@ -30,7 +30,7 @@ struct CenterView: View {
     }
 }
 
-/// Title left (18 pt Instrument Sans), controls right: "Sep – Oct 2026  W40  [with Maya ×]  ...  [Day Week Month]  ‹ Today ›".
+/// Title left (18 pt Instrument Sans), controls right: "October 2026  Week 40  [with Maya ×]  ...  [Day Week Month]  ‹ Today ›".
 /// v4: no search button; search is the right column's field (`/`, Command-F).
 struct ToolbarView: View {
     @Environment(AppModel.self) private var model

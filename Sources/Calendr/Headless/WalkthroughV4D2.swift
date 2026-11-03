@@ -57,8 +57,10 @@ extension WalkthroughV4 {
         HoverProbe.shared.target = nil
 
         d.section("Title, reminders, calendar")
+        d.say("Click Long run: an event without guests")
         scrollGrid(d, m, to: SnapshotV4.defaultScroll)
         d.settle(4)
+        d.hold(0.3)
         guard openOnGrid(d, m, "Long run", day: 6) else { return }
         d.say("Click the title and type")
         if let p = spot(m, "field:title", fx: 0.4) { d.click(at: p) { m.focusEditorField(.title) } }
@@ -162,7 +164,7 @@ extension WalkthroughV4 {
         d.say("Or from my own row: Going · Maybe · Decline")
         if let r = m.panelMenus.frames["guest:me"] {
             probe(d, "guest:me", at: CGPoint(x: r.minX + 80, y: r.midY), hold: 0.4)
-            d.click(at: CGPoint(x: r.maxX - 13, y: r.midY)) { m.panelMenus.expandedGuest = "guest:me" }
+            d.click(at: CGPoint(x: r.maxX - 13, y: r.midY)) { m.panelMenus.expandedGuest = "\(m.selectedEventID ?? "")|guest:me" }
         }
         d.settle(3)
         d.hold(0.4)
@@ -200,7 +202,8 @@ extension WalkthroughV4 {
         }
         d.check(m.panelMenus.open == .send, "the menu: Discard changes, Save without sending")
         hoverKey(d, m, "menu:quiet", hold: 0.6)
-        d.play(0.3) { HoverProbe.shared.target = nil; d.special("esc") }
+        d.say("Esc closes the menu without choosing", keys: ["esc"])
+        d.play(0.4) { HoverProbe.shared.target = nil; d.special("esc") }
         d.say("Send update", keys: ["\u{2318}", "\u{21A9}"])
         if let p = menuSpot(m, .send, fx: 0.4) {
             probe(d, "split:Send update", at: p, hold: 0.3)
@@ -208,7 +211,8 @@ extension WalkthroughV4 {
         }
         d.check(m.selectedUnsent == nil && stored()?.title == "Flat dinner and games" && (m.store as? DemoStore)?.notices.last?.notify == true,
                 "Send update writes it and tells the guests")
-        d.hold(0.8)
+        d.hold(1.2)
+        d.play(0.3) { m.toast = nil }
 
         d.section("Discard")
         d.say("Remove a guest: struck through until sent")
@@ -223,6 +227,7 @@ extension WalkthroughV4 {
         pick(d, m, "menu:discard", hold: 0.4) { m.discardUnsent() }
         d.check(m.selectedUnsent == nil && m.selectedEvent?.attendees.count == 5, "Discard puts the guest back")
         d.hold(0.6)
+        d.play(0.2) { m.toast = nil }
 
         d.section("Delete with guests")
         d.say("Delete: guests get a cancellation email, or not")

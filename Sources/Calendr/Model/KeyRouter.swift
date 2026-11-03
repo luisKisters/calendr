@@ -69,7 +69,8 @@ final class KeyRouter {
         if action == .escape, typing, model.overlay == nil, let w = event.window ?? NSApp.keyWindow {
             // Esc in a field of the event being created discards it at once; anywhere else the first Esc only leaves
             // the field and the next one peels the layer.
-            guard model.draftEventID != nil else { w.makeFirstResponder(nil); return true }
+            // Esc in the right column's search field only leaves the field (and clears it next): the draft stays.
+            guard model.draftEventID != nil && !model.chromeState.searchFocused else { w.makeFirstResponder(nil); return true }
             model.blurTick += 1
             w.makeFirstResponder(nil)
         }

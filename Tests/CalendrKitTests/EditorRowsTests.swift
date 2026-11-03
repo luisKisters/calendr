@@ -52,7 +52,7 @@ struct EditorRowsTests {
         #expect(EditorRows.replySummary(list) == "2 yes, 1 maybe, 1 no, 1 awaiting")
         #expect(EditorRows.participantCount(5) == "5 participants" && EditorRows.participantCount(1) == "1 participant")
         #expect(EditorRows.role(list[0]) == "organizer · you" && EditorRows.role(list[4]) == "optional" && EditorRows.role(list[1]).isEmpty)
-        #expect(EditorRows.withoutName(list) == 3)
+        #expect(EditorRows.withoutName(list) == 2)      // me (no name either) is never counted
     }
 
     @Test func reminderLabelsAndToggling() {
@@ -81,4 +81,24 @@ struct EditorRowsTests {
         #expect(PlaceSuggestion.filter(PlaceSuggestion.demo, "M").isEmpty)
         #expect(PlaceSuggestion.filter(PlaceSuggestion.demo, "Market Hall, 42 Station Road").isEmpty)
     }
+
+    @Test func trailingNewLinesSurviveTheHiddenBlock() {
+        let notes = MeetNotes.replacingVisible(in: "Hi.\n\n" + MeetNotes.boilerplate("abc-defg-hij"), with: "Hi.\n")
+        #expect(MeetNotes.visible(notes) == ("Hi.\n", true))
+        let two = MeetNotes.replacingVisible(in: notes, with: "Hi.\n\n")
+        #expect(MeetNotes.visible(two).text == "Hi.\n\n")
+    }
+
+    @Test func withoutANameNeverCountsMe() {
+        let list = [Attendee(email: "me@x.example", isOrganizer: true, isMe: true), Attendee(email: "a@x.example"), Attendee(email: "b@x.example"),
+                    Attendee(email: "c@x.example", name: "Cleo")]
+        #expect(EditorRows.withoutName(list) == 2)
+    }
+
+    @Test func callLinksComeOutOfText() {
+        #expect(CallLink.removingCalls(from: "Agenda in the doc.\nJoin: https://zoom.us/j/123") == "Agenda in the doc.")
+        #expect(CallLink.removingCalls(from: "Room 4 (meet.google.com/abc-defg-hij)") == "Room 4")
+        #expect(CallLink.removingCalls(from: "See https://example.com/agenda") == "See https://example.com/agenda")
+    }
 }
+

@@ -54,7 +54,7 @@ extension AppModel {
         guard isWritable(old) else { showToast("This calendar is read-only"); return true }
         guard let moved = KeyboardSelection.nudged(old, days: dx, minutes: dy * GridGeometry.snap, math: math) else { return true }
         flushPendingEdit()
-        commit(moved, span: .this, old: old)
+        if !holdUnsent(before: old, after: moved) { commit(moved, span: .this, old: old) }
         if let e = selectedEvent { keepVisible(e) }
         return true
     }

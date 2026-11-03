@@ -62,8 +62,9 @@ struct ColumnSearchField: View {
             }
         }
         .padding(.horizontal, Space.m).frame(height: Dim.field)
-        .background(RoundedRectangle(cornerRadius: Radius.control).fill(focused ? Theme.bg : Color.clear))
-        .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(focused ? Theme.fg3 : Theme.hair2, lineWidth: focused ? 1.5 : 1))
+        // DECISIONS: fields and search sit on bg2 (the mockup's quiet-chrome outline is not the locked surface)
+        .background(RoundedRectangle(cornerRadius: Radius.control).fill(focused ? Theme.bg : Theme.bg2))
+        .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(focused ? Theme.fg3 : Color.clear, lineWidth: 1.5))
         .contentShape(Rectangle())
         .onTapGesture { focused = true }
         .padding(.horizontal, ColumnDim.box).padding(.top, 12).padding(.bottom, 6)
@@ -313,6 +314,7 @@ struct UsefulShortcutRow: View {
         .buttonStyle(.plain)
         .onHover { hover = $0 }
         .animation(Motion.fast, value: hot)
+        .tourAnchor("short:\(shortcut.title)")
         .padding(.horizontal, ColumnDim.box)
     }
 }

@@ -57,7 +57,7 @@ private enum NativeMenu {
 private enum MenuLine {
     case header(String, countdown: String?, soon: Bool)
     case row(Int)          // index into MenuBarMenuModel.rows
-    case join(Int)         // the row with the Join button (`MenuBarMenuModel.joinIndex`)
+    case join(Int)         // a row with the Join button (`MenuBarMenuModel.joinIndices`)
     case separator
 
     var height: CGFloat {
@@ -70,7 +70,7 @@ private enum MenuLine {
 
     static func list(_ m: MenuBarMenuModel) -> [MenuLine] {
         var out: [MenuLine] = []
-        func line(_ i: Int) -> MenuLine { i == m.joinIndex ? .join(i) : .row(i) }
+        func line(_ i: Int) -> MenuLine { m.joinIndices.contains(i) ? .join(i) : .row(i) }
         if let f = m.focus, m.head != nil { out += [.header(m.headLabel, countdown: f.text, soon: f.soon), line(0)] } else { out.append(.header(m.headLabel, countdown: nil, soon: false)) }
         out.append(.separator)
         var i = m.head == nil ? 0 : 1

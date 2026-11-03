@@ -165,4 +165,99 @@ struct PanelV4Tests {
         let saved = stored(m, d.id)!
         #expect(CallLink.parse(saved)?.kind == .meet && m.panelState.newMeet.isEmpty)
     }
+
+    // MARK: Review fixes
+
+    @Test func aFailedSendKeepsTheHeldChange() {
+        let m = makeModelV4()
+        let e = open(m, "wg")
+        m.setSelectedTitle("Kept")
+        store(m).failWrites = true
+        m.sendUnsent(notify: true)
+        #expect(m.selectedUnsent?.edited.title == "Kept" && stored(m, e.id)?.title == "Flat dinner")
+        m.requestDeleteSelected()
+        m.deleteWithGuests(e.id, notify: true)
+        #expect(m.selectedUnsent != nil && stored(m, e.id) != nil)
+        store(m).failWrites = false
+        m.overlay = nil
+        m.sendUnsent(notify: true)
+        #expect(m.selectedUnsent == nil && stored(m, e.id)?.title == "Kept")
+    }
+
+    @Test func gridDragAndNudgeWaitWithTheHeldChange() {
+        let m = makeModelV4()
+        let e = open(m, "wg")
+        m.nudgeSelected(dx: 0, dy: 1)
+        #expect(m.selectedUnsent != nil && stored(m, e.id)?.start == e.start && store(m).notices.isEmpty)
+        #expect(m.selectedEvent.map { m.fmt.time($0.start) } == "19:15")
+        // a drag on the grid: the same hold
+        let k = makeModelV4()
+        let w = open(k, "wg")
+        let p = k.layout.timed[6].first { $0.event.id == w.id }!
+        let r = k.gridGeometry.rect(for: p)
+        let a = CGPoint(x: r.midX, y: r.minY + 10), b = CGPoint(x: r.midX, y: r.minY + 10 + k.gridGeometry.hourHeight)
+        k.gridMouseDown(a); k.gridMouseDragged(CGPoint(x: a.x, y: a.y + 20)); k.gridMouseDragged(b); k.gridMouseUp(b)
+        #expect(k.panelState.unsent[w.id] != nil && stored(k, w.id)?.start == w.start && store(k).notices.isEmpty)
+        #expect(k.event(id: w.id).map { k.fmt.time($0.start) } == "20:00")
+    }
+
+    @Test func recurringDeleteWithGuestsLetsYouSkipTheEmail() {
+        let m = makeModelV4()
+        let base = m.event(id: "v4.wg")!
+        var next = base
+        next.id = "v4.wg.next"; next.start = m.math.addDays(base.start, 7); next.end = m.math.addDays(base.end, 7)
+        _ = try? m.store.create(next)
+        m.storeChanged()
+        m.select(eventID: base.id)
+        m.requestDeleteSelected()
+        #expect(m.overlay == .deleteRecurring(base.id))
+        m.deleteRecurring(base.id, span: .all, notify: false)
+        #expect(stored(m, base.id) == nil && stored(m, next.id) == nil)
+        #expect(store(m).notices.last.map { $0.kind == "delete" && !$0.notify } == true)
+    }
+
+    @Test func saveWithoutSendingInviteDoesNotNotify() {
+        let m = makeModelV4()
+        let s = m.math.date(on: m.math.addDays(DemoDataV4.weekStart, 5), minutes: 18 * 60)
+        let d = m.createEvent(start: s, end: s.addingTimeInterval(3600))!
+        m.updateSelected { $0.attendees = [Attendee(email: "sam.rivera@example.com", isOrganizer: true, isMe: true), Attendee(email: "theo.park@example.com")] }
+        m.saveDraft(notify: false)
+        #expect(stored(m, d.id) != nil && store(m).notices.last.map { $0.kind == "create" && !$0.notify } == true)
+    }
+
+    @Test func menuBarRepliesUseTheEditorGuards() {
+        let m = makeModelV4()
+        let mine = m.event(id: "v4.wg")!          // I organise it: nothing to answer
+        m.setResponse(.declined, for: mine)
+        #expect(stored(m, mine.id)?.status == .confirmed)
+        let invite = m.event(id: "v4.d4")!
+        m.setResponse(.tentative, for: invite)
+        #expect(stored(m, invite.id)?.status == .tentative)
+        store(m).canRespond = false
+        m.setResponse(.declined, for: invite)
+        #expect(stored(m, invite.id)?.status == .tentative)
+    }
+
+    @Test func editorStateDoesNotCarryOverToAnotherEvent() {
+        let m = makeModelV4()
+        let wg = open(m, "wg")
+        m.panelMenus.expandedGuest = "\(wg.id)|guest:me"
+        m.panelMenus.guestQuery = "the"
+        m.searchPlaces("Mark")
+        m.openPanelMenu(.places)
+        let other = open(m, "c2")
+        #expect(m.panelMenus.open == nil && m.panelMenus.expandedGuest == nil && m.panelMenus.guestQuery.isEmpty)
+        #expect(m.panelMenus.places.isEmpty && m.panelMenus.placeQuery.isEmpty && !m.panelMenus.pastingLink)
+        #expect(stored(m, other.id)?.location.isEmpty == true)
+    }
+
+    @Test func removingACallTakesItOutOfNotesAndLocation() {
+        let m = makeModelV4()
+        let e = open(m, "c2")       // Reading: no guests
+        m.updateSelected { $0.notes = "Bring the book.\nCall: https://zoom.us/j/5551234 (backup)"; $0.location = "Online, teams.microsoft.com/l/meetup-join/abc" }
+        #expect(CallLink.parse(m.selectedEvent!)?.kind == .zoom)
+        m.removeCall()
+        let s = stored(m, e.id)!
+        #expect(CallLink.parse(s) == nil && s.notes.hasPrefix("Bring the book.") && s.location == "Online")
+    }
 }

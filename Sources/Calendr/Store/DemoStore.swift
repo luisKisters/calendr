@@ -18,6 +18,9 @@ final class DemoStore: CalendarStore {
     var canRespond = true
     /// Every write that chose whether guests hear about it: (event id, "update" or "delete", notify).
     private(set) var notices: [(id: String, kind: String, notify: Bool)] = []
+    /// Tests: every write throws (a network error).
+    var failWrites = false
+    struct WriteFailed: Error {}
     /// Tests flip this to exercise the debounced write path that EventKit uses.
     var coalescesTextEdits = false
     var onChange: (() -> Void)?
@@ -93,6 +96,7 @@ final class DemoStore: CalendarStore {
 
     @discardableResult
     func update(_ event: CalendarEvent, span: EditSpan) throws -> CalendarEvent {
+        if failWrites { throw WriteFailed() }
         guard let idx = events.firstIndex(where: { $0.id == event.id }) else { return event }
         let old = events[idx]
         var targets: [Int] = [idx]
@@ -124,17 +128,27 @@ final class DemoStore: CalendarStore {
     }
 
     @discardableResult
+    func create(_ event: CalendarEvent, notify: Bool) throws -> CalendarEvent {
+        if failWrites { throw WriteFailed() }
+        notices.append((event.id, "create", notify))
+        return try create(event)
+    }
+
+    @discardableResult
     func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent {
+        if failWrites { throw WriteFailed() }
         notices.append((event.id, "update", notify))
         return try update(event, span: span)
     }
 
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws {
+        if failWrites { throw WriteFailed() }
         notices.append((event.id, "delete", notify))
         try delete(event, span: span)
     }
 
     func delete(_ event: CalendarEvent, span: EditSpan) throws {
+        if failWrites { throw WriteFailed() }
         if span == .this || event.seriesID == nil {
             events.removeAll { $0.id == event.id }
         } else if let sid = event.seriesID {

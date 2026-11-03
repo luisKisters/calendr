@@ -51,7 +51,12 @@ final class AppModel {
 
     // MARK: Selection
     /// Selecting anything else settles the draft, so a draft is always the selected event.
-    var selectedEventID: String? { didSet { if let d = draft, selectedEventID != d.id { settleDraft() } } }
+    var selectedEventID: String? {
+        didSet {
+            if let d = draft, selectedEventID != d.id { settleDraft() }
+            if selectedEventID != oldValue { resetEditorTransients() }
+        }
+    }
     var selectedSlot: Date?
     private(set) var pendingEdit: (event: CalendarEvent, span: EditSpan)?
     private var editTimer: Timer?
@@ -256,6 +261,7 @@ final class AppModel {
         var s = EventStyle(palette: pal, past: short ? e.start < now : e.end <= now, selected: selected, overlapping: overlapping)
         s.reply = EventReply(e)
         s.isShort = short
+        s.unsent = !panelState.unsent.isEmpty && panelState.unsent[e.id] != nil
         return s
     }
 
@@ -574,7 +580,8 @@ final class AppModel {
         if e.isRecurring && store.series(of: e).count > 1 { overlay = .deleteRecurring(e.id) } else { delete(e, span: .this) }
     }
 
-    func delete(_ e: CalendarEvent, span: EditSpan, notify: Bool = true) {
+    @discardableResult
+    func delete(_ e: CalendarEvent, span: EditSpan, notify: Bool = true) -> Bool {
         flushPendingEdit()
         let removed: [CalendarEvent]
         switch span {
@@ -588,7 +595,8 @@ final class AppModel {
             selectedEventID = nil
             overlay = nil
             showToast("Deleted \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}", undo: true)
-        } catch { showToast("Could not delete event") }
+            return true
+        } catch { showToast("Could not delete event"); return false }
     }
 
     func undo() {
@@ -663,10 +671,10 @@ final class AppModel {
     func dismissToast() { toast = nil }
 
     private var isoCalendar = Calendar(identifier: .iso8601)
-    /// ISO week number of the first visible day ("W40").
+    /// ISO week number of the first visible day ("Week 40", as the mockup's header).
     var weekLabel: String {
         if isoCalendar.timeZone != math.timeZone { isoCalendar.timeZone = math.timeZone }
-        return "W\(isoCalendar.component(.weekOfYear, from: visibleStart))"
+        return "Week \(isoCalendar.component(.weekOfYear, from: visibleStart))"
     }
 
     // MARK: Commands
