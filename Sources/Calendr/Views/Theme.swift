@@ -255,3 +255,15 @@ struct MicroLabel: View {
         return l.prefix(1).uppercased() + l.dropFirst()
     }
 }
+
+// MARK: v4 editor tokens (Phase 7, design/mockup-v4 `stIcon`, `.bd`, `.split.red`)
+
+extension Theme {
+    /// Reply marks in the participant list: going, maybe, declined.
+    static let replyYes = Color(hex: "#3FA45B")
+    static let replyMaybe = Color(hex: "#D9A33A")
+    static let replyNo = Color(hex: "#E5776C")
+    /// Destructive actions: the red split button of the delete dialog, "Discard changes" in a menu.
+    static let danger = Color(hex: "#D9645A")
+    static let onDanger = Color(hex: "#FFFFFF")
+}
