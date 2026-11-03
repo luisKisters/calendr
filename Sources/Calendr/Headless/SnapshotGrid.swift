@@ -1,45 +1,33 @@
 import AppKit
 import CalendrKit
 
-/// Snapshot states of the GRID area. `SnapshotStates.apply` falls through to this for names it does not know.
+/// Snapshot states of the GRID area on the demo week (views, appearance, hour height, creating by drag). `SnapshotStates.apply` falls
+/// through to this for names it does not know.
 @MainActor
 enum SnapshotGrid {
+    static let states = ["month", "day", "light-week", "month-light", "sidebar-hidden", "create-drag", "week-numbers", "week-zoomed"]
+    /// States drawn in Paper: `HeadlessRunner` switches the window to light for them.
+    static let paper: Set<String> = ["light-week", "month-light"]
+
     /// Puts the model into the named state. Returns false for names this area does not define.
     static func apply(_ state: String, _ m: AppModel) -> Bool {
         switch state {
-        case "week-zoomed-scrolled":
-            // Mockup: S.zoom = 96; S.scrollTop = 600
-            m.settings.hourHeight = 96
-            scroll(m, to: 600)
-        case "week-scrolled-midnight": scroll(m, to: 0)
-        case "week-hover":
-            // The gutter pill for the snapped time under the pointer (Wed 14:15, empty grid).
-            m.gridState.pointer.minute = 14 * 60 + 15
-        case "week-double-click":
-            // A double-click on empty grid (Sat 10:20) creates an event of the default length at the half hour under the pointer.
+        case "month": m.setMode(.month)
+        case "day": m.setMode(.day); SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
+        case "light-week": m.settings.appearance = .light; SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
+        case "month-light": m.setMode(.month); m.settings.appearance = .light
+        case "sidebar-hidden": m.sidebarVisible = false; SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
+        case "create-drag":
+            // Thursday 14:15-15:35, mid-drag: free time between Lunch and Office hours.
             let g = m.gridGeometry
-            let p = CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(10 * 60 + 20))
-            m.gridMouseDown(p); m.gridMouseUp(p)
-            m.gridMouseDown(p, clickCount: 2); m.gridMouseUp(p)
-        case "month-more":
-            m.setMode(.month)
-            // The first "n more" of the month as laid out on screen.
-            after(0.05) { if let it = m.gridState.monthCache.layout?.items.first(where: { $0.kind == .more }) { m.openDayList(it.day) } }
-        case "month-create-all-day":
-            m.setMode(.month)
-            m.createAllDay(on: DemoData.day(9, 24))
-        case "month-selected":
-            m.setMode(.month)
-            if let e = m.monthEvents.joined().first(where: { $0.title == "Public Policy" && m.math.day($0.start) == 30 }) { m.select(eventID: e.id) }
+            let x = 3.5 * g.dayWidth
+            m.gridMouseDown(CGPoint(x: x, y: g.yPos(14 * 60 + 15) + 2))
+            m.gridMouseDragged(CGPoint(x: x, y: g.yPos(15 * 60 + 35)))
+            SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
+        case "week-numbers": m.settings.showWeekNumbers = true; SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
+        case "week-zoomed": m.settings.hourHeight = 96; SnapshotV4.scroll(m, to: 12 * 96)
         default: return false
         }
         return true
-    }
-
-    private static func scroll(_ m: AppModel, to y: Double) {
-        after(0.05) {
-            m.gridState.scrollTarget = y
-            m.gridState.scrollTick += 1
-        }
     }
 }

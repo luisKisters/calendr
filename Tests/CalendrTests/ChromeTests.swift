@@ -14,7 +14,7 @@ struct ChromeTests {
         m.setPaletteQuery("tomorrow")
         let first = m.paletteRows.first
         #expect(first?.section == "Go to")
-        if case .date(let d)? = first?.kind { #expect(m.math.day(d) == 30) } else { Issue.record("no date row") }
+        if case .date(let d)? = first?.kind { #expect(m.math.day(d) == 5) } else { Issue.record("no date row") }
     }
 
     @Test func weekNumberParses() {
@@ -28,14 +28,14 @@ struct ChromeTests {
         m.openPalette(.all)
         m.setPaletteQuery("c")
         #expect(!m.paletteRows.contains { $0.section == "Events" })
-        m.setPaletteQuery("calculus")
+        m.setPaletteQuery("walk")
         #expect(m.paletteRows.contains { $0.section == "Events" })
     }
 
     @Test func searchModeListsNearestFirst() {
         let m = model()
         m.openPalette(.search)
-        m.setPaletteQuery("calculus")
+        m.setPaletteQuery("walk")
         let days = m.paletteRows.compactMap { r -> Int? in if case .event(let e) = r.kind { return abs(m.math.daysBetween(m.now, e.start)) }; return nil }
         #expect(!days.isEmpty && days == days.sorted())
     }
@@ -52,11 +52,11 @@ struct ChromeTests {
     @Test func choosingAMateTwiceRemovesTheOverlay() {
         let m = model()
         m.openPalette(.meet)
-        m.setPaletteQuery("maya")
+        m.setPaletteQuery("ines")
         m.runPaletteSelection()
-        #expect(m.shownTeammates.map(\.name) == ["Maya Sterling"] && m.overlay == nil)
+        #expect(m.shownTeammates.map(\.name) == ["Ines Duarte"] && m.overlay == nil)
         m.openPalette(.meet)
-        m.setPaletteQuery("maya")
+        m.setPaletteQuery("ines")
         #expect(m.paletteRows.first?.shown == true)
         m.runPaletteSelection()
         #expect(m.shownTeammates.isEmpty)
@@ -82,7 +82,7 @@ struct ChromeTests {
 
     @Test func moveShowsAnUndoToast() {
         let m = model()
-        let e = m.layout.timed[3].first { $0.event.title == "Piano lesson" }!.event
+        let e = m.layout.timed[3].first { $0.event.title == "Lunch" }!.event
         var moved = e
         moved.start = e.start.addingTimeInterval(3600); moved.end = e.end.addingTimeInterval(3600)
         m.commit(moved, span: .this, old: e)
@@ -94,6 +94,8 @@ struct ChromeTests {
         // Mon 28 Sep - Sun 4 Oct: most days are in October (the mockup's "October 2026  Week 40")
         #expect(m.chromeTitle.main == "October" && m.chromeTitle.year == "2026" && m.weekLabel == "Week 40")
         m.setMode(.month)
+        #expect(m.chromeTitle.main == "October")
+        m.previous()
         #expect(m.chromeTitle.main == "September")
     }
 }

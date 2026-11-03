@@ -11,7 +11,7 @@ struct ContactsTests {
         let o = LaunchOptions.parse(["Calendr", "--fixture", "v4", "--freeze-clock"])
         let fake = FakeContacts(["dion.k@example.com": "Dion Kraft", "sam@example.net": "Sam Rivera", "kim.lindqvist@example.org": "Kim Lindqvist"],
                                 access: access, grants: grants)
-        return (AppModel(store: DemoStore(fixture: .v4), options: o, persist: false, services: Services(contacts: fake)), fake)
+        return (AppModel(store: DemoStore(), options: o, persist: false, services: Services(contacts: fake)), fake)
     }
 
     @Test func allowContactsFillsTheBareAddresses() {

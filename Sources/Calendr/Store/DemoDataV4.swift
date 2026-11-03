@@ -5,10 +5,14 @@ import CalendrKit
 /// (mockup :800-899), so app snapshots and mockup shots show the same week. Sam Rivera, Mon 28 Sep - Sun 4 Oct 2026, "now" Sun 4 Oct 15:10,
 /// 46 pt per hour. Invented data: every address uses a reserved example domain. Only the showcase week has events.
 enum DemoDataV4 {
-    static let math = DemoData.math
+    /// The demo's calendar math: Europe/Berlin, whatever the machine's zone.
+    static let math = CalendarMath(timeZone: TimeZone(identifier: "Europe/Berlin")!)
     static let weekStart = math.date(year: 2026, month: 9, day: 28)
     static let now = math.date(year: 2026, month: 10, day: 4, hour: 15, minute: 10)
     static let hourHeight = 46.0
+
+    /// Midnight of a date in the demo zone (tests and snapshot hooks).
+    static func day(_ m: Int, _ d: Int, year: Int = 2026) -> Date { math.date(year: year, month: m, day: d) }
 
     // MARK: Calendars and accounts (CALS0, ACCTS0)
 
@@ -197,5 +201,58 @@ enum DemoDataV4 {
 
     static func buildEvents() -> [CalendarEvent] {
         seeds().map(event).sorted { $0.start != $1.start ? $0.start < $1.start : $0.id < $1.id }
+    }
+
+    // MARK: Meet with (busyFor)
+
+    /// `busyFor(id)` (mockup :1241): a teammate's busy blocks in the showcase week, from a hash of their `PEOPLE` key. JavaScript's
+    /// number arithmetic (doubles, unsigned `>>> 0`, signed `>>`) is kept, so the blocks are the mockup's.
+    static func busy(_ key: String) -> [(day: Int, start: Int, end: Int)] {
+        var h: UInt32 = 7
+        for ch in key.unicodeScalars { h = h &* 31 &+ UInt32(ch.value) }
+        var out: [(day: Int, start: Int, end: Int)] = []
+        for d in 0..<7 {
+            let n = 1 + Int(Int32(bitPattern: h) >> Int32(d)) % 3
+            for _ in 0..<max(0, n) {
+                // JavaScript multiplies in doubles (the product passes 2^53 and rounds), then `>>> 0` keeps it modulo 2^32.
+                h = UInt32((Double(h) * 1103515245 + 12345).truncatingRemainder(dividingBy: 4294967296))
+                let s = 8 * 60 + Int(h % 24) * 30, l = 30 * (1 + Int(Int32(bitPattern: h) >> 8) % 4)
+                out.append((d, s, min(s + l, 22 * 60)))
+            }
+        }
+        return out
+    }
+
+    /// The teammates' busy time as events (`Teammate` email as the owner), for the Meet with overlay.
+    static func teammateEvents() -> [CalendarEvent] {
+        people.filter { !["me", "icloud", "svc"].contains($0.key) }.flatMap { p in
+            busy(p.key).enumerated().compactMap { i, b -> CalendarEvent? in
+                guard b.end > b.start else { return nil }
+                let day = math.addDays(weekStart, b.day)
+                return CalendarEvent(id: "v4.busy.\(p.key).\(i)", calendarID: "team:\(p.email)", title: "Busy",
+                                     start: math.date(on: day, minutes: b.start), end: math.date(on: day, minutes: b.end), ownerEmail: p.email)
+            }
+        }.sorted { $0.start < $1.start }
+    }
+
+    // MARK: Dense data for --perf
+
+    /// 300 deterministic events a week for 120 weeks around the showcase week, on the fixture's calendars: the perf run's load.
+    static func denseEvents() -> [CalendarEvent] {
+        var out: [CalendarEvent] = []
+        var seed: UInt64 = 99
+        func rnd(_ n: Int) -> Int { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return Int((seed >> 33) % UInt64(n)) }
+        let cals = [personal, family, tasks, club, work, side]
+        var week = math.addDays(weekStart, -60 * 7)
+        for w in 0..<120 {
+            for k in 0..<300 {
+                let d = math.addDays(week, rnd(7))
+                let start = rnd(23 * 4) * 15
+                out.append(CalendarEvent(id: "dense.\(w).\(k)", calendarID: cals[rnd(cals.count)], title: "Dense event \(k)", start: math.date(on: d, minutes: start),
+                                         end: math.date(on: d, minutes: start + [15, 30, 45, 60, 90, 120][rnd(6)])))
+            }
+            week = math.addDays(week, 7)
+        }
+        return out
     }
 }

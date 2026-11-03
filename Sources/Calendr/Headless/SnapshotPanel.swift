@@ -4,40 +4,32 @@ import CalendrKit
 /// Snapshot states of the PANEL area. `SnapshotStates.apply` falls through to this for names it does not know.
 @MainActor
 enum SnapshotPanel {
+    /// The editor scenes (design/mockup-v4 `preset()`). "v4-event" and "v4-delete" are in `SnapshotV4`.
+    static let v4States = ["v4-invited", "v4-call", "v4-location", "v4-maps", "v4-calendar", "v4-reminders", "v4-guests", "v4-invite", "v4-pending"]
+    /// The other panel states: a new event, the recurring delete question, an event on a read-only calendar.
+    static let states = ["create-event", "delete-recurring", "readonly-event"]
+
     /// Puts the model into the named state. Returns false for names this area does not define.
     static func apply(_ state: String, _ m: AppModel) -> Bool {
-        switch state {
-        case "panel-sync":          // mockup: select(... "Thursday sync")
-            if let e = SnapshotStates.find(m, "Thursday sync", day: 3) { m.select(eventID: e.id) }
-        case "panel-readonly":      // mockup: select(... "Day of German Unity")
-            if let e = m.layout.allDayEvents.values.first(where: { $0.title == "Day of German Unity" }) { m.select(eventID: e.id) }
-        case "panel-long-title":
-            if let e = SnapshotStates.find(m, "Sam / Alex", day: 1) {
-                m.select(eventID: e.id)
-                m.updateSelected { $0.title = "Quarterly planning with the studio team and everyone from Northwind" }
-            }
-        case "panel-added":         // v4: no "add" chips; the empty place and notes rows show their placeholders
-            if let e = SnapshotStates.find(m, "Sam / Alex", day: 1) { m.select(eventID: e.id) }
-        case "panel-create-titled":
-            let s = m.math.date(on: DemoData.day(10, 1), minutes: 12 * 60)
-            m.createEvent(start: s, end: s.addingTimeInterval(3600))
-            m.updateSelected { $0.title = "Lunch with Maya" }
-        case "panel-nothing-left":  // 23:30: the day is over
-            m.setNow(m.math.date(on: m.now, minutes: 23 * 60 + 30))
-        case "panel-light-detail":
-            m.settings.appearance = .light
-            if let e = SnapshotStates.find(m, "Thursday sync", day: 3) { m.select(eventID: e.id) }
-        default: return applyV4(state, m)
-        }
-        return true
-    }
-
-    /// v4 editor scenes (design/mockup-v4 `preset()`), on the v4 fixture. "v4-event" and "v4-delete" are in `SnapshotV4`.
-    static let v4States = ["v4-invited", "v4-call", "v4-location", "v4-maps", "v4-calendar", "v4-reminders", "v4-guests", "v4-invite", "v4-pending"]
-
-    static func applyV4(_ state: String, _ m: AppModel) -> Bool {
         func open(_ id: String) { if let e = SnapshotV4.event(m, id) { m.select(eventID: e.id) } }
         switch state {
+        case "create-event":
+            // Thu 1 Oct 12:00-13:00, created the way C or a drag creates: selected, title focused.
+            let s = m.math.date(on: DemoDataV4.day(10, 1), minutes: 12 * 60)
+            m.createEvent(start: s, end: s.addingTimeInterval(3600))
+        case "delete-recurring":
+            // Long run repeats every Sunday; the fixture holds one week, so the series gets its next occurrence first.
+            if let e = SnapshotV4.event(m, "g1") {
+                var next = e; next.id = "v4.g1.next"; next.start = m.math.addDays(e.start, 7); next.end = m.math.addDays(e.end, 7)
+                _ = try? m.store.create(next)
+                m.storeChanged()
+                m.select(eventID: e.id); m.requestDeleteSelected()
+            }
+        case "readonly-event":
+            // Family as a read-only (subscribed) calendar: Lunch on Thursday shows its fields without editing.
+            (m.store as? DemoStore)?.makeReadOnly(DemoDataV4.family)
+            m.storeChanged()
+            open("d3")
         case "v4-invited": open("d4")                                   // Office hours: Jonas organises, Going? answered Yes
         case "v4-call": open("c3"); m.openPanelMenu(.call)              // Lunch with Theo: no call yet, the call menu
         case "v4-location":

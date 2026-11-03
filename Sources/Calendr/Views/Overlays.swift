@@ -59,10 +59,12 @@ struct ToastHost: View {
     var body: some View {
         let sheetOpen: Bool = { if case .command? = model.overlay { return false }; return model.overlay != nil }()
         ZStack {
-            if let t = model.toast, !(yieldsToSheet && sheetOpen) { ToastView(toast: t).id(t.id).transition(.toast) }
+            // One pill: a newer message replaces the text in place at once (no cross-fade with the old one); it slides in and out only
+            // when it appears or goes.
+            if let t = model.toast, !(yieldsToSheet && sheetOpen) { ToastView(toast: t).transition(.toast) }
         }
         .padding(.bottom, 20)
-        .animation(Motion.spring, value: model.toast)
+        .animation(Motion.spring, value: model.toast != nil)
     }
 }
 

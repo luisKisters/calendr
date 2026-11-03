@@ -8,7 +8,11 @@ enum HeadlessRunner {
 
     static func start(_ o: LaunchOptions) {
         setvbuf(stdout, nil, _IOLBF, 0)
-        UserDefaults.standard.set(0, forKey: "AppleFontSmoothing")
+        // Grey-scale text in the offscreen frames, for this process only: the argument domain is volatile, so nothing is written to the
+        // app's defaults (a persisted value would leak into the real app).
+        var args = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        args["AppleFontSmoothing"] = 0
+        UserDefaults.standard.setVolatileDomain(args, forName: UserDefaults.argumentDomain)
         let app = NSApplication.shared
         app.setActivationPolicy(o.walkthrough ? .regular : .accessory)
         DispatchQueue.main.async {
@@ -25,7 +29,7 @@ enum HeadlessRunner {
     }
 
     static func makeModel(_ o: LaunchOptions, dense: Bool = false) -> AppModel {
-        let demo = DemoStore(dense: dense, fixture: o.fixture)
+        let demo = DemoStore(dense: dense)
         // PR E tours and the accounts snapshot: the demo store behind a CompositeStore, so a demo Google account can join it
         return AppModel(store: o.googleDemo ? CompositeStore(base: demo) : demo, options: o, persist: false)
     }
@@ -42,7 +46,7 @@ enum HeadlessRunner {
         w.settle(6)
         model.gridGeometry = model.gridGeometry
         guard SnapshotStates.apply(state, to: model) else { print("unknown state \(state)"); return 2 }
-        if state == "light-week" || state == "month-light" { w.setDark(false) }
+        if SnapshotGrid.paper.contains(state) { w.setDark(false) }
         w.settle(8)
         let ok = w.writePNG(to: out, scale: o.scale)
         print(ok ? "wrote \(out)" : "failed \(out)")

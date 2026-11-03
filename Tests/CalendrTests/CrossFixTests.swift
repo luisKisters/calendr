@@ -8,11 +8,11 @@ import CalendrKit
 struct CrossFixTests {
     @Test func demoModePinsTwentyFourHourMondayWeeks() {
         let m = makeModel()
-        #expect(m.use24h && m.fmt.time(DemoData.defaultNow) == "11:48")
-        #expect(m.math.calendar.firstWeekday == 2 && m.visibleStart == DemoData.refWeekStart)
+        #expect(m.use24h && m.fmt.time(DemoDataV4.now) == "15:10")
+        #expect(m.math.calendar.firstWeekday == 2 && m.visibleStart == DemoDataV4.weekStart)
     }
     @Test func realModeFollowsTheSystemLocale() {
-        var o = LaunchOptions(); o.freezeClock = true; o.now = DemoData.defaultNow
+        var o = LaunchOptions(); o.freezeClock = true; o.now = DemoDataV4.now
         let m = AppModel(store: DemoStore(), options: o, persist: false)
         #expect(m.use24h == Fmt.uses24h(.current))
         #expect(m.math.calendar.firstWeekday == Calendar.autoupdatingCurrent.firstWeekday)

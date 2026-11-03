@@ -1,7 +1,7 @@
 import SwiftUI
 import CalendrKit
 
-/// Chrome metrics (`.head`, `--side-w` of the v3 app.css, restyled by design/mockup-v4 `.ds`).
+/// Chrome metrics (design/mockup-v4 `.head` and `.ds`).
 enum ChromeDim {
     static let headerHeight: CGFloat = 60
     static let sidebarWidth: CGFloat = 236

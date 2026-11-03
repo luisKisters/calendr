@@ -9,6 +9,7 @@ struct GridFixTests {
     func model(viewport: Double = 700) -> AppModel {
         let m = makeModel()
         m.setGridViewport(height: viewport)
+        m.fitHourScale()            // the demo opens at its hand-set 46 pt: these tests start from the fit
         m.gridGeometry = GridGeometry(dayWidth: 150, hourHeight: m.gridHourHeight, dayCount: 7)
         return m
     }
@@ -16,7 +17,7 @@ struct GridFixTests {
     @Test func moreOpensTheDayListAllDayFirst() {
         let m = model()
         #expect(m.allDayFold == AllDayView.maxRows - 1)
-        let sat = DemoData.day(10, 3)
+        let sat = DemoDataV4.day(10, 3)
         m.openDayList(sat)
         #expect(m.visibleDayList?.day == m.math.startOfDay(sat))
         let list = m.dayListEvents(sat)
@@ -28,9 +29,9 @@ struct GridFixTests {
 
     @Test func escClosesTheDayListAsOneLayer() {
         let m = model()
-        let e = m.layout.timed[1].first { $0.event.title == "Genetics" }!.event
+        let e = m.layout.timed[1].first { $0.event.title == "Standup" }!.event
         m.select(eventID: e.id)
-        m.openDayList(DemoData.day(10, 3))
+        m.openDayList(DemoDataV4.day(10, 3))
         #expect(m.selectedEventID == nil)           // opening settles the selection, as in the mockup
         m.select(eventID: e.id)
         #expect(m.handle(.escape))
@@ -41,7 +42,7 @@ struct GridFixTests {
 
     @Test func dayListClosesOnPickPressAndPeriodChange() {
         let m = model()
-        let sat = DemoData.day(10, 3)
+        let sat = DemoDataV4.day(10, 3)
         m.openDayList(sat)
         let pick = m.dayListEvents(sat)[0]
         m.pickFromDayList(pick.id)
@@ -59,7 +60,7 @@ struct GridFixTests {
     @Test func dayListHangsBelowItsMoreAndStaysInside() {
         let m = model()
         m.gridState.allDayFrame = CGRect(x: 300, y: 100, width: 700, height: 72)
-        let a = m.dayListAnchor(GridDayList(day: DemoData.day(10, 3), period: m.periodID))!
+        let a = m.dayListAnchor(GridDayList(day: DemoDataV4.day(10, 3), period: m.periodID))!
         #expect(a == CGRect(x: 300 + 5 * 100 + 2, y: 100 + AllDayView.topPad + 2 * AllDayView.row, width: 95, height: AllDayView.chip))
         let size = CGSize(width: GridDayListPopover.width, height: 200)
         let below = GridDayListHost.origin(anchor: CGRect(x: 40, y: 50, width: 90, height: 21), size: size, in: CGSize(width: 900, height: 700))
@@ -132,8 +133,8 @@ struct GridFixTests {
 
     @Test func dragPreviewRecascadesTheDaysItTouches() {
         let m = model()
-        let mon = m.layout.timed[0].first { $0.event.title == "Statistics" }!
-        let thu = m.layout.timed[3].first { $0.event.title == "Statistics" }!
+        let mon = m.layout.timed[0].first { $0.event.title == "Deep work" }!
+        let thu = m.layout.timed[3].first { $0.event.title == "Club committee" }!
         #expect(thu.placement.width == 1)
         m.dragPreview = AppModel.DragPreview(kind: .move, eventID: mon.event.id, dayIndex: 3, startMinute: thu.startMinute, endMinute: thu.endMinute)
         let r = m.gridPreviewLayout()

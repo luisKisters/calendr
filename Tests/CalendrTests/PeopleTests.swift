@@ -37,7 +37,7 @@ struct PeopleTests {
 
     func model() -> AppModel {
         let o = LaunchOptions.parse(["Calendr", "--fixture", "v4", "--freeze-clock"])
-        return AppModel(store: CompositeStore(base: DemoStore(fixture: .v4)), options: o, persist: false)
+        return AppModel(store: CompositeStore(base: DemoStore()), options: o, persist: false)
     }
 
     @Test func googleNamesFillBareAddressesAfterAppleContacts() {
