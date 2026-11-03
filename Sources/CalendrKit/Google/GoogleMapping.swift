@@ -14,12 +14,22 @@ public enum GoogleMapping {
         guard g.status != "cancelled", let s = g.start, let e = g.end else { return nil }
         let allDay = s.date != nil
         guard let start = date(s, zone: zone), let end = date(e, zone: zone) else { return nil }
-        let attendees = (g.attendees ?? []).filter { $0.resource != true }.map(attendee)
+        // rooms and other resources are not guests (the store keeps their raw entries and sends them back on a guest-list PATCH)
+        var attendees = (g.attendees ?? []).filter { $0.resource != true }.map(attendee)
+        // the organizer, from `organizer` when the guest list does not mark (or list) them
+        if let o = g.organizer, let mail = o.email, !mail.isEmpty, !attendees.isEmpty {
+            if let i = attendees.firstIndex(where: { $0.email.lowercased() == mail.lowercased() }) {
+                attendees[i].isOrganizer = true
+                if o.isSelf == true { attendees[i].isMe = true }
+            } else {
+                attendees.insert(Attendee(email: mail, name: o.displayName, isOrganizer: true, isMe: o.isSelf ?? false, status: .confirmed), at: 0)
+            }
+        }
         let me = attendees.first { $0.isMe }
         // My own events without guests: I organise them, no reply to give.
         let status: ResponseStatus = me?.status ?? .confirmed
         let series = g.recurringEventId ?? (g.recurrence != nil ? g.id : nil)
-        return CalendarEvent(
+        var ev = CalendarEvent(
             id: id, seriesID: series.map { seriesPrefix + $0 }, calendarID: calendarID, title: g.summary ?? "",
             start: start, end: max(end, start), isAllDay: allDay, status: status, location: g.location ?? "", notes: g.description ?? "",
             recurrence: (g.recurrence ?? []).lazy.compactMap(RRule.parse).first,
@@ -28,6 +38,18 @@ public enum GoogleMapping {
             visibility: g.visibility == "public" ? .public : (g.visibility == "private" || g.visibility == "confidential") ? .private : .standard,
             timeZoneID: s.timeZone ?? zone.identifier,
             colorHex: g.colorId.flatMap(GoogleColors.hex(colorId:)))
+        ev.externalID = g.iCalUID
+        return ev
+    }
+
+    /// Where a call link that is not a new Meet goes: Google ignores `conferenceData` without a `createRequest` from a client that is
+    /// not a conferencing add-on, so a plain link (Zoom, Teams, a pasted Meet link) is kept in the location when that is empty, else
+    /// at the end of the description. The call row finds it there (`CallLink` reads the notes and the location).
+    public static func placedLink(_ e: CalendarEvent) -> (location: String, notes: String) {
+        let link = e.conferencing.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !link.isEmpty, link != newMeetLink, !e.location.contains(link), !e.notes.contains(link) else { return (e.location, e.notes) }
+        if e.location.trimmingCharacters(in: .whitespaces).isEmpty { return (link, e.notes) }
+        return (e.location, e.notes.isEmpty ? link : e.notes + "\n\n" + link)
     }
 
     public static func attendee(_ a: GAttendee) -> Attendee {
@@ -78,17 +100,14 @@ public enum GoogleMapping {
     /// The whole event as an insert body. `meetRequestID`: ask Google for a new Meet link (send with `conferenceDataVersion=1`).
     public static func body(_ e: CalendarEvent, zone: TimeZone, meetRequestID: String? = nil) -> GEvent {
         var g = GEvent()
-        g.summary = e.title; g.description = e.notes; g.location = e.location
+        let placed = placedLink(e)
+        g.summary = e.title; g.description = placed.notes; g.location = placed.location
         (g.start, g.end) = times(e, zone: zone)
         if !e.attendees.isEmpty { g.attendees = e.attendees.filter { !$0.email.isEmpty }.map(gAttendee) }
         g.reminders = GReminders(useDefault: false, overrides: e.reminders.map { GReminder(minutes: $0) })
         g.colorId = e.colorHex.flatMap(GoogleColors.colorId(hex:))
         g.transparency = e.availability == .free ? "transparent" : "opaque"
         g.visibility = switch e.visibility { case .standard: "default"; case .public: "public"; case .private: "private" }
-        if e.conferencing == newMeetLink && meetRequestID == nil { g.conferenceData = nil }
-        else if !e.conferencing.isEmpty && meetRequestID == nil {
-            g.conferenceData = GConferenceData(entryPoints: [GEntryPoint(entryPointType: "video", uri: e.conferencing)], conferenceSolution: GConferenceSolution(key: GSolutionKey(type: "addOn")))
-        }
         if let id = meetRequestID { g.conferenceData = GConferenceData(createRequest: GCreateRequest(requestId: id, conferenceSolutionKey: GSolutionKey(type: "hangoutsMeet"))) }
         if let r = e.recurrence { g.recurrence = [RRule.format(r, zone: zone)] }
         return g
@@ -96,13 +115,16 @@ public enum GoogleMapping {
 
     /// A PATCH body with only what changed between two versions of an event, or nil when nothing Google stores changed.
     /// My reply is not in it: that is `rsvp` (a patch of my own attendee entry only).
-    public static func patch(old: CalendarEvent, new: CalendarEvent, zone: TimeZone, meetRequestID: String? = nil) -> GEvent? {
+    /// `resources`: the event's raw room and resource entries, sent back with a changed guest list so the room stays booked.
+    public static func patch(old: CalendarEvent, new: CalendarEvent, zone: TimeZone, meetRequestID: String? = nil, resources: [GAttendee] = []) -> GEvent? {
         var g = GEvent()
         var any = false
         func set<T: Equatable>(_ a: T, _ b: T, _ apply: () -> Void) { if a != b { apply(); any = true } }
+        // a new plain call link lands in the location or the notes (`placedLink`)
+        let placed: (location: String, notes: String) = old.conferencing != new.conferencing ? placedLink(new) : (new.location, new.notes)
         set(old.title, new.title) { g.summary = new.title }
-        set(old.notes, new.notes) { g.description = new.notes }
-        set(old.location, new.location) { g.location = new.location }
+        set(old.notes, placed.notes) { g.description = placed.notes }
+        set(old.location, placed.location) { g.location = placed.location }
         if old.start != new.start || old.end != new.end || old.isAllDay != new.isAllDay { (g.start, g.end) = times(new, zone: zone); any = true }
         let guests = { (e: CalendarEvent) in e.attendees.map { [$0.email.lowercased(), $0.name ?? "", "\($0.isOptional)"] } }
         if guests(old) != guests(new) {
@@ -111,19 +133,16 @@ public enum GoogleMapping {
                 var x = gAttendee(a)
                 if a.isMe { x.responseStatus = responseStatus(old.status) }
                 return x
-            }
+            } + resources.filter { $0.resource == true }
             any = true
         }
         set(old.reminders, new.reminders) { g.reminders = GReminders(useDefault: false, overrides: new.reminders.map { GReminder(minutes: $0) }) }
         set(old.colorHex, new.colorHex) { g.colorId = new.colorHex.flatMap(GoogleColors.colorId(hex:)) ?? "" }
         set(old.availability, new.availability) { g.transparency = new.availability == .free ? "transparent" : "opaque" }
         set(old.visibility, new.visibility) { g.visibility = switch new.visibility { case .standard: "default"; case .public: "public"; case .private: "private" } }
+        // only a new Meet goes in `conferenceData` (with `conferenceDataVersion=1`); removing Google's own Meet is not sent
         if let id = meetRequestID {
             g.conferenceData = GConferenceData(createRequest: GCreateRequest(requestId: id, conferenceSolutionKey: GSolutionKey(type: "hangoutsMeet"))); any = true
-        } else if old.conferencing != new.conferencing {
-            g.conferenceData = new.conferencing.isEmpty ? GConferenceData() : GConferenceData(entryPoints: [GEntryPoint(entryPointType: "video", uri: new.conferencing)],
-                                                                                              conferenceSolution: GConferenceSolution(key: GSolutionKey(type: "addOn")))
-            any = true
         }
         return any ? g : nil
     }

@@ -56,7 +56,8 @@ final class CompositeStore: CalendarStore {
         return base.accounts.filter { !mails.contains($0.name.lowercased()) } + google.flatMap(\.accounts)
     }
     var teammates: [Teammate] { base.teammates }
-    var authorization: StoreAuthorization { base.authorization }
+    /// A connected Google account is enough to use the app: no EventKit access needed for it.
+    var authorization: StoreAuthorization { google.isEmpty ? base.authorization : .authorized }
     var defaultCalendarID: String? {
         if let d = base.defaultCalendarID, !hiddenBaseCalendarIDs.contains(d) { return d }
         return google.lazy.compactMap(\.defaultCalendarID).first ?? base.defaultCalendarID
@@ -72,14 +73,21 @@ final class CompositeStore: CalendarStore {
     func canRespond(calendarID: String) -> Bool { owner(calendarID).canRespond(calendarID: calendarID) }
     func canEditParticipants(calendarID: String) -> Bool { owner(calendarID).canEditParticipants(calendarID: calendarID) }
     func canCreateMeetLinks(calendarID: String) -> Bool { owner(calendarID).canCreateMeetLinks(calendarID: calendarID) }
+    func canUndoSeriesDelete(calendarID: String) -> Bool { owner(calendarID).canUndoSeriesDelete(calendarID: calendarID) }
 
     func requestAccess() async { await base.requestAccess() }
     func refresh() { base.refresh(); for g in google { g.refresh() } }
 
+    /// Base events that a connected Google account also brings: the accounts with the same address (the rule above, a fallback
+    /// since EventKit names a CalDAV source after the address only by habit), and any event whose iCalUID (EventKit's external
+    /// identifier) a Google calendar has.
     private func visible(_ list: [CalendarEvent]) -> [CalendarEvent] {
+        guard !google.isEmpty else { return list }
         let hidden = hiddenBaseCalendarIDs
-        return hidden.isEmpty ? list : list.filter { !hidden.contains($0.calendarID) }
+        let uids = googleUIDs
+        return list.filter { !hidden.contains($0.calendarID) && !($0.externalID.map(uids.contains) ?? false) }
     }
+    private var googleUIDs: Set<String> { Set(google.flatMap { $0.externalIDs }) }
 
     func events(in range: DateInterval) -> [CalendarEvent] {
         let b = visible(base.events(in: range))

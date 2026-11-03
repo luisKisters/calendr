@@ -62,7 +62,6 @@ extension AppModel {
     /// Settings → Accounts → "Connect Google account". Without a client ID it only explains what is missing.
     func connectGoogle() {
         services.google.connect()
-        if services.google.config.clientID == nil { showToast("A Google client ID is needed first") }
     }
 
     func disconnectGoogle(_ email: String) {

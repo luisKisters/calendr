@@ -81,7 +81,10 @@ struct SettingsAccountsPage: View {
                     .padding(.top, 16).padding(.bottom, 2)
                 if let google {
                     SettingsRow(title: a.name, detail: google.statusLine, first: true, icon: .google) {
-                        SecondaryButton(title: "Remove", small: true) { model.disconnectGoogle(google.email) }
+                        HStack(spacing: 6) {
+                            if google.needsReconnect { PrimaryButton(title: "Connect again", small: true) { model.services.google.reconnect(google.email) } }
+                            SecondaryButton(title: "Remove", small: true) { model.disconnectGoogle(google.email) }
+                        }
                     }
                     .tourAnchor("settings:google:\(google.email)")
                 }

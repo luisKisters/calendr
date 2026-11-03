@@ -71,8 +71,11 @@ struct GoogleStoreTests {
         try s.update(e, span: .this, notify: true)
         await s.idle()
         let p = try #require(http.sent.last { $0.method == "PATCH" })
-        let mails = (p.json?["attendees"] as? [[String: Any]])?.compactMap { $0["email"] as? String }
-        #expect(mails?.count == 6 && mails?.last == "kim.lindqvist@example.org")
+        let atts = p.json?["attendees"] as? [[String: Any]]
+        let mails = atts?.compactMap { $0["email"] as? String }
+        // the five guests, Kim, and the kitchen (a resource: sent back so the room stays booked)
+        #expect(mails?.count == 7 && mails?.contains("kim.lindqvist@example.org") == true)
+        #expect(atts?.contains { $0["email"] as? String == DemoGoogleServer.room && $0["resource"] as? Bool == true } == true)
         #expect(event(s, "wg")?.attendees.contains { $0.email == "kim.lindqvist@example.org" && $0.name == "Kim Lindqvist" } == true)
     }
 
@@ -100,10 +103,12 @@ struct GoogleStoreTests {
                                                           Attendee(email: "mara.hoffmann@example.com")]), notify: true)
         #expect(made.id.contains("/local-"))
         await s.idle()
+        // create without notify (undo) emails nobody
         let post = try #require(http.sent.last { $0.method == "POST" })
         #expect(post.query["sendUpdates"] == "all" && post.json?["summary"] as? String == "Planning")
         let saved = try #require(s.searchCorpus(around: .now).first { $0.title == "Planning" })
-        #expect(!saved.id.contains("/local-"))
+        // the id the editor holds stays the event's id after Google answered
+        #expect(saved.id == made.id)
         try s.delete(saved, span: .this, notify: false)
         await s.idle()
         let del = try #require(http.sent.last { $0.method == "DELETE" })
@@ -214,9 +219,243 @@ struct GoogleStoreTests {
     }
 }
 
+extension GoogleStoreTests {
+    @Test func moveKeepsTheEventAndItsGuests() async throws {
+        let (s, http) = await store()
+        var e = try #require(event(s, "wg"))
+        e.calendarID = "google:sam.rivera@example.com/\(DemoDataV4.family)"
+        e.title = "Flat dinner (family)"
+        let moved = try s.update(e, span: .this, notify: false)
+        await s.idle()
+        let mv = try #require(http.sent.first { $0.path.hasSuffix("/events/wg/move") })
+        #expect(mv.method == "POST" && mv.query["destination"] == DemoDataV4.family && mv.query["sendUpdates"] == "none")
+        #expect(!http.sent.contains { $0.method == "DELETE" || $0.method == "POST" && $0.path.hasSuffix("/events") })
+        let now = try #require(s.searchCorpus(around: .now).first { $0.id == moved.id })
+        #expect(now.calendarID.hasSuffix(DemoDataV4.family) && now.title == "Flat dinner (family)" && now.attendees.count == 5 && CallLink.parse(now)?.kind == .meet)
+        #expect(s.searchCorpus(around: .now).filter { $0.title.hasPrefix("Flat dinner") }.count == 1)
+    }
+
+    @Test func moveToAnotherStoreIsRefusedWithoutAWrite() async throws {
+        let (s, http) = await store()
+        var e = try #require(event(s, "wg"))
+        let before = http.sent.count
+        e.calendarID = DemoDataV4.work          // a macOS Calendar calendar
+        e.title = "Elsewhere"
+        #expect(throws: GoogleStore.NotGoogle.self) { try s.update(e, span: .this, notify: false) }
+        #expect(http.sent.count == before && event(s, "wg")?.title == "Flat dinner")
+    }
+
+    @Test func editAndDeleteBeforeTheInsertReturns() async throws {
+        let gate = Gate()
+        let server = DemoGoogleServer()
+        let http = FakeHTTPClient { r in
+            if r.method == "POST" && r.path.hasSuffix("/events") { gate.wait() }
+            return server.handle(r)
+        }
+        let s = GoogleStore(email: DemoGoogleServer.email, api: GoogleCalendarAPI(http: http, token: { "t" }), zone: zone)
+        s.deliver = GoogleStore.taskDeliver
+        s.sync(); await s.idle()
+        let cal = "google:sam.rivera@example.com/v4.personal"
+        let start = DemoDataV4.now.addingTimeInterval(7200)
+        var made = try s.create(CalendarEvent(calendarID: cal, title: "Draft", start: start, end: start.addingTimeInterval(1800)), notify: false)
+        made.title = "Draft, renamed"
+        try s.update(made, span: .this, notify: false)            // the insert has not come back
+        #expect(s.searchCorpus(around: .now).first { $0.id == made.id }?.title == "Draft, renamed")
+        gate.open()
+        await s.idle()
+        let patch = try #require(http.sent.last { $0.method == "PATCH" })
+        #expect(patch.json?["summary"] as? String == "Draft, renamed" && !patch.path.contains("local-"))
+        // and a delete that waits for its insert
+        gate.close()
+        let other = try s.create(CalendarEvent(calendarID: cal, title: "Gone", start: start, end: start.addingTimeInterval(600)), notify: false)
+        try s.delete(other, span: .this, notify: false)
+        gate.open()
+        await s.idle()
+        #expect(http.sent.last?.method == "DELETE" && !s.searchCorpus(around: .now).contains { $0.title == "Gone" })
+    }
+
+    @Test func writesDuringASyncSurviveItsResult() async throws {
+        let slow = Gate()
+        let server = DemoGoogleServer()
+        let http = FakeHTTPClient { r in
+            // the events list is read now, but answered only after the write below
+            if r.method == "GET" && r.path.hasSuffix("/events") && r.query["syncToken"] != nil {
+                let answer = server.handle(r)
+                slow.wait()
+                return answer
+            }
+            return server.handle(r)
+        }
+        let s = GoogleStore(email: DemoGoogleServer.email, api: GoogleCalendarAPI(http: http, token: { "t" }), zone: zone)
+        s.deliver = GoogleStore.taskDeliver
+        s.sync(); await s.idle()
+        slow.close()
+        s.sync()
+        var e = try #require(event(s, "g1"))
+        e.title = "Written during the sync"
+        try s.update(e, span: .this, notify: false)
+        while !http.sent.contains(where: { $0.method == "PATCH" }) || s.inFlight > 1 { try? await Task.sleep(nanoseconds: 2_000_000) }
+        slow.open()
+        await s.idle()
+        #expect(event(s, "g1")?.title == "Written during the sync")
+    }
+
+    @Test func oneFailingCalendarKeepsTheOthers() async throws {
+        let breakFamily = LockedFlag()
+        let (s, _) = await store { r in
+            r.path.contains("/calendars/\(DemoDataV4.family)/events") && !breakFamily.isOn ? (Data(#"{"error":{"code":500}}"#.utf8), 500) : nil
+        }
+        // the first round failed for Family only
+        #expect(s.calendarErrors.keys.sorted() == [DemoDataV4.family] && event(s, "wg") != nil && event(s, "w8") == nil)
+        breakFamily.set()
+        s.sync(); await s.idle()
+        #expect(s.calendarErrors.isEmpty && event(s, "w8") != nil && s.lastError == nil)
+    }
+
+    @Test func aPlainCallLinkGoesIntoTheLocation() async throws {
+        let (s, http) = await store()
+        var e = try #require(event(s, "a5"))      // Evening walk: no location, no call
+        e.conferencing = "https://zoom.us/j/5551234567"
+        try s.update(e, span: .this, notify: false)
+        await s.idle()
+        let p = try #require(http.sent.last { $0.method == "PATCH" })
+        #expect(p.json?["conferenceData"] == nil && p.query["conferenceDataVersion"] == nil && p.json?["location"] as? String == "https://zoom.us/j/5551234567")
+        #expect(CallLink.parse(event(s, "a5")!)?.kind == .zoom)
+    }
+
+    @Test func queryValuesArePercentEncoded() async throws {
+        let r = GoogleCalendarAPI.request("GET", ["calendars", "a#b@example.com", "events"], query: [("syncToken", "CP+a/b=="), ("pageToken", "x y")], token: "t")
+        let raw = r.url!.absoluteString
+        #expect(raw.contains("syncToken=CP%2Ba%2Fb%3D%3D") && raw.contains("pageToken=x%20y") && raw.contains("/calendars/a%23b@example.com/events"))
+        #expect(FakeHTTPClient.Sent(method: "GET", url: r.url!, body: nil).query["syncToken"] == "CP+a/b==")
+    }
+
+    @Test func removingRevokesAndLeavesNoCache() async throws {
+        let m = makeModelV4Composite()
+        let g = try #require(m.connectDemoGoogle())
+        let http = try #require(g.api.http as? FakeHTTPClient)
+        m.disconnectGoogle(DemoGoogleServer.email)
+        let until = Date().addingTimeInterval(2)
+        while !http.sent.contains(where: { $0.url.host == "oauth2.googleapis.com" }) && Date() < until { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+        let rv = try #require(http.sent.first { $0.url.path == "/revoke" })
+        #expect(rv.method == "POST" && String(decoding: rv.body ?? Data(), as: UTF8.self) == "token=demo")
+        #expect(g.isClosed && m.services.google.accounts.isEmpty)
+    }
+
+    @Test func undoOfADeleteEmailsNobodyAndGoogleSeriesHaveNoUndo() async throws {
+        let m = makeModelV4Composite()
+        let g = try #require(m.connectDemoGoogle())
+        let http = try #require(g.api.http as? FakeHTTPClient)
+        let wg = try #require(m.store.searchCorpus(around: m.now).first { $0.title == "Flat dinner" })
+        #expect(m.delete(wg, span: .this, notify: false) && m.toast?.undo == true)
+        m.undo()
+        while !g.isIdleNow { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+        let post = try #require(http.sent.last { $0.method == "POST" && $0.path.hasSuffix("/events") })
+        #expect(post.query["sendUpdates"] == "none")
+        #expect(m.store.searchCorpus(around: m.now).filter { $0.title == "Flat dinner" }.count == 1)
+        // a whole Google series: deleted, no undo offered (undo would make one event per occurrence)
+        let run = try #require(m.store.searchCorpus(around: m.now).first { $0.title == "Long run" })
+        let before = m.undoStack.changes.count
+        #expect(m.delete(run, span: .all, notify: false) && m.toast?.undo == false && m.undoStack.changes.count == before)
+        #expect(m.toast?.text.contains("cannot be undone") == true)
+    }
+
+    @Test func compositeIsAuthorizedWithGoogleAlone() async {
+        let c = CompositeStore(base: DemoStore(authorization: .denied, fixture: .v4))
+        #expect(c.authorization == .denied)
+        let (g, _) = await store()
+        c.add(g)
+        #expect(c.authorization == .authorized)
+    }
+
+    @Test func eventKitCopiesAreHiddenByICalUID() async throws {
+        let base = DemoStore(fixture: .v4)
+        let c = CompositeStore(base: base)
+        let (g, _) = await store()
+        c.add(g)
+        // an EventKit copy of Flat dinner in a calendar named differently from the Google address
+        var copy = CalendarEvent(calendarID: DemoDataV4.work, title: "Flat dinner (CalDAV copy)", start: DemoDataV4.now, end: DemoDataV4.now.addingTimeInterval(3600))
+        copy.externalID = "wg@google.com"
+        _ = try base.create(copy)
+        let week = DateInterval(start: DemoDataV4.weekStart, duration: 7 * 86400)
+        #expect(!c.events(in: week).contains { $0.title == "Flat dinner (CalDAV copy)" })
+        #expect(base.events(in: week).contains { $0.title == "Flat dinner (CalDAV copy)" })
+    }
+}
+
+@MainActor func makeModelV4Composite() -> AppModel {
+    let o = LaunchOptions.parse(["Calendr", "--fixture", "v4", "--freeze-clock"])
+    return AppModel(store: CompositeStore(base: DemoStore(fixture: .v4)), options: o, persist: false)
+}
+
+/// Blocks a fake server answer until opened.
+final class Gate: @unchecked Sendable {
+    private let c = NSCondition()
+    private var shut = true
+    func wait() { c.lock(); while shut { c.wait() }; c.unlock() }
+    func open() { c.lock(); shut = false; c.broadcast(); c.unlock() }
+    func close() { c.lock(); shut = true; c.unlock() }
+}
+
 final class LockedFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var fired = false
     /// True once.
     func take() -> Bool { lock.withLock { defer { fired = true }; return !fired } }
+    var isOn: Bool { lock.withLock { fired } }
+    func set() { lock.withLock { fired = true } }
+}
+
+/// Review fix 8: refresh tokens.
+@Suite("Google tokens")
+struct GoogleTokenTests {
+    func tokenJSON(_ access: String, refresh: String? = nil) -> Data {
+        Data((refresh.map { #"{"access_token":"\#(access)","expires_in":3600,"refresh_token":"\#($0)"}"# } ?? #"{"access_token":"\#(access)","expires_in":3600}"#).utf8)
+    }
+
+    @Test func invalidGrantNeedsReconnectAndIsNotRetried() async {
+        let http = FakeHTTPClient { _ in (Data(#"{"error":"invalid_grant","error_description":"Token has been expired or revoked."}"#.utf8), 400) }
+        let p = GoogleTokenProvider(clientID: "c", refreshToken: "r", http: http, retryDelay: 0)
+        await #expect(throws: GoogleCalendarAPI.APIError.needsReconnect) { try await p.token() }
+        #expect(http.sent.count == 1)
+    }
+
+    @Test func serverErrorsAreRetriedAndARotatedTokenIsKept() async throws {
+        let n = Counter()
+        let http = FakeHTTPClient { _ in n.next() < 2 ? (Data(), 503) : (self.tokenJSON("A1", refresh: "R2"), 200) }
+        let rotated = Box()
+        let p = GoogleTokenProvider(clientID: "c", refreshToken: "R1", http: http, retryDelay: 0) { rotated.set($0) }
+        #expect(try await p.token() == "A1")
+        let kept = await p.refreshToken
+        #expect(http.sent.count == 3 && rotated.get() == "R2" && kept == "R2")
+        // cached until it expires
+        #expect(try await p.token() == "A1" && http.sent.count == 3)
+    }
+
+    @Test func aStoreThatLosesItsTokenAsksToReconnect() async {
+        let http = FakeHTTPClient { r in r.url.host == "oauth2.googleapis.com" ? (Data(#"{"error":"invalid_grant"}"#.utf8), 400) : (Data(), 500) }
+        let p = GoogleTokenProvider(clientID: "c", refreshToken: "r", http: http, retryDelay: 0)
+        let s = await GoogleStore(email: "a@example.com", api: GoogleCalendarAPI(http: http, token: { try await p.token() }))
+        await MainActor.run { s.deliver = GoogleStore.taskDeliver; s.sync() }
+        await s.idle()
+        #expect(await s.needsReconnect)
+        let info = await MainActor.run { GoogleAccountInfo(email: "a", accountID: "x", calendarCount: 0, peopleCount: 0, needsReconnect: s.needsReconnect).statusLine }
+        #expect(info.contains("Connect it again"))
+    }
+
+    @Test func aFailedKeychainSaveRecordsNoAccount() {
+        let t = MemoryTokenStore()
+        t.failsSaves = true
+        #expect(!t.save(refreshToken: "r", for: "a@example.com") && t.emails().isEmpty)
+    }
+}
+
+final class Counter: @unchecked Sendable {
+    private let l = NSLock(); private var n = 0
+    func next() -> Int { l.withLock { defer { n += 1 }; return n } }
+}
+final class Box: @unchecked Sendable {
+    private let l = NSLock(); private var v: String?
+    func set(_ s: String) { l.withLock { v = s } }
+    func get() -> String? { l.withLock { v } }
 }

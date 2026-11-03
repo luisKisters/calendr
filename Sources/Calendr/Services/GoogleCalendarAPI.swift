@@ -10,6 +10,8 @@ struct GoogleCalendarAPI: Sendable {
         /// 410: the sync token expired; sync in full.
         case gone
         case unauthorized
+        /// The refresh token was refused (`invalid_grant`): sign in again.
+        case needsReconnect
         case status(Int, String)
         case decoding(String)
     }
@@ -31,12 +33,20 @@ struct GoogleCalendarAPI: Sendable {
         let path = segments.map { $0.addingPercentEncoding(withAllowedCharacters: allowed) ?? $0 }.joined(separator: "/")
         var c = URLComponents(url: base, resolvingAgainstBaseURL: false)!
         c.percentEncodedPath = base.path + "/" + path
-        if !query.isEmpty { c.queryItems = query.map { URLQueryItem(name: $0.0, value: $0.1) } }
+        // `+`, `/` and `=` (sync and page tokens) are encoded too: URLQueryItem leaves them, and a server may read `+` as a space
+        if !query.isEmpty { c.percentEncodedQueryItems = query.map { URLQueryItem(name: $0.0, value: Self.encode($0.1)) } }
         var r = URLRequest(url: c.url!)
         r.httpMethod = method
         r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if let body { r.httpBody = body; r.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         return r
+    }
+
+    /// A query value with everything but the unreserved characters percent-encoded.
+    static func encode(_ v: String) -> String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return v.addingPercentEncoding(withAllowedCharacters: allowed) ?? v
     }
 
     /// "PATCH /calendars/…/events/<id>?sendUpdates=all" for logs and the demo's debug line.
@@ -107,8 +117,13 @@ struct GoogleCalendarAPI: Sendable {
     /// `notify` nil: Google's default (my reply is not an update to the guests).
     func patch(calendarID: String, eventID: String, _ body: GEvent, notify: Bool?, conference: Bool) async throws -> GEvent {
         var q: [(String, String)] = notify.map { [Self.sendUpdates($0)] } ?? []
-        if conference || body.conferenceData != nil { q.append(("conferenceDataVersion", "1")) }
+        if conference { q.append(("conferenceDataVersion", "1")) }
         return try decode(try await call("PATCH", ["calendars", calendarID, "events", eventID], query: q, body: try JSONEncoder().encode(body)))
+    }
+
+    /// `events.move`: the event goes to another calendar of the account and keeps its id, guests and Meet link.
+    func move(calendarID: String, eventID: String, to destination: String, notify: Bool) async throws -> GEvent {
+        try decode(try await call("POST", ["calendars", calendarID, "events", eventID, "move"], query: [("destination", destination), Self.sendUpdates(notify)]))
     }
 
     func delete(calendarID: String, eventID: String, notify: Bool) async throws {

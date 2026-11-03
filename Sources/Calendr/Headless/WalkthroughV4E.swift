@@ -21,7 +21,7 @@ extension WalkthroughV4 {
         hoverKey(d, m, "guest:dion.k@example.com", fx: 0.3, hold: 0.5)
         hoverKey(d, m, "guest:sam@example.net", fx: 0.3, hold: 0.4)
         HoverProbe.shared.target = nil
-        d.say("Allow Contacts: macOS asks once")
+        d.say("Allow Contacts (in the real app, macOS asks once)")
         if let p = spot(m, "namehint", fx: 0.85) {
             probe(d, "namehint", at: p, hold: 0.5)
             d.click(at: p) { HoverProbe.shared.target = nil; m.allowContacts() }
@@ -53,7 +53,8 @@ extension WalkthroughV4 {
         d.hold(1.2)
         if let t = s.first { pick(d, m, "menu:guest:\(t.email)", hold: 0.4) { m.addGuest(t) } }
         d.check(m.selectedEvent!.attendees.contains { $0.email == "kim.lindqvist@example.org" }, "Kim is on the list (not sent yet)")
-        d.hold(1.2)
+        d.say("The dot marks a change not sent to the guests yet")
+        d.hold(1.6)
         d.endCaption()
     }
 }
@@ -64,8 +65,8 @@ extension WalkthroughV4 {
     static func settingsPage(_ d: Driver, _ m: AppModel, _ page: SettingsPage) {
         let fx: Double = switch page { case .general: 0.17; case .accounts: 0.5; case .contacts: 0.83 }
         guard let p = spot(m, "settings:pages", fx: fx) else { d.check(false, "the settings page switch is on screen"); return }
-        d.say(page.title)
         d.moveCursor(to: p, duration: 0.4)
+        d.say(page.title)
         d.click(at: p) { m.services.settingsPage = page }
         d.settle(3)
         d.check(m.services.settingsPage == page, "Settings shows \(page.title)")
@@ -86,29 +87,36 @@ extension WalkthroughV4 {
         d.check(m.services.contacts.access == .notDetermined, "macOS Contacts: not allowed yet")
         d.hold(0.6)
         if let p = spot(m, "settings:contacts", fx: 0.92) {
-            d.say("Allow access: macOS asks once")
+            d.say("Allow access (in the real app, macOS asks once)")
             d.moveCursor(to: p, duration: 0.4)
             d.click(at: p) { m.allowContacts() }
         }
         d.settle(3)
         d.check(m.services.contacts.isAllowed, "Contacts is allowed")
         d.hold(1.0)
+        d.play(0.3) { m.toast = nil }
 
         d.section("Accounts")
         settingsPage(d, m, .accounts)
         d.check(m.settingsAccounts.count == 3 && m.services.google.accounts.isEmpty, "three accounts through macOS Calendar, no Google account yet")
         d.hold(0.6)
         if let p = spot(m, "settings:connectGoogle", fx: 0.5) {
-            d.say("Connect Google account")
-            d.moveCursor(to: p, duration: 0.4)
+            d.moveCursor(to: p, duration: 0.5)
+            d.say("Click Connect Google account")
+            d.hold(0.4)
             d.click(at: p) { m.connectGoogle() }
         }
-        d.settle(3)
-        d.check(m.services.google.showsClientIDNote && m.services.google.accounts.isEmpty && m.services.google.config.clientID == nil,
-                "no client ID in this build: it explains what is needed and connects nothing")
-        d.hold(2.2)
-        d.say("A demo account: a fake Google server, no network")
-        d.play(0.4) { m.toast = nil; m.connectDemoGoogle() }
+        d.settle(4)
+        d.check(m.services.google.showsClientIDNote && m.services.google.accounts.isEmpty && m.services.google.config.clientID == nil
+                && m.toast?.text == "A Google client ID is needed first",
+                "no client ID in this build: a toast and a note explain it, nothing connects")
+        d.say("No client ID in this build: nothing connects")
+        d.hold(3.0)
+        d.play(0.3) { m.toast = nil }
+        d.hold(1.4)
+        d.say("Demo mode: a fake Google account, no network")
+        d.hold(1.0)
+        d.play(0.4) { m.connectDemoGoogle() }
         d.settle(4)
         let g = m.services.google.accounts.first
         d.check(g?.email == "sam.rivera@example.com" && g?.calendarCount == 4, "sam.rivera@example.com connects with 4 calendars")
@@ -224,10 +232,15 @@ extension WalkthroughV4 {
         d.type("Pi")
         let s = m.guestSuggestions("Pi")
         d.check(m.panelMenus.open == .guests && s.first?.name == "Pia Neumann" && m.peopleSource(s[0]) == .google, "Pia Neumann, a Google \u{201C}other contact\u{201D}")
-        d.hold(1.4)
+        d.say("The G at the end of the row: from Google contacts")
+        if let first = s.first, let r = m.panelMenus.frames["menu:guest:\(first.email)"] {
+            d.moveCursor(to: CGPoint(x: r.maxX - 18, y: r.midY), duration: 0.4)
+        }
+        d.hold(1.6)
         if let t = s.first { pick(d, m, "menu:guest:\(t.email)", hold: 0.4) { m.addGuest(t) } }
         d.check(m.selectedEvent!.attendees.contains { $0.email == "pia.neumann@example.net" && $0.name == "Pia Neumann" }, "Pia is added with her name")
-        d.hold(0.8)
+        d.say("The dot: not sent to the guests yet")
+        d.hold(1.2)
 
         d.section("Apple Contacts first")
         d.say("Allow Contacts: Apple Contacts names the last bare address")

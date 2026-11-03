@@ -217,3 +217,67 @@ struct GoogleSyncTests {
         #expect((o?["error"] as? [String: Any])?["code"] as? Int == 410)
     }
 }
+
+@Suite("Google mapping review fixes")
+struct GoogleMappingFixTests {
+    let berlin = TimeZone(identifier: "Europe/Berlin")!
+    func at(_ s: String) -> GDateTime { GDateTime(dateTime: s) }
+
+    @Test func organizerFromTheOrganizerField() throws {
+        // the guest list does not mark the organizer, and does not list them at all
+        let g = GEvent(id: "x", summary: "Sync", start: at("2026-10-04T10:00:00Z"), end: at("2026-10-04T11:00:00Z"),
+                       attendees: [GAttendee(email: "mara.hoffmann@example.com", responseStatus: "accepted")],
+                       organizer: GPerson(email: "sam.rivera@example.com", displayName: "Sam Rivera", isSelf: true))
+        let e = try #require(GoogleMapping.event(g, id: "x", calendarID: "c", zone: berlin))
+        #expect(e.attendees.first?.email == "sam.rivera@example.com" && e.iAmOrganizer && e.attendees.count == 2 && e.myReply == .confirmed)
+        // listed but not marked
+        var h = g
+        h.attendees = [GAttendee(email: "sam.rivera@example.com", isSelf: true, responseStatus: "accepted"), GAttendee(email: "mara.hoffmann@example.com")]
+        let f = try #require(GoogleMapping.event(h, id: "x", calendarID: "c", zone: berlin))
+        #expect(f.iAmOrganizer && f.attendees.count == 2)
+    }
+
+    @Test func iCalUIDBecomesTheExternalID() throws {
+        var g = GEvent(id: "x", start: at("2026-10-04T10:00:00Z"), end: at("2026-10-04T11:00:00Z"))
+        g.iCalUID = "abc@google.com"
+        #expect(GoogleMapping.event(g, id: "x", calendarID: "c", zone: berlin)?.externalID == "abc@google.com")
+    }
+
+    @Test func resourcesGoBackWithAChangedGuestList() throws {
+        let page = try googleFixture("events-page1", as: GEventsPage.self)
+        let raw = try #require(page.items?.first)
+        let e = try #require(GoogleMapping.event(raw, id: "x", calendarID: "c", zone: berlin))
+        var n = e
+        n.removeGuest(at: 0)
+        let p = try #require(GoogleMapping.patch(old: e, new: n, zone: berlin, resources: raw.attendees ?? []))
+        #expect(p.attendees?.contains { $0.resource == true && $0.email == "kitchen-room@resource.calendar.google.com" } == true)
+        #expect(p.attendees?.filter { $0.resource != true }.count == 4)
+    }
+
+    @Test func plainLinksAreNotConferenceData() throws {
+        let start = RFC3339.date("2026-10-04T10:00:00Z")!
+        var e = CalendarEvent(calendarID: "c", title: "Call", start: start, end: start.addingTimeInterval(3600), conferencing: "https://zoom.us/j/123")
+        var b = GoogleMapping.body(e, zone: berlin)
+        #expect(b.conferenceData == nil && b.location == "https://zoom.us/j/123")
+        e.location = "Office"
+        b = GoogleMapping.body(e, zone: berlin)
+        #expect(b.location == "Office" && b.description?.hasSuffix("https://zoom.us/j/123") == true)
+        // a new Meet: only the createRequest
+        e.conferencing = GoogleMapping.newMeetLink
+        b = GoogleMapping.body(e, zone: berlin, meetRequestID: "r")
+        #expect(b.conferenceData?.createRequest != nil && b.conferenceData?.entryPoints == nil && b.description?.contains("meet.google.com/new") != true)
+    }
+
+    @Test func menuBarReplyIsPerEvent() {
+        let math = CalendarMath(timeZone: berlin, firstWeekday: 2)
+        let fmt = Fmt(math: math, use24h: true)
+        let now = RFC3339.date("2026-10-04T08:00:00Z")!
+        let me = Attendee(email: "me@example.com", isMe: true, status: .needsAction)
+        let org = Attendee(email: "o@example.com", isOrganizer: true, status: .confirmed)
+        let google = CalendarEvent(id: "g", calendarID: "google", title: "G", start: now.addingTimeInterval(3600), end: now.addingTimeInterval(7200), status: .needsAction, attendees: [org, me])
+        let ek = CalendarEvent(id: "e", calendarID: "ek", title: "E", start: now.addingTimeInterval(9000), end: now.addingTimeInterval(9600), status: .needsAction, attendees: [org, me])
+        let m = MenuBarMenu.build(events: [google, ek], now: now, fmt: fmt, canRespondTo: { $0.calendarID == "google" }, guestAddresses: { _ in [] }) { _ in "#000000" }
+        let rows = m.rows
+        #expect(rows.first { $0.event.id == "g" }?.hasSubmenu == true && rows.first { $0.event.id == "e" }?.hasSubmenu == false)
+    }
+}

@@ -29,12 +29,27 @@ final class GoogleStore: CalendarStore {
     private var syncs: [String: GoogleCalendarSync] = [:]
     private var events: [CalendarEvent] = []
     private var byID: [String: CalendarEvent] = [:]
+    private var uidCache: Set<String> = []
     /// Event id to (Google calendar id, Google event id).
     private var refs: [String: (cal: String, gid: String)] = [:]
     private(set) var inFlight = 0
     private(set) var isSyncing = false
     private(set) var lastSync: Date?
     private(set) var lastError: String?
+    /// The last round's errors per Google calendar id (the other calendars still synced).
+    private(set) var calendarErrors: [String: String] = [:]
+    /// Google refused the refresh token (revoked, expired, password change): the account must sign in again.
+    private(set) var needsReconnect = false
+    /// The account was removed: answers still on the way change nothing and write no cache.
+    var isClosed = false
+    /// Our id of an event created here, by "calendar/google id": the id the editor already holds stays the event's id.
+    private var aliases: [String: String] = [:]
+    /// Inserts that have not come back yet (our temporary ids), and what was done to them meanwhile.
+    private var pendingInserts: Set<String> = []
+    private struct Waiting { var edit: (event: CalendarEvent, notify: Bool)?; var deleteNotify: Bool? }
+    private var waiting: [String: Waiting] = [:]
+    /// Our writes that landed while a sync round ran: the round read the server before them, so they are applied again on top.
+    private var writesDuringSync: [(cal: String, gid: String, event: GEvent?)] = []
     /// The full-sync window around "now".
     var window: () -> DateInterval = { DateInterval(start: Date().addingTimeInterval(-400 * 86400), end: Date().addingTimeInterval(800 * 86400)) }
 
@@ -75,6 +90,8 @@ final class GoogleStore: CalendarStore {
     var canSendUpdates: Bool { true }
     var canRespond: Bool { true }
     func canCreateMeetLinks(calendarID: String) -> Bool { true }
+    /// Undo would put back one new event per occurrence (instances come expanded): a Google series delete has no undo.
+    func canUndoSeriesDelete(calendarID: String) -> Bool { false }
     var coalescesTextEdits: Bool { true }
 
     func requestAccess() async {}
@@ -86,6 +103,8 @@ final class GoogleStore: CalendarStore {
     }
     func teammateEvents(_ email: String, in range: DateInterval) -> [CalendarEvent] { [] }
     func searchCorpus(around date: Date) -> [CalendarEvent] { events }
+    /// Every event's iCalUID (the composite store hides EventKit's CalDAV copies of them).
+    var externalIDs: Set<String> { uidCache }
     func series(of event: CalendarEvent) -> [CalendarEvent] {
         guard let s = event.seriesID else { return [event] }
         return events.filter { $0.seriesID == s && $0.calendarID == event.calendarID }
@@ -93,48 +112,74 @@ final class GoogleStore: CalendarStore {
 
     // MARK: Sync
 
+    struct SyncResult { var calendars: [GCalendarListEntry]; var syncs: [String: GoogleCalendarSync]; var errors: [String: String] }
+
     /// One sync round for every calendar: the calendar list, then each calendar's changes since its sync token (410: in full again).
+    /// A calendar that fails keeps what it had; the others still sync.
     func sync() {
-        guard !isSyncing else { return }
+        guard !isSyncing, !isClosed else { return }
         isSyncing = true
+        writesDuringSync = []
         inFlight += 1
         let api = api, start = syncs, window = window()
         Task.detached {
-            let result: Result<([GCalendarListEntry], [String: GoogleCalendarSync]), Error>
+            let result: Result<SyncResult, Error>
             do {
                 let cals = try await api.calendarList()
-                var syncs = start
+                var out: [String: GoogleCalendarSync] = [:]
+                var errors: [String: String] = [:]
                 for c in cals where c.accessRole != "freeBusyReader" {
-                    var s = syncs[c.id] ?? GoogleCalendarSync()
-                    var resets = 0
-                    while true {
-                        let r = s.nextRequest()
-                        do {
-                            if s.apply(try await api.events(calendarID: c.id, request: r, window: r.isFull ? window : nil)) { break }
-                        } catch GoogleCalendarAPI.APIError.gone {
-                            s.gone()
-                            resets += 1
-                            if resets > 1 { throw GoogleCalendarAPI.APIError.gone }
+                    var s = start[c.id] ?? GoogleCalendarSync()
+                    do {
+                        var resets = 0
+                        while true {
+                            let r = s.nextRequest()
+                            do {
+                                if s.apply(try await api.events(calendarID: c.id, request: r, window: r.isFull ? window : nil)) { break }
+                            } catch GoogleCalendarAPI.APIError.gone {
+                                s.gone()
+                                resets += 1
+                                if resets > 1 { throw GoogleCalendarAPI.APIError.gone }
+                            }
                         }
+                        out[c.id] = s
+                    } catch GoogleCalendarAPI.APIError.needsReconnect {
+                        throw GoogleCalendarAPI.APIError.needsReconnect
+                    } catch {
+                        errors[c.id] = "\(error)"
                     }
-                    syncs[c.id] = s
                 }
-                result = .success((cals, syncs.filter { k, _ in cals.contains { $0.id == k } }))
+                result = .success(SyncResult(calendars: cals, syncs: out, errors: errors))
             } catch { result = .failure(error) }
             self.deliverResult(result)
         }
     }
 
-    nonisolated private func deliverResult(_ r: Result<([GCalendarListEntry], [String: GoogleCalendarSync]), Error>) {
+    nonisolated private func deliverResult(_ r: Result<SyncResult, Error>) {
         Self.runLoopDeliverOrCustom(self) { s in
             s.isSyncing = false
             s.inFlight -= 1
+            guard !s.isClosed else { return }
             switch r {
-            case .success(let (cals, syncs)):
-                s.calendars = cals; s.syncs = syncs; s.lastSync = Date(); s.lastError = nil
+            case .success(let res):
+                s.calendars = res.calendars
+                // per calendar into the live state: a calendar that failed keeps its own; our writes since the round began win
+                var next: [String: GoogleCalendarSync] = [:]
+                for c in res.calendars { if let v = res.syncs[c.id] { next[c.id] = v } else if let old = s.syncs[c.id] { next[c.id] = old } }
+                for w in s.writesDuringSync {
+                    if let g = w.event { next[w.cal, default: GoogleCalendarSync()].upsert(g) } else { next[w.cal]?.remove(w.gid) }
+                }
+                s.writesDuringSync = []
+                s.syncs = next
+                s.calendarErrors = res.errors
+                s.lastSync = Date(); s.needsReconnect = false
+                s.lastError = res.errors.isEmpty ? nil : "\(res.errors.count) calendar\(res.errors.count == 1 ? "" : "s") did not sync"
                 s.rebuild(); s.saveCache(); s.onChange?()
             case .failure(let e):
+                s.writesDuringSync = []
+                if case GoogleCalendarAPI.APIError.needsReconnect = e { s.needsReconnect = true }
                 s.lastError = "\(e)"
+                s.onChange?()
             }
         }
     }
@@ -152,7 +197,7 @@ final class GoogleStore: CalendarStore {
             guard let s = syncs[c.id] else { continue }
             let defaults = s.defaultReminders.isEmpty ? (c.defaultReminders ?? []).map(\.minutes) : s.defaultReminders
             for (gid, g) in s.items {
-                let id = eventID(c.id, gid)
+                let id = aliases["\(c.id)/\(gid)"] ?? eventID(c.id, gid)
                 guard let e = GoogleMapping.event(g, id: id, calendarID: calendarKey(c.id), defaultReminders: defaults, zone: zone, seriesPrefix: calendarKey(c.id) + "/") else { continue }
                 out.append(e)
                 refs[id] = (c.id, gid)
@@ -160,6 +205,7 @@ final class GoogleStore: CalendarStore {
         }
         events = out.sorted { $0.start != $1.start ? $0.start < $1.start : $0.id < $1.id }
         byID = Dictionary(events.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        uidCache = Set(events.compactMap(\.externalID))
     }
 
     // MARK: Writes
@@ -177,16 +223,28 @@ final class GoogleStore: CalendarStore {
             Self.runLoopDeliverOrCustom(self) { s in
                 s.inFlight -= 1
                 for line in log.lines.dropFirst(before) { s.logRequest(line) }
+                guard !s.isClosed else { return }
                 switch r {
                 case .success(let v): done(v)
                 case .failure(let e):
                     s.lastError = "\(e)"
+                    if case GoogleCalendarAPI.APIError.needsReconnect = e { s.needsReconnect = true }
                     failed()
-                    s.onError?("Google did not take the change")
+                    s.onError?(s.needsReconnect ? "Google signed \(s.email) out. Connect it again in Settings." : "Google did not take the change")
                 }
                 s.rebuild(); s.saveCache(); s.onChange?()
             }
         }
+    }
+
+    /// Our own write into the sync state (and into the list a running round re-applies).
+    private func upsert(_ cal: String, _ g: GEvent) {
+        syncs[cal, default: GoogleCalendarSync()].upsert(g)
+        if isSyncing, let id = g.id { writesDuringSync.append((cal, id, g)) }
+    }
+    private func removeG(_ cal: String, _ gid: String) {
+        syncs[cal]?.remove(gid)
+        if isSyncing { writesDuringSync.append((cal, gid, nil)) }
     }
 
     private func logRequest(_ line: String) {
@@ -208,7 +266,8 @@ final class GoogleStore: CalendarStore {
         onChange?()
     }
 
-    func create(_ event: CalendarEvent) throws -> CalendarEvent { try create(event, notify: true) }
+    /// Without `notify` nobody is emailed (undo puts an event back this way).
+    func create(_ event: CalendarEvent) throws -> CalendarEvent { try create(event, notify: false) }
 
     func create(_ event: CalendarEvent, notify: Bool) throws -> CalendarEvent {
         guard let cal = googleCalendar(event.calendarID) else { throw NotGoogle() }
@@ -216,29 +275,71 @@ final class GoogleStore: CalendarStore {
         let body = GoogleMapping.body(event, zone: zone, meetRequestID: meet ? UUID().uuidString : nil)
         var temp = event
         temp.id = eventID(cal, "local-" + UUID().uuidString)
+        let tempID = temp.id
+        pendingInserts.insert(tempID)
         local(temp)
         let api = api
         run({ try await api.insert(calendarID: cal, body, notify: notify, conference: meet) },
-            done: { [weak self] g in self?.syncs[cal, default: GoogleCalendarSync()].upsert(g) },
-            failed: { [weak self] in self?.dropLocal(temp.id) })
+            done: { [weak self] g in
+                guard let self else { return }
+                self.pendingInserts.remove(tempID)
+                if let gid = g.id { self.aliases["\(cal)/\(gid)"] = tempID }
+                self.upsert(cal, g)
+                self.rebuild()
+                // what happened to it while the insert was on the way
+                if let w = self.waiting.removeValue(forKey: tempID), let now = self.byID[tempID] {
+                    if let n = w.deleteNotify { try? self.delete(now, span: .this, notify: n) }
+                    else if let edit = w.edit { var e = edit.event; e.id = tempID; _ = try? self.update(e, span: .this, notify: edit.notify) }
+                }
+            },
+            failed: { [weak self] in
+                self?.pendingInserts.remove(tempID)
+                self?.waiting[tempID] = nil
+                self?.dropLocal(tempID)
+            })
         return temp
     }
 
     func update(_ event: CalendarEvent, span: EditSpan) throws -> CalendarEvent { try update(event, span: span, notify: false) }
 
     func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent {
-        guard let ref = refs[event.id], let old = byID[event.id] else { throw NotGoogle() }
-        if let target = googleCalendar(event.calendarID), target != ref.cal {
-            // another calendar of this account: Google's `move`, then the rest as a patch (kept simple: delete and insert)
-            try delete(old, span: .this, notify: false)
-            var moved = event
-            moved.attendees = event.attendees
-            return try create(moved, notify: notify)
+        if pendingInserts.contains(event.id) {
+            // not at Google yet: kept here and sent once the insert has come back
+            guard googleCalendar(event.calendarID) != nil else { throw NotGoogle() }
+            local(event)
+            waiting[event.id, default: Waiting()].edit = (event, notify)
+            return event
         }
+        guard let ref = refs[event.id], let old = byID[event.id] else { throw NotGoogle() }
+        // another account or a macOS calendar: not a Google write (nothing is sent)
+        guard let target = googleCalendar(event.calendarID) else { throw NotGoogle() }
         let api = api, zone = zone, cal = ref.cal
+        let resources = syncs[cal]?.items[ref.gid]?.attendees ?? []
+        if target != cal {
+            // another calendar of this account: `events.move` keeps the id, the guests and the Meet link; the other changes follow as a patch
+            var o = old
+            o.calendarID = event.calendarID
+            let meet = event.conferencing == GoogleMapping.newMeetLink && old.conferencing != event.conferencing
+            let body = GoogleMapping.patch(old: o, new: event, zone: zone, meetRequestID: meet ? UUID().uuidString : nil, resources: resources)
+            let gid = ref.gid, id = event.id
+            aliases["\(target)/\(gid)"] = id
+            local(event)
+            run({
+                var g = try await api.move(calendarID: cal, eventID: gid, to: target, notify: notify)
+                if let b = body { g = try await api.patch(calendarID: target, eventID: gid, b, notify: notify, conference: meet) }
+                return g
+            }, done: { [weak self] g in
+                self?.removeG(cal, gid)
+                self?.upsert(target, g)
+            }, failed: { [weak self] in
+                self?.aliases["\(target)/\(gid)"] = nil
+                self?.local(old)
+            })
+            return event
+        }
         local(event)
         let restore: @MainActor () -> Void = { [weak self] in self?.local(old) }
-        let store: @MainActor (GEvent) -> Void = { [weak self] g in self?.syncs[cal]?.upsert(g) }
+        let store: @MainActor (GEvent) -> Void = { [weak self] g in self?.upsert(cal, g) }
         if GoogleMapping.onlyReplyChanged(old: old, new: event) {
             // my reply: my own attendee entry only, nothing else of the guest list
             let me = event.attendees.first { $0.isMe }?.email ?? email
@@ -249,7 +350,7 @@ final class GoogleStore: CalendarStore {
             return event
         }
         let meet = event.conferencing == GoogleMapping.newMeetLink && old.conferencing != event.conferencing
-        guard var body = GoogleMapping.patch(old: old, new: event, zone: zone, meetRequestID: meet ? UUID().uuidString : nil) else { return event }
+        guard var body = GoogleMapping.patch(old: old, new: event, zone: zone, meetRequestID: meet ? UUID().uuidString : nil, resources: resources) else { return event }
         if span == .this || old.seriesID == nil {
             run({ try await api.patch(calendarID: cal, eventID: ref.gid, body, notify: notify, conference: meet) }, done: store, failed: restore)
         } else {
@@ -279,6 +380,11 @@ final class GoogleStore: CalendarStore {
     func delete(_ event: CalendarEvent, span: EditSpan) throws { try delete(event, span: span, notify: false) }
 
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws {
+        if pendingInserts.contains(event.id) {
+            dropLocal(event.id)
+            waiting[event.id, default: Waiting()].deleteNotify = notify
+            return
+        }
         guard let ref = refs[event.id] else { dropLocal(event.id); return }
         let api = api, cal = ref.cal
         let removed = span == .this ? [event] : series(of: event).filter { span == .all || $0.start >= event.start }
@@ -287,11 +393,11 @@ final class GoogleStore: CalendarStore {
         let master = syncs[cal]?.items[ref.gid]?.recurringEventId ?? ref.gid
         switch span {
         case .this:
-            run({ try await api.delete(calendarID: cal, eventID: ref.gid, notify: notify) }, done: { [weak self] in self?.syncs[cal]?.remove(ref.gid) }, failed: restore)
+            run({ try await api.delete(calendarID: cal, eventID: ref.gid, notify: notify) }, done: { [weak self] in self?.removeG(cal, ref.gid) }, failed: restore)
         case .all:
             run({ try await api.delete(calendarID: cal, eventID: master, notify: notify) }, done: { [weak self] in
                 guard let self else { return }
-                for e in removed { if let r = self.refs[e.id] { self.syncs[cal]?.remove(r.gid) } }
+                for e in removed { if let r = self.refs[e.id] { self.removeG(cal, r.gid) } }
             }, failed: restore)
         case .future:
             // this and following: the series ends the second before this occurrence
@@ -306,7 +412,7 @@ final class GoogleStore: CalendarStore {
                 return try await api.patch(calendarID: cal, eventID: master, GEvent(recurrence: rules), notify: notify, conference: false)
             }, done: { [weak self] _ in
                 guard let self else { return }
-                for e in removed { if let r = self.refs[e.id] { self.syncs[cal]?.remove(r.gid) } }
+                for e in removed { if let r = self.refs[e.id] { self.removeG(cal, r.gid) } }
             }, failed: restore)
         }
     }
@@ -318,6 +424,8 @@ final class GoogleStore: CalendarStore {
 
     /// Work outside the store that the tests and tours wait for (the People API read).
     func track(_ d: Int) { inFlight += d }
+
+    var isIdleNow: Bool { inFlight == 0 }
 
     /// Tests: waits until every request has come back.
     func idle() async {
@@ -342,7 +450,7 @@ final class GoogleStore: CalendarStore {
     }
 
     private func saveCache() {
-        guard let u = cacheURL, let d = try? JSONEncoder().encode(Cache(calendars: calendars, syncs: syncs)) else { return }
+        guard !isClosed, let u = cacheURL, let d = try? JSONEncoder().encode(Cache(calendars: calendars, syncs: syncs)) else { return }
         try? FileManager.default.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? d.write(to: u, options: .atomic)
     }

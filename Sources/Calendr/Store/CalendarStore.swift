@@ -48,6 +48,8 @@ protocol CalendarStore: AnyObject {
     func canEditParticipants(calendarID: String) -> Bool
     /// Google makes a new Meet link (`conferenceData.createRequest`); the demo makes one up.
     func canCreateMeetLinks(calendarID: String) -> Bool
+    /// Undo of a deleted series puts every occurrence back as it was (EventKit, demo). Google cannot: no undo there.
+    func canUndoSeriesDelete(calendarID: String) -> Bool
     /// The in-memory demo store (made-up call links, demo place suggestions, teammate overlays).
     var isDemo: Bool { get }
 }
@@ -62,6 +64,7 @@ extension CalendarStore {
     func canRespond(calendarID: String) -> Bool { canRespond }
     func canEditParticipants(calendarID: String) -> Bool { canEditParticipants }
     func canCreateMeetLinks(calendarID: String) -> Bool { isDemo }
+    func canUndoSeriesDelete(calendarID: String) -> Bool { true }
     @discardableResult func create(_ event: CalendarEvent, notify: Bool) throws -> CalendarEvent { try create(event) }
     @discardableResult func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent { try update(event, span: span) }
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws { try delete(event, span: span) }

@@ -9,7 +9,7 @@ extension AppModel {
         let today = math.startOfDay(now)
         let evs = store.events(in: DateInterval(start: math.addDays(today, -1), end: math.addDays(today, 3)))
             .filter { !hiddenCalendars.contains($0.calendarID) }
-        return MenuBarMenu.build(events: evs, now: now, fmt: fmt, canRespond: canChangeResponse,
+        return MenuBarMenu.build(events: evs, now: now, fmt: fmt, canRespondTo: { [store] in store.canRespond(calendarID: $0.calendarID) },
                                  guestAddresses: { menuBarGuestAddresses($0) }) { calendarColorHex(of: $0) }
     }
 

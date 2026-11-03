@@ -116,6 +116,8 @@ public struct GEvent: Codable, Hashable, Sendable {
     public var visibility: String?
     public var guestsCanModify: Bool?
     public var updated: String?
+    /// Shared with every other client of the event (CalDAV, EventKit).
+    public var iCalUID: String?
 
     public init(id: String? = nil, status: String? = nil, summary: String? = nil, description: String? = nil, location: String? = nil,
                 start: GDateTime? = nil, end: GDateTime? = nil, attendees: [GAttendee]? = nil, attendeesOmitted: Bool? = nil,

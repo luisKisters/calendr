@@ -7,7 +7,8 @@ import CalendrKit
 /// Where refresh tokens live: the Keychain, one item per Google account. Tests and demo runs use `MemoryTokenStore`.
 protocol TokenStore: AnyObject {
     func refreshToken(for email: String) -> String?
-    func save(refreshToken: String, for email: String)
+    /// False when the token could not be stored: the account is then not recorded.
+    @discardableResult func save(refreshToken: String, for email: String) -> Bool
     func remove(_ email: String)
     /// The connected accounts, in the order they were added.
     func emails() -> [String]
@@ -25,17 +26,20 @@ final class KeychainTokenStore: TokenStore {
         return String(data: d, encoding: .utf8)
     }
 
-    func save(refreshToken: String, for email: String) {
+    @discardableResult
+    func save(refreshToken: String, for email: String) -> Bool {
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: email]
         SecItemDelete(q as CFDictionary)
         var add = q
         add[kSecValueData as String] = Data(refreshToken.utf8)
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         add[kSecAttrLabel as String] = "Calendr Google account \(email)"
-        SecItemAdd(add as CFDictionary, nil)
+        // the account list only records an account whose token is in the Keychain
+        guard SecItemAdd(add as CFDictionary, nil) == errSecSuccess else { return false }
         var order = emails().filter { $0 != email }
         order.append(email)
         UserDefaults.standard.set(order, forKey: orderKey)
+        return true
     }
 
     func remove(_ email: String) {
@@ -50,7 +54,13 @@ final class KeychainTokenStore: TokenStore {
 final class MemoryTokenStore: TokenStore {
     private var tokens: [(String, String)] = []
     func refreshToken(for email: String) -> String? { tokens.first { $0.0 == email }?.1 }
-    func save(refreshToken: String, for email: String) { tokens.removeAll { $0.0 == email }; tokens.append((email, refreshToken)) }
+    var failsSaves = false
+    @discardableResult
+    func save(refreshToken: String, for email: String) -> Bool {
+        guard !failsSaves else { return false }
+        tokens.removeAll { $0.0 == email }; tokens.append((email, refreshToken))
+        return true
+    }
     func remove(_ email: String) { tokens.removeAll { $0.0 == email } }
     func emails() -> [String] { tokens.map(\.0) }
 }
@@ -58,25 +68,56 @@ final class MemoryTokenStore: TokenStore {
 /// Access tokens for one account: refreshed with the refresh token when the cached one is about to expire.
 actor GoogleTokenProvider {
     let clientID: String
-    let refreshToken: String
+    private(set) var refreshToken: String
     let http: HTTPClient
+    /// Google sent a new refresh token (rotation): the caller stores it.
+    let onRotate: @Sendable (String) -> Void
+    /// Pause between retries (tests: zero).
+    let retryDelay: UInt64
     private var access: (token: String, expires: Date)?
 
-    init(clientID: String, refreshToken: String, http: HTTPClient, initial: GoogleOAuth.TokenResponse? = nil) {
-        self.clientID = clientID; self.refreshToken = refreshToken; self.http = http
+    init(clientID: String, refreshToken: String, http: HTTPClient, initial: GoogleOAuth.TokenResponse? = nil,
+         retryDelay: UInt64 = 500_000_000, onRotate: @escaping @Sendable (String) -> Void = { _ in }) {
+        self.clientID = clientID; self.refreshToken = refreshToken; self.http = http; self.onRotate = onRotate; self.retryDelay = retryDelay
         if let i = initial { access = (i.access_token, Date().addingTimeInterval(Double(i.expires_in ?? 3600) - 60)) }
     }
 
+    /// A valid access token. Transport errors and 5xx are retried twice; `invalid_grant` (a revoked or expired refresh token) means
+    /// the account must sign in again (`needsReconnect`) and is not retried.
     func token() async throws -> String {
         if let a = access, a.expires > Date() { return a.token }
         var r = URLRequest(url: GoogleOAuth.tokenEndpoint)
         r.httpMethod = "POST"
         r.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         r.httpBody = GoogleOAuth.refreshRequestBody(refreshToken: refreshToken, clientID: clientID)
-        let (d, status) = try await http.send(r)
-        guard status == 200, let t = try? JSONDecoder().decode(GoogleOAuth.TokenResponse.self, from: d) else { throw GoogleCalendarAPI.APIError.unauthorized }
-        access = (t.access_token, Date().addingTimeInterval(Double(t.expires_in ?? 3600) - 60))
-        return t.access_token
+        var attempt = 0
+        while true {
+            attempt += 1
+            let answer: (Data, Int)
+            do { answer = try await http.send(r) } catch {
+                if attempt < 3 { try? await Task.sleep(nanoseconds: retryDelay); continue }
+                throw error
+            }
+            let (d, status) = answer
+            if status >= 500 && attempt < 3 { try? await Task.sleep(nanoseconds: retryDelay); continue }
+            if status == 200, let t = try? JSONDecoder().decode(GoogleOAuth.TokenResponse.self, from: d) {
+                access = (t.access_token, Date().addingTimeInterval(Double(t.expires_in ?? 3600) - 60))
+                if let rt = t.refresh_token, rt != refreshToken { refreshToken = rt; onRotate(rt) }
+                return t.access_token
+            }
+            let err = (try? JSONSerialization.jsonObject(with: d) as? [String: Any])?["error"] as? String
+            if err == "invalid_grant" || status == 401 { throw GoogleCalendarAPI.APIError.needsReconnect }
+            throw GoogleCalendarAPI.APIError.status(status, String(decoding: d.prefix(200), as: UTF8.self))
+        }
+    }
+
+    /// Remove account: the refresh token is revoked at Google (best effort).
+    func revoke() async {
+        var r = URLRequest(url: GoogleOAuth.revokeEndpoint)
+        r.httpMethod = "POST"
+        r.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        r.httpBody = GoogleOAuth.form(["token": refreshToken])
+        _ = try? await http.send(r)
     }
 }
 

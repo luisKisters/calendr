@@ -195,7 +195,7 @@ final class EventKitStore: CalendarStore {
             if end <= start { end = math.addDays(start, 1) }
         }
         let cal = ev.calendar
-        return CalendarEvent(
+        var e = CalendarEvent(
             id: id, seriesID: ev.hasRecurrenceRules ? baseID : nil, calendarID: cal?.calendarIdentifier ?? "",
             title: ev.title ?? "", start: start, end: end, isAllDay: ev.isAllDay,
             status: status,
@@ -204,6 +204,8 @@ final class EventKitStore: CalendarStore {
             reminders: EventKitMapping.reminders(alarms: (ev.alarms ?? []).map(Self.raw)),
             availability: ev.availability == .free ? .free : .busy, visibility: .standard,
             timeZoneID: ev.timeZone?.identifier ?? math.timeZone.identifier)
+        e.externalID = ev.calendarItemExternalIdentifier
+        return e
     }
 
     nonisolated static func convert(_ r: EKRecurrenceRule) -> Recurrence {

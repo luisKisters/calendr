@@ -11,7 +11,7 @@ struct GooglePeopleAPI: Sendable {
 
     static func request(_ path: String, query: [(String, String)], token: String) -> URLRequest {
         var c = URLComponents(url: base.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
-        c.queryItems = query.map { URLQueryItem(name: $0.0, value: $0.1) }
+        c.percentEncodedQueryItems = query.map { URLQueryItem(name: $0.0, value: GoogleCalendarAPI.encode($0.1)) }
         var r = URLRequest(url: c.url!)
         r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         return r

@@ -6,6 +6,7 @@ import CalendrKit
 /// handler of a `FakeHTTPClient`. Patches merge like Google's (my reply alone with `attendeesOmitted`, a Meet `createRequest` gets a link).
 final class DemoGoogleServer: @unchecked Sendable {
     static let email = "sam.rivera@example.com"
+    static let room = "kitchen-room@resource.calendar.google.com"
     private let lock = NSLock()
     private var calendars: [GCalendarListEntry]
     private var events: [String: [String: GEvent]]          // calendar id -> event id -> event
@@ -26,6 +27,7 @@ final class DemoGoogleServer: @unchecked Sendable {
             var g = GoogleMapping.body(e, zone: zone)
             let gid = String(e.id.dropFirst(3))       // "v4.wg" -> "wg"
             g.id = gid
+            g.iCalUID = "\(gid)@google.com"
             g.status = "confirmed"
             g.recurrence = nil
             if let s = e.seriesID { g.recurringEventId = String(s.dropFirst("v4.series.".count)) }
@@ -39,6 +41,8 @@ final class DemoGoogleServer: @unchecked Sendable {
                                                    conferenceSolution: GConferenceSolution(key: GSolutionKey(type: "hangoutsMeet"), name: "Google Meet"))
                 g.hangoutLink = e.conferencing
             }
+            // Flat dinner books the kitchen: a resource, not a guest; it must stay on the event when the guest list changes
+            if gid == "wg" { g.attendees?.append(GAttendee(email: Self.room, displayName: "Kitchen", resource: true, responseStatus: "accepted")) }
             evs[e.calendarID, default: [:]][gid] = g
         }
         events = evs
@@ -99,6 +103,13 @@ final class DemoGoogleServer: @unchecked Sendable {
             merge(&g, p)
             events[cal]?[parts[3]] = g
             changed[cal, default: []].insert(parts[3])
+            return json(g)
+        case ("POST", 5) where parts[4] == "move":
+            guard let dest = r.query["destination"], let g = events[cal]?[parts[3]] else { return (Data(), 404) }
+            events[cal]?[parts[3]] = nil
+            deleted[cal, default: []].insert(parts[3])
+            events[dest, default: [:]][parts[3]] = g
+            changed[dest, default: []].insert(parts[3])
             return json(g)
         case ("DELETE", 4):
             events[cal]?[parts[3]] = nil

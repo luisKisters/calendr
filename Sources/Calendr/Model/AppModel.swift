@@ -596,10 +596,16 @@ final class AppModel {
         }
         do {
             try store.delete(e, span: span, notify: notify)
-            undoStack.push(.deleted(removed))
             selectedEventID = nil
             overlay = nil
-            showToast("Deleted \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}", undo: true)
+            let title = "\u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}"
+            if span != .this && e.isRecurring && !store.canUndoSeriesDelete(calendarID: e.calendarID) {
+                // Google lists a series as single occurrences: undo would make one new event per occurrence
+                showToast("Deleted \(title). A Google series cannot be undone.")
+            } else {
+                undoStack.push(.deleted(removed))
+                showToast("Deleted \(title)", undo: true)
+            }
             return true
         } catch { showToast("Could not delete event"); return false }
     }
@@ -609,7 +615,8 @@ final class AppModel {
         guard let change = undoStack.pop() else { showToast("Nothing to undo"); return }
         switch change {
         case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }
-        case .deleted(let es): for e in es { _ = try? store.create(e) }; selectedEventID = es.first?.id
+        // put back without telling anyone (`create` without notify: no new invitations); the store may give it a new id
+        case .deleted(let es): let made = es.compactMap { try? store.create($0) }; selectedEventID = made.first?.id ?? es.first?.id
         case .updated(let old, let new):
             // Undo the move/resize only: text typed into the inspector since then stays.
             var cur = event(id: new.id) ?? new

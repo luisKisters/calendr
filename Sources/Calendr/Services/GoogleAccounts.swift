@@ -11,7 +11,9 @@ struct GoogleAccountInfo: Equatable {
     var peopleCount: Int
     var lastSync: Date?
     var error: String?
+    var needsReconnect = false
     var statusLine: String {
+        if needsReconnect { return "Google signed this account out. Connect it again to keep syncing." }
         if let error { return "Could not sync: \(error.prefix(80))" }
         let cals = "\(calendarCount) calendar\(calendarCount == 1 ? "" : "s")"
         return lastSync == nil ? "Google Calendar API · syncing…" : "Google Calendar API · \(cals) · replies, guests and Meet links"
@@ -52,13 +54,24 @@ final class GoogleAccounts {
         if restore, let id = config.clientID {
             for mail in tokens.emails() {
                 guard let rt = tokens.refreshToken(for: mail) else { continue }
-                add(makeStore(email: mail, provider: GoogleTokenProvider(clientID: id, refreshToken: rt, http: http), cache: GoogleStore.cacheURL(for: mail)))
+                add(makeStore(email: mail, provider: provider(clientID: id, email: mail, refreshToken: rt), cache: GoogleStore.cacheURL(for: mail)))
             }
         }
         refreshInfo()
     }
 
+    @ObservationIgnored private var providers: [String: GoogleTokenProvider] = [:]
+
+    /// A token provider whose rotated refresh tokens go back to the token store.
+    private func provider(clientID: String, email: String, refreshToken: String, initial: GoogleOAuth.TokenResponse? = nil) -> GoogleTokenProvider {
+        let tokens = UncheckedBox(tokens)
+        return GoogleTokenProvider(clientID: clientID, refreshToken: refreshToken, http: http, initial: initial) { rt in
+            Task { @MainActor in tokens.value.save(refreshToken: rt, for: email) }
+        }
+    }
+
     private func makeStore(email: String, provider: GoogleTokenProvider, cache: URL?, http override: HTTPClient? = nil) -> GoogleStore {
+        providers[email] = provider
         let api = GoogleCalendarAPI(http: override ?? http, token: { try await provider.token() })
         return GoogleStore(email: email, api: api, zone: zone, cacheURL: cache)
     }
@@ -97,9 +110,12 @@ final class GoogleAccounts {
         }
     }
 
+    /// "Connect again" after Google refused the refresh token: the same sign-in.
+    func reconnect(_ email: String) { connect() }
+
     /// "Connect Google account". Without a client ID: explains and does nothing else.
     func connect() {
-        guard config.clientID != nil else { showsClientIDNote = true; return }
+        guard config.clientID != nil else { showsClientIDNote = true; onError?("A Google client ID is needed first"); return }
         guard !connecting else { return }
         connecting = true
         let auth = GoogleAuth(config: config, http: http)
@@ -108,8 +124,8 @@ final class GoogleAccounts {
             do {
                 let (email, t) = try await auth.signIn()
                 guard let rt = t.refresh_token, let id = config.clientID else { onError?("Google sent no refresh token"); return }
-                tokens.save(refreshToken: rt, for: email)
-                add(makeStore(email: email, provider: GoogleTokenProvider(clientID: id, refreshToken: rt, http: http, initial: t), cache: GoogleStore.cacheURL(for: email)))
+                guard tokens.save(refreshToken: rt, for: email) else { onError?("Could not keep the Google sign-in in the Keychain"); return }
+                add(makeStore(email: email, provider: provider(clientID: id, email: email, refreshToken: rt, initial: t), cache: GoogleStore.cacheURL(for: email)))
             } catch GoogleAuth.AuthError.cancelled {
             } catch { onError?("Could not connect Google: \(error)") }
         }
@@ -118,15 +134,26 @@ final class GoogleAccounts {
     /// Headless tours and snapshots: sam.rivera@example.com, answered by `DemoGoogleServer` through a fake HTTP client.
     @discardableResult
     func connectDemo(server: DemoGoogleServer = DemoGoogleServer()) -> GoogleStore {
-        let s = makeStore(email: DemoGoogleServer.email, provider: GoogleTokenProvider(clientID: "demo", refreshToken: "demo", http: server.client,
+        let client = server.client
+        let s = makeStore(email: DemoGoogleServer.email, provider: GoogleTokenProvider(clientID: "demo", refreshToken: "demo", http: client,
                                                                                          initial: .init(access_token: "demo", expires_in: 3600)),
-                          cache: nil, http: server.client)
+                          cache: nil, http: client)
         add(s)
         return s
     }
 
+    /// Remove account: the refresh token is revoked at Google first, then the store stops (no more cache writes), its cache goes and
+    /// the Keychain item goes.
     func disconnect(_ email: String) {
-        if let s = composite?.google.first(where: { $0.email == email }) { s.deleteCache() }
+        if let p = providers.removeValue(forKey: email) {
+            let s = composite?.google.first { $0.email == email }
+            s?.track(+1)
+            Task.detached {
+                await p.revoke()
+                s?.deliver { s?.track(-1) }
+            }
+        }
+        if let s = composite?.google.first(where: { $0.email == email }) { s.isClosed = true; s.deleteCache() }
         composite?.remove(email: email)
         tokens.remove(email)
         peopleCounts[email] = nil
@@ -139,9 +166,9 @@ final class GoogleAccounts {
 
     /// Re-reads the stores (after a sync).
     func refreshInfo() {
-        let a = (composite?.google ?? []).map {
+        let a = (composite?.google ?? []).filter { !$0.isClosed }.map {
             GoogleAccountInfo(email: $0.email, accountID: $0.accountID, calendarCount: $0.accounts.first?.calendars.count ?? 0,
-                              peopleCount: peopleCounts[$0.email] ?? 0, lastSync: $0.lastSync, error: $0.lastError)
+                              peopleCount: peopleCounts[$0.email] ?? 0, lastSync: $0.lastSync, error: $0.lastError, needsReconnect: $0.needsReconnect)
         }
         if a != accounts { accounts = a }
     }
@@ -164,3 +191,6 @@ final class GoogleAccounts {
 
     func syncAll() { for s in stores { s.sync() } }
 }
+
+/// Hands a main-actor object to a `@Sendable` closure that only uses it back on the main actor.
+struct UncheckedBox<T>: @unchecked Sendable { let value: T; init(_ v: T) { value = v } }
