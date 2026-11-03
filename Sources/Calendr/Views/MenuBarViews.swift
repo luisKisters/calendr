@@ -57,18 +57,26 @@ private enum NativeMenu {
 private enum MenuLine {
     case header(String, countdown: String?, soon: Bool)
     case row(Int)          // index into MenuBarMenuModel.rows
+    case join(Int)         // a row with the Join button (`MenuBarMenuModel.joinIndices`)
     case separator
 
-    var height: CGFloat { if case .separator = self { NativeMenu.separatorHeight } else { NativeMenu.rowHeight } }
+    var height: CGFloat {
+        switch self {
+        case .separator: NativeMenu.separatorHeight
+        case .join: MenuJoinRow.height
+        default: NativeMenu.rowHeight
+        }
+    }
 
     static func list(_ m: MenuBarMenuModel) -> [MenuLine] {
         var out: [MenuLine] = []
-        if let f = m.focus, m.head != nil { out += [.header(m.headLabel, countdown: f.text, soon: f.soon), .row(0)] } else { out.append(.header(m.headLabel, countdown: nil, soon: false)) }
+        func line(_ i: Int) -> MenuLine { m.joinIndices.contains(i) ? .join(i) : .row(i) }
+        if let f = m.focus, m.head != nil { out += [.header(m.headLabel, countdown: f.text, soon: f.soon), line(0)] } else { out.append(.header(m.headLabel, countdown: nil, soon: false)) }
         out.append(.separator)
         var i = m.head == nil ? 0 : 1
         for s in m.sections {
             out.append(.header(s.title, countdown: nil, soon: false))
-            for _ in s.rows { out.append(.row(i)); i += 1 }
+            for _ in s.rows { out.append(line(i)); i += 1 }
         }
         return out
     }
@@ -80,6 +88,8 @@ struct MenuBarMenuPreview: View {
     /// Highlighted row (index into `menu.rows`).
     var highlight: Int?
     var maxHeight: CGFloat = 846
+    /// The pointer is on the Join button of the Join row.
+    var joinHover = false
 
     static let footHeight = NativeMenu.separatorHeight * 2 + NativeMenu.rowHeight * 3
 
@@ -88,6 +98,7 @@ struct MenuBarMenuPreview: View {
         var y = NativeMenu.padding
         for l in MenuLine.list(m) {
             if case .row(let k) = l, k == i { return y }
+            if case .join(let k) = l, k == i { return y }
             y += l.height
         }
         return y
@@ -103,6 +114,9 @@ struct MenuBarMenuPreview: View {
                     switch lines[i] {
                     case .header(let t, let c, let soon): MenuHeaderLine(text: t, countdown: c, soon: soon)
                     case .row(let k): MenuEventRow(row: rows[k], highlighted: highlight == k)
+                    case .join(let k):
+                        MenuJoinRow(row: rows[k], detail: MenuJoinRow.detail(rows[k], focus: k == 0 && menu.head != nil ? menu.focus : nil),
+                                    highlighted: highlight == k, joinHover: joinHover)
                     case .separator: MenuSeparator()
                     }
                 }
@@ -291,6 +305,8 @@ struct MenuBarScreenPreview: View {
     var open = true
     /// Hovered entry of the open row menu.
     var subHighlight: Int? = nil
+    /// The pointer is on the Join button of the Join row.
+    var joinHover = false
 
     /// Screen point of the middle of submenu item `i` (the row menu opens to the left of the menu here, 1440 pt wide screen).
     static func submenuItemTop(_ i: Int, items: [MenuBarSubItem], row: Int, in menu: MenuBarMenuModel) -> CGFloat {
@@ -332,7 +348,7 @@ struct MenuBarScreenPreview: View {
         let right = x + menuWidth - 2
         let subX = right + submenuWidth < Self.size.width - 8 ? right : x - submenuWidth + 2
         return ZStack(alignment: .topLeading) {
-            MenuBarMenuPreview(menu: menu, highlight: highlight)
+            MenuBarMenuPreview(menu: menu, highlight: highlight, joinHover: joinHover)
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { menuWidth = $0 }
                 .offset(x: x, y: Self.menuTop)
             if let submenu, let hl = highlight {
@@ -397,5 +413,191 @@ struct MenuBarScreenPreview: View {
         .padding(.leading, 16).padding(.trailing, 10)
         .frame(width: Self.size.width, height: 30)
         .background(Color(red: 20 / 255, green: 18 / 255, blue: 28 / 255).opacity(0.42))
+    }
+}
+
+// MARK: The Join row (v4 Phase 9)
+
+/// The menu's Join row (design/mockup-v4 `.mbr` with `.mbjoin`): start time, the calendar bar, the title over its times or
+/// countdown, and Join (28 pt, radius 8, the act colour of the dark menu: white) with the call logo. In the real menu it is the
+/// view of one `NSMenuItem` (Q5: the native menu stays); highlighted like the native rows while the pointer is on it.
+struct MenuJoinRow: View {
+    static let height: CGFloat = 40
+    static let minWidth: CGFloat = 300
+    let row: MenuBarMenuModel.Row
+    /// "19:00–20:00", or the countdown of the head row ("in 20 min", "35 min left").
+    let detail: String
+    var highlighted = false
+    var joinHover = false
+    /// In the real menu the row tracks the pointer itself and runs the actions.
+    var interactive = false
+    var open: () -> Void = {}
+    var join: () -> Void = {}
+    @State private var hover = false
+    @State private var hoverJoin = false
+
+    static func detail(_ r: MenuBarMenuModel.Row, focus: MenuBarMenuModel.Focus?) -> String {
+        if let focus { return focus.text }
+        return r.end.map { "\(r.start)\u{2013}\($0)" } ?? r.start
+    }
+
+    var body: some View {
+        let hl = highlighted || (interactive && hover && !hoverJoin)
+        let onJoin = joinHover || hoverJoin
+        HStack(spacing: 8) {
+            Group {
+                if row.tentative && !hl { MenuBarStripes(color: Color(hex: row.colorHex)) } else { Rectangle().fill(hl ? .white : Color(hex: row.colorHex)) }
+            }
+            .frame(width: 3, height: 26).clipShape(RoundedRectangle(cornerRadius: Radius.bar))
+            Text(row.start).font(NativeMenu.font).monospacedDigit().foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.time)
+                .fixedSize().frame(width: MenuBarColumns.timeWidth, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(MenuBarColumns.truncate(row.title)).font(NativeMenu.font).lineLimit(1)
+                Text(detail).font(NativeMenu.small).monospacedDigit().foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.dim).lineLimit(1)
+            }
+            .fixedSize()
+            Spacer(minLength: 18)
+            if let call = row.call {
+                Button(action: join) {
+                    HStack(spacing: 6) {
+                        CallLogo(kind: call.kind, size: 13, glyphColor: .black)
+                        Text("Join").font(.system(size: 12, weight: .semibold)).foregroundStyle(.black)
+                    }
+                    .padding(.horizontal, 10).frame(height: Dim.row)
+                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(Color.white.opacity(onJoin ? 1 : 0.92)))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.white.opacity(onJoin ? 0.9 : 0), lineWidth: 1.5).padding(-2.5))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .onHover { hoverJoin = $0 }
+                .help("Join \(call.name)")
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 9).frame(height: Self.height)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Radius.row).fill(hl ? NativeMenu.highlight : .clear))
+        .padding(.horizontal, interactive ? NativeMenu.padding : 0)
+        .contentShape(Rectangle())
+        .onTapGesture { open() }
+        .onHover { hover = $0 }
+    }
+}
+
+// MARK: Call logos (design/mockup-v4 `meetLogo`, `zoomLogo`): brand art, so its colours stay here, not in Theme.
+
+/// The call's logo: Google Meet, Zoom, or a video glyph for any other host. `size` is the width; Meet is 22 x 18 in its box.
+struct CallLogo: View {
+    let kind: CallLink.Kind
+    var size: CGFloat = 16
+    var glyphColor: Color = .primary
+
+    static let meet: [(String, String)] = [
+        ("#00832d", "M12.4 9 14.5 11.4 17.4 13.2 17.9 9 17.4 4.9 14.6 6.5z"),
+        ("#0066da", "M0 12.8v3.6C0 17.3.7 18 1.6 18h3.6l.7-2.6-.7-2.6-2.5-.7z"),
+        ("#e94235", "M5.2 0 0 5.2l2.6.7 2.6-.7.8-2.4z"),
+        ("#2684fc", "M5.2 5.2H0v7.6h5.2z"),
+        ("#00ac47", "M20.9 2.2 17.4 4.9v8.3l3.5 2.7c.5.4 1.3 0 1.3-.7V2.9c0-.7-.8-1.1-1.3-.7zM12.4 9v3.8H5.2V18h10.6c.9 0 1.6-.7 1.6-1.6v-3.2z"),
+        ("#ffba00", "M15.8 0H5.2v5.2h7.2V9l5-4.1V1.6C17.4.7 16.7 0 15.8 0z"),
+    ]
+    static let zoomBlue = "#2D8CFF"
+    static let zoomCamera = "M3.5 5.5h5.2c.7 0 1.3.6 1.3 1.3v3.7H4.8c-.7 0-1.3-.6-1.3-1.3zM10.5 7.2l2-1.5v4.6l-2-1.5z"
+
+    var body: some View {
+        switch kind {
+        case .meet:
+            Canvas { ctx, sz in
+                let k = sz.width / 22
+                for (hex, d) in Self.meet { ctx.fill(SVGPath.parse(d).applying(CGAffineTransform(scaleX: k, y: k)), with: .color(Color(hex: hex))) }
+            }
+            .frame(width: size, height: size * 18 / 22)
+        case .zoom:
+            Canvas { ctx, sz in
+                let k = sz.width / 16
+                ctx.fill(Path(roundedRect: CGRect(origin: .zero, size: sz), cornerRadius: Radius.check * k), with: .color(Color(hex: Self.zoomBlue)))
+                ctx.fill(SVGPath.parse(Self.zoomCamera).applying(CGAffineTransform(scaleX: k, y: k)), with: .color(.white))
+            }
+            .frame(width: size, height: size)
+        case .teams, .other:
+            Image(systemName: "video.fill").font(.system(size: size * 0.7)).foregroundStyle(glyphColor).frame(width: size, height: size)
+        }
+    }
+}
+
+/// Just enough SVG path syntax for the logos: M L H V C Z, absolute and relative, with implicit repeats.
+enum SVGPath {
+    static func parse(_ d: String) -> Path {
+        var tokens: [String] = []
+        var num = ""
+        func flush() { if !num.isEmpty { tokens.append(num); num = "" } }
+        for ch in d {
+            if ch.isLetter { flush(); tokens.append(String(ch)) }
+            else if ch == "-" { flush(); num = "-" }
+            else if ch == "." { if num.contains(".") { flush() }; num.append(ch) }
+            else if ch.isNumber { num.append(ch) }
+            else { flush() }
+        }
+        flush()
+        var p = Path()
+        var i = 0, cmd: Character = "M"
+        var cur = CGPoint.zero, start = CGPoint.zero
+        func n() -> CGFloat { defer { i += 1 }; return CGFloat(Double(tokens[i]) ?? 0) }
+        while i < tokens.count {
+            if let c = tokens[i].first, c.isLetter { cmd = c; i += 1; if c == "z" || c == "Z" { p.closeSubpath(); cur = start; continue } }
+            guard i < tokens.count else { break }
+            let rel = cmd.isLowercase
+            let o = rel ? cur : .zero
+            switch cmd.uppercased() {
+            case "M":
+                let x = n(), y = n(); cur = CGPoint(x: o.x + x, y: o.y + y); start = cur; p.move(to: cur)
+                cmd = rel ? "l" : "L"
+            case "L": let x = n(), y = n(); cur = CGPoint(x: o.x + x, y: o.y + y); p.addLine(to: cur)
+            case "H": let x = n(); cur.x = (rel ? cur.x : 0) + x; p.addLine(to: cur)
+            case "V": let y = n(); cur.y = (rel ? cur.y : 0) + y; p.addLine(to: cur)
+            case "C":
+                let a = CGPoint(x: o.x + n(), y: o.y + n()), b = CGPoint(x: o.x + n(), y: o.y + n()), e = CGPoint(x: o.x + n(), y: o.y + n())
+                p.addCurve(to: e, control1: a, control2: b); cur = e
+            default: i += 1
+            }
+        }
+        return p
+    }
+}
+
+// MARK: Map logos (design/mockup-v4 `appleMaps`, `gMaps`): brand art for the location menu, so its colours stay here, like the call logos.
+
+struct MapLogo: View {
+    enum Kind { case apple, google }
+    let kind: Kind
+    var size: CGFloat = 16
+
+    static let apple: [(String, String)] = [
+        ("#93d36f", "M0 10 16 4.4v5L0 15z"), ("#f6c443", "M5.2 0h3L4.4 16h-3z"),
+        ("#ff4b3e", "M8.6 3.6a2.6 2.6 0 0 1 2.6 2.6c0 1.9-2.6 4.6-2.6 4.6S6 8.1 6 6.2a2.6 2.6 0 0 1 2.6-2.6z"),
+    ]
+    static let appleBase = "#f4f4f1"
+    static let google: [(String, String)] = [
+        ("#34a853", "M8 .8A5.2 5.2 0 0 0 2.8 6c0 3.7 5.2 9.2 5.2 9.2s5.2-5.5 5.2-9.2A5.2 5.2 0 0 0 8 .8z"),
+        ("#fbbc04", "M4.3 2.3 8 6 3.3 8.4A5 5 0 0 1 2.8 6c0-1.4.6-2.7 1.5-3.7z"),
+        ("#ea4335", "M4.3 2.3A5.2 5.2 0 0 1 11.7 2.3L8 6z"),
+        ("#4285f4", "M11.7 2.3A5.2 5.2 0 0 1 13.2 6c0 1-.3 2-.8 3L8 6z"),
+    ]
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let k = sz.width / 16, t = CGAffineTransform(scaleX: k, y: k)
+            func fill(_ d: String, _ hex: String) { var p = Path(); PanelIcon.svg(&p, d); ctx.fill(p.applying(t), with: .color(Color(hex: hex))) }
+            switch kind {
+            case .apple:
+                ctx.clip(to: Path(roundedRect: CGRect(origin: .zero, size: sz), cornerRadius: Radius.check * k))
+                ctx.fill(Path(CGRect(origin: .zero, size: sz)), with: .color(Color(hex: Self.appleBase)))
+                for (hex, d) in Self.apple { fill(d, hex) }
+                ctx.fill(Path(ellipseIn: CGRect(x: 7.6 * k, y: 5.2 * k, width: 2 * k, height: 2 * k)), with: .color(.white))
+            case .google:
+                for (hex, d) in Self.google { fill(d, hex) }
+                ctx.fill(Path(ellipseIn: CGRect(x: 6.1 * k, y: 4.1 * k, width: 3.8 * k, height: 3.8 * k)), with: .color(.white))
+            }
+        }
+        .frame(width: size, height: size)
     }
 }

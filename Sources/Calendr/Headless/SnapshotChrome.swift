@@ -4,6 +4,9 @@ import CalendrKit
 /// Snapshot states of the CHROME area. `SnapshotStates.apply` falls through to this for names it does not know.
 @MainActor
 enum SnapshotChrome {
+    /// v4 states of this area (`--fixture v4`). "v4-search": the right column's field with "walk", results grouped by day.
+    static let v4States = ["v4-search"]
+
     /// Puts the model into the named state. Returns false for names this area does not define.
     static func apply(_ state: String, _ m: AppModel) -> Bool {
         switch state {
@@ -24,6 +27,12 @@ enum SnapshotChrome {
         case "settings-hand-height": m.settings.hourHeight = 72; m.overlay = .settings
         case "light-command-menu": m.settings.appearance = .light; m.openPalette(.all)
         case "light-settings": m.settings.appearance = .light; m.overlay = .settings
+        case "v4-search":
+            m.setColumnQuery("walk")
+            after(0.05) {
+                m.gridState.scrollTarget = SnapshotV4.defaultScroll
+                m.gridState.scrollTick += 1
+            }
         default: return false
         }
         return true

@@ -14,7 +14,7 @@ extension AppModel {
     }
 
     /// EventKit cannot set the user's own attendee status; the demo store can.
-    var canChangeResponse: Bool { store is DemoStore }
+    var canChangeResponse: Bool { store.canRespond }
 
     /// The other guests' addresses: their own, or a teammate's of that name.
     func menuBarGuestAddresses(_ e: CalendarEvent) -> [String] {
@@ -27,11 +27,9 @@ extension AppModel {
         MenuBarMenu.submenu(for: e, canRespond: canChangeResponse, guestAddresses: menuBarGuestAddresses(e))
     }
 
+    /// The editor's reply path (`setReply`): the same guards, and a held change stays held.
     func setResponse(_ status: ResponseStatus, for e: CalendarEvent) {
-        guard canChangeResponse else { return }
-        var cur = event(id: e.id) ?? e
-        cur.status = status
-        _ = try? store.update(cur, span: .this)
+        setReply(status, eventID: e.id)
     }
 }
 
@@ -104,16 +102,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
         let m = model.menuBarMenu
         let cols = MenuBarColumns(rows: m.rows)
+        var index = 0
+        /// Rows of today with a call are custom views with Join (Q5: the native menu stays); every other row is native.
+        func add(_ r: MenuBarMenuModel.Row) {
+            menu.addItem(m.joinIndices.contains(index) ? joinRow(r, cols, focus: index == 0 ? m.focus : nil) : row(r, cols))
+            index += 1
+        }
         if let f = m.focus, let head = m.head {
             menu.addItem(header(m.headLabel, countdown: f.text, soon: f.soon))
-            menu.addItem(row(head, cols))
+            add(head)
         } else {
             menu.addItem(header(m.headLabel))
         }
         menu.addItem(.separator())
         for s in m.sections {
             menu.addItem(header(s.title))
-            for r in s.rows { menu.addItem(row(r, cols)) }
+            for r in s.rows { add(r) }
         }
         menu.addItem(.separator())
         menu.addItem(command("Open Calendr", key: "1", #selector(openCalendr)))
@@ -149,6 +153,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             for s in model.menuBarSubmenu(for: r.event) { sub.addItem(subItem(s, r.event)) }
             it.submenu = sub
         }
+        return it
+    }
+
+    /// The Join row: an `NSMenuItem.view` hosting `MenuJoinRow` (time, bar, title with its times, Join with the call logo).
+    /// Clicking the row shows the event; Join opens the call. Both close the menu.
+    private func joinRow(_ r: MenuBarMenuModel.Row, _ cols: MenuBarColumns, focus: MenuBarMenuModel.Focus?) -> NSMenuItem {
+        let it = NSMenuItem(title: r.title, action: nil, keyEquivalent: "")
+        it.representedObject = MenuBarAction(item: .show, event: r.event)
+        let line = MenuJoinRow(row: r, detail: MenuJoinRow.detail(r, focus: focus), interactive: true,
+                               open: { [weak self] in self?.menu.cancelTracking(); self?.show(r.event) },
+                               join: { [weak self] in self?.menu.cancelTracking(); self?.model.joinCall(r.event) })
+        let host = NSHostingView(rootView: line.environment(\.colorScheme, .dark))
+        host.frame = NSRect(x: 0, y: 0, width: max(MenuJoinRow.minWidth, cols.endX + 60), height: MenuJoinRow.height)
+        it.view = host
+        it.toolTip = r.call.map { "Join \($0.name)" }
         return it
     }
 
@@ -209,6 +228,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 let pad = String(repeating: "    ", count: depth)
                 if it.isSeparatorItem { lines.append(pad + "----"); continue }
                 var line = pad + (it.attributedTitle?.string ?? it.title).replacingOccurrences(of: "\t", with: " | ")
+                if it.view != nil, let a = it.representedObject as? MenuBarAction, let c = CallLink.parse(a.event) {
+                    line += "  [view: Join \(c.name), logo \(MenuBarMenu.logo(c.kind))]"
+                }
                 if !it.isEnabled { line += "  (disabled)" }
                 if it.state == .on { line += "  [checked]" }
                 if !it.keyEquivalent.isEmpty {
