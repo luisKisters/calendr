@@ -357,11 +357,12 @@ extension AppModel {
         updateSelected { $0.conferencing = u.base.conferencing }
     }
 
-    /// The people the guest field suggests: the store's people not on the list yet, matched by name or address.
+    /// The people the guest field suggests: the store's people, then Contacts and Google contacts (`peopleDirectory`), not on the list
+    /// yet, matched by name or address.
     func guestSuggestions(_ q: String) -> [Teammate] {
         guard let e = selectedEvent else { return [] }
         let on = Set(e.attendees.map { $0.email.lowercased() })
-        let list = store.teammates.filter { !on.contains($0.email.lowercased()) }
+        let list = peopleDirectory().filter { !on.contains($0.email.lowercased()) }
         let query = q.trimmingCharacters(in: .whitespaces)
         // empty field: the four most recent people (the demo order stands in for recency)
         return query.isEmpty ? Array(list.prefix(4)) : Array(FuzzyMatcher.filter(list, query: query) { "\($0.name) \($0.email)" }.prefix(6))
@@ -373,8 +374,6 @@ extension AppModel {
         closePanelMenu()
     }
 
-    /// "N without a name · Allow Contacts": the Contacts request itself comes with v4 Phase 8a.
-    func allowContacts() { showToast("Contacts access comes in a later update") }
 
     /// "Find a new time": the guests' calendars side by side (Meet with).
     func findNewTime() { store.canOverlayTeammates ? openPalette(.meet) : showToast(Self.meetWithUnavailable) }

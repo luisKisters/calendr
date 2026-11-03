@@ -6,6 +6,8 @@ struct PanelIcon: View {
         case clock, repeats, pin, users, video, help, calendar, notes, trash, x, plus, lock, down, arrow
         // v4 editor (design/mockup-v4 `P`)
         case bell, sparkle, reply, mail, more, copy, expand, collapse, history, check, link, contacts, q
+        // v4 settings (accounts, contacts)
+        case google, globe
     }
     let name: Name
     var size: CGFloat?
@@ -59,6 +61,12 @@ struct PanelIcon: View {
         case .check: svg(&p, "m3.5 8.3 3 3 6-6.6")
         case .link: svg(&p, "M7 9a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2L8 3.8M9 7a3 3 0 0 0-4.2 0l-2 2A3 3 0 0 0 7 13.2l1-1")
         case .contacts: p.addRoundedRect(in: CGRect(x: 3, y: 1.8, width: 10, height: 12.4), cornerSize: CGSize(width: 1.8, height: 1.8)); circle(&p, 8, 6.5, 2); svg(&p, "M5 11.5c.5-1.5 1.6-2.3 3-2.3s2.5.8 3 2.3")
+        case .google:
+            svg(&p, "M13.6 8.2c0-.5 0-.9-.1-1.3H8v2.5h3.2a2.8 2.8 0 0 1-1.2 1.8v1.5h2c1-1 1.6-2.6 1.6-4.5Z")
+            svg(&p, "M8 14c1.6 0 3-.5 4-1.4l-2-1.5c-.5.4-1.2.6-2 .6a3.5 3.5 0 0 1-3.3-2.4H2.7v1.6A6 6 0 0 0 8 14Z")
+            svg(&p, "M4.7 9.3a3.6 3.6 0 0 1 0-2.6V5.1h-2a6 6 0 0 0 0 5.8Z")
+            svg(&p, "M8 4.4c.9 0 1.7.3 2.3.9l1.7-1.7A6 6 0 0 0 2.7 5.1l2 1.6A3.5 3.5 0 0 1 8 4.4Z")
+        case .globe: circle(&p, 8, 8, 6); svg(&p, "M2 8h12M8 2c1.8 2 2.5 4 2.5 6S9.8 12 8 14c-1.8-2-2.5-4-2.5-6S6.2 4 8 2Z")
         case .q: svg(&p, "M5.6 5.6a2.4 2.4 0 0 1 4.7.7c0 1.7-2.3 2-2.3 3.4"); circle(&p, 8, 12.6, 0.3)
         }
         cache[n] = p

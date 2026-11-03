@@ -95,6 +95,8 @@ final class AppModel {
     var chromeState = ChromeV3State()
     var panelState = PanelV3State()
     let panelMenus = PanelMenuState()
+    /// Contacts and Google (v4 Phase 8): logic in Services/ and Model/ServicesModel.swift.
+    let services: Services
     /// Bumped on every store change, for observers that read the store directly (the menu bar item).
     private(set) var storeVersion = 0
 
@@ -137,9 +139,10 @@ final class AppModel {
         var endMinute: Int
     }
 
-    init(store: CalendarStore, options: LaunchOptions, persist: Bool = true) {
+    init(store: CalendarStore, options: LaunchOptions, persist: Bool = true, services: Services? = nil) {
         self.store = store
         self.options = options
+        self.services = services ?? Services.make(options)
         // The v4 fixture is a fixed demo (46 pt hours, pinned clock): it never reads or writes the user's settings.
         let persist = persist && options.fixture != .v4
         self.persist = persist

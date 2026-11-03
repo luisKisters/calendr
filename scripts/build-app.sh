@@ -36,6 +36,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSCalendarsFullAccessUsageDescription</key><string>Calendr shows and edits the events in your Google, iCloud and local calendars.</string>
   <key>NSCalendarsUsageDescription</key><string>Calendr shows and edits the events in your Google, iCloud and local calendars.</string>
+  <key>NSContactsUsageDescription</key><string>Calendr shows the names of guests that events list only by their email address, and suggests people when you add participants.</string>
 </dict>
 </plist>
 PLIST
