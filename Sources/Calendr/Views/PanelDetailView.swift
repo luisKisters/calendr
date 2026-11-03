@@ -2,276 +2,366 @@ import SwiftUI
 import AppKit
 import CalendrKit
 
-/// The event in the right column, "Icon rows": only fields with a value; the empty ones are "add" chips.
-/// While `draftEventID` is the selected event it is the new event: title focused, Discard / Save at the foot.
+/// The event in the right column (design/mockup-v4 `detail()`): a 20 pt icon column (x 20 to 36) and a text column from 48, 20 pt
+/// line boxes in 32 pt rows; fields and hover boxes bleed 8 pt. Every row is always there (`EditorRows`); an empty one shows its
+/// placeholder in fg3. Order: title, when, repeat, "Find a new time", participants, Going?, call, location, notes, calendar, reminders.
+/// While `draftEventID` is the selected event it is the new event: title focused, the foot (`PanelFoot`) has Discard and Save.
 struct PanelDetailView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
     let e: CalendarEvent
     @FocusState private var focus: PanelFocus?
-    @State private var guest = ""
 
     var body: some View {
-        let writable = model.isWritable(e)
-        let draft = model.isDraftOpen
-        let adds = writable ? PanelField.allCases.filter { !model.panelShows($0, e) && ($0 != .guests || model.store.canEditParticipants) } : []
-        VStack(alignment: .leading, spacing: 12) {
-            top(writable: writable, draft: draft)
-            fields(writable: writable)
-            if !adds.isEmpty {
-                PanelFlow(spacing: 4) {
-                    ForEach(adds, id: \.self) { f in PanelAddChip(title: f.label) { add(f) } }
-                }
-                .padding(.leading, -7).padding(.top, 10)
-                .overlay(alignment: .top) { Hairline().padding(.leading, -7) }
+        let canEdit = model.editorCanEdit(e)
+        let rows = EditorRows.rows(model.editorContext(e))
+        VStack(alignment: .leading, spacing: 0) {
+            top(canEdit: canEdit)
+            ForEach(rows.filter { $0 != .title }, id: \.self) { r in
+                if r == .participants || r == .calendar { EditorRule() }
+                row(r, canEdit: canEdit)
             }
-            if draft { foot(border: adds.isEmpty) }
         }
-        .padding(.top, 14).padding(.leading, 16).padding(.trailing, 14).padding(.bottom, 14)
+        .padding(.top, 12).padding(.leading, 20).padding(.trailing, 14).padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .onAppear { if model.titleFocusPending { focus = .title } }
         .onChange(of: model.focusTitleTick) { _, _ in if model.titleFocusPending { focus = .title } }
         // Esc itself is KeyRouter's: it leaves the field and peels one layer (`escapeOneLayer`).
         .onChange(of: model.blurTick) { _, _ in focus = nil }
+        .onChange(of: focus) { old, new in
+            if old == .place && new != .place, model.panelMenus.open == .places || model.panelMenus.open == .maps {
+                after(0.15) { if focus != .place && (model.panelMenus.open == .places) { model.closePanelMenu() } }
+            }
+        }
         .background(ResignFocusOnInsert(skip: { model.titleFocusPending }))
     }
 
-    // MARK: Top row
+    // MARK: Title
 
-    private func top(writable: Bool, draft: Bool) -> some View {
-        let bar = Palettes.cc(model.calendarColorHex(of: e), dark: scheme == .dark).color
+    private func top(canEdit: Bool) -> some View {
+        let bar = Palettes.cc(model.hexColor(of: e), dark: scheme == .dark).color
         return HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: Radius.bar).fill(bar).frame(width: 3, height: 20).padding(.trailing, 7)
+            RoundedRectangle(cornerRadius: Radius.bar).fill(bar).frame(width: 3, height: 22).padding(.leading, 6.5).padding(.trailing, 14.5)
             Group {
-                if writable {
-                    TextField("", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { v in model.updateSelected { $0.title = v } }),
-                              prompt: nil)
+                if canEdit {
+                    TextField("", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { model.setSelectedTitle($0) }), prompt: nil)
                         .textFieldStyle(.plain)
-                        .panelPlaceholder("Title", when: e.title.isEmpty, font: .title18)
+                        .panelPlaceholder(model.isDraftOpen ? "New event" : "(No title)", when: e.title.isEmpty, font: .title18)
                         .focused($focus, equals: .title)
-                        .onSubmit { draft ? model.saveDraft() : (focus = nil) }
+                        .onSubmit { model.isDraftOpen ? model.saveDraft() : (focus = nil) }
+                        .editorField(focused: focus == .title, editable: true, key: "field:title")
                 } else {
-                    Text(e.title).lineLimit(1).truncationMode(.tail)
+                    Text(e.title.isEmpty ? "(No title)" : e.title).lineLimit(1).truncationMode(.tail)
                 }
             }
-            .font(.title18).tracking(-0.37).foregroundStyle(Theme.fg)
-            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
-            if writable && !draft { PanelIconButton(icon: .trash) { model.requestDeleteSelected() } }
-            PanelIconButton(icon: .x) { model.closePanel() }
+            .font(.title18).tracking(-0.27).foregroundStyle(Theme.fg)
+            .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
+            if model.isWritable(e) && !model.isDraftOpen { PanelIconButton(icon: .trash) { model.requestDeleteSelected() }.help("Delete event  \u{232B}") }
+            PanelIconButton(icon: .x) { model.closePanel() }.help("Close  esc")
         }
+        .frame(height: 26)
+        .padding(.bottom, 8)
     }
 
     // MARK: Rows
 
-    private func fields(writable: Bool) -> some View {
-        let fmt = model.fmt
-        let canGuests = writable && model.store.canEditParticipants
-        return VStack(alignment: .leading, spacing: 6) {
-            row(.clock) {
+    @ViewBuilder
+    private func row(_ r: EditorRow, canEdit: Bool) -> some View {
+        switch r {
+        case .title: EmptyView()
+        case .when:
+            EditorRowBox(icon: .clock) {
                 VStack(alignment: .leading, spacing: 0) {
-                    when(writable: writable)
-                    if writable { PanelSwitch(label: "All day", isOn: e.isAllDay) { model.setSelectedAllDay(!e.isAllDay) } }
+                    when(canEdit: canEdit)
+                    if canEdit { PanelSwitch(label: "All day", isOn: e.isAllDay) { model.setSelectedAllDay(!e.isAllDay) }.frame(height: 20).padding(.top, 6).padding(.bottom, 4) }
                 }
             }
-            if let r = PanelText.repeats(e, fmt) {
-                row(.repeats) { Text(r).font(.text).foregroundStyle(Theme.fg).lineLimit(1) }
+        case .repeats:
+            EditorRowBox(icon: .repeats) {
+                let text = PanelText.editorRepeats(e, model.fmt)
+                Text(text ?? EditorRow.repeats.placeholder!).foregroundStyle(text == nil ? Theme.fg3 : Theme.fg).lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if model.panelShows(.place, e) {
-                row(.pin) {
-                    TextField("", text: Binding(get: { model.selectedEvent?.location ?? "" }, set: { v in model.updateSelected { $0.location = v } }),
-                              axis: .vertical)
-                        .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineLimit(1...3)
-                        .panelPlaceholder("Add a place", when: e.location.isEmpty)
-                        .focused($focus, equals: .place).disabled(!writable)
-                        .onSubmit(submit)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 4)
-                        .panelInput(focused: focus == .place, editable: writable, height: nil)
-                        .padding(.trailing, -7)
+        case .findTime:
+            EditorRowBox(icon: .sparkle) {
+                Button { model.findNewTime() } label: {
+                    Text("Find a new time").foregroundStyle(Theme.fg2).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .editorField(focused: false, editable: true, key: "field:findTime")
+            }
+        case .participants:
+            EditorRowBox(icon: .users) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if e.attendees.isEmpty { Text(EditorRow.participants.placeholder!).foregroundStyle(Theme.fg3) }
+                    ForEach(Array(e.attendees.enumerated()), id: \.offset) { _, a in Text(a.label).foregroundStyle(Theme.fg).frame(height: 28) }
                 }
             }
-            if model.panelShows(.guests, e) && (canGuests || !e.participants.isEmpty) {
-                row(.users) {
-                    PanelFlow(spacing: 4) {
-                        ForEach(Array(e.participants.enumerated()), id: \.offset) { i, g in
-                            PanelGuestChip(name: g, removable: canGuests) { model.updateSelected { $0.removeGuest(at: i) } }
-                                .padding(.trailing, i == e.participants.count - 1 ? 8 : 0)
-                        }
-                        if canGuests {
-                            TextField("", text: $guest)
-                                .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg)
-                                .panelPlaceholder("Add a guest", when: guest.isEmpty)
-                                .focused($focus, equals: .guest)
-                                .onSubmit { model.addGuest(guest); guest = ""; focus = .guest }
-                                .panelInput(focused: focus == .guest, editable: true, hang: false)
-                                .panelFill(min: 90)
-                        }
-                    }
-                }
-            }
-            if model.panelShows(.video, e) {
-                row(.video) {
-                    if e.conferencing.isEmpty && CallLink.parse(e) == nil {
-                        if writable && model.canInventVideoLink {
-                            PanelLineButton(title: "Create a video link") { model.createVideoLink() }
-                        } else if writable {
-                            PanelCommitField(value: "", minWidth: 220, placeholder: "Paste a video link", editable: true, focusKey: .video, focus: $focus,
-                                             commit: { model.setVideoLink($0) }, onReturn: submit)
-                        }
-                    } else {
-                        // A call (CallLink) gets Join; any other web address is a plain link.
-                        let call = CallLink.parse(e)
-                        HStack(spacing: 10) {
-                            Button { if call != nil { model.joinCall(e) } else { model.openConferencingLink(e) } } label: {
-                                Text(call?.display ?? e.conferencing).font(.text).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
-                                    .underline(color: Theme.fg.opacity(0.4))
-                            }
-                            .buttonStyle(.plain)
-                            if call != nil { PanelFillButton(title: "Join", small: true) { model.joinCall(e) } }
-                        }
-                    }
-                }
-            }
-            if !e.participants.isEmpty || e.status != .confirmed {
-                row(.help) {
-                    if model.canChangeResponse {
-                        // My own events: I am going, nothing to answer.
-                        Segmented(options: [(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], selection: e.myReply,
-                                  enabled: writable && !e.iAmOrganizer) { s in
-                            model.updateSelected { $0.status = s }
-                        }
-                    } else {
-                        // The store cannot write the answer: show it.
-                        HStack(spacing: 6) {
-                            Text("Going?").font(.text).foregroundStyle(Theme.fg3)
-                            Text(PanelText.response(e.myReply)).font(.text).foregroundStyle(Theme.fg)
-                        }
-                    }
-                }
-            }
-            row(.calendar) { calendar(writable: writable) }
-            if model.panelShows(.notes, e) {
-                row(.notes) {
-                    TextField("", text: Binding(get: { model.selectedEvent?.notes ?? "" }, set: { v in model.updateSelected { $0.notes = v } }),
-                              axis: .vertical)
-                        .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineSpacing(3).lineLimit(2...14)
-                        .panelPlaceholder("Add notes", when: e.notes.isEmpty)
-                        .focused($focus, equals: .notes).disabled(!writable)
-                        .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
-                        .padding(.vertical, 5)
-                        .panelInput(focused: focus == .notes, editable: writable, height: nil)
-                        .padding(.trailing, -7)
-                }
-            }
-        }
-    }
-
-    private func row<C: View>(_ icon: PanelIcon.Name, @ViewBuilder _ content: () -> C) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            PanelIcon(name: icon).frame(width: 18, height: 28)
-            content().frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+        case .going:
+            EditorRowBox(icon: .reply) { PanelGoingRow(e: e) }
+        case .call:
+            let hasCall = !e.conferencing.isEmpty || CallLink.parse(e) != nil || model.panelState.newMeet.contains(e.id)
+            EditorRowBox(icon: .video, tall: hasCall) { PanelCallRow(e: e, canEdit: canEdit, focus: $focus) }
+        case .location:
+            EditorRowBox(icon: .pin) { PanelLocationRow(e: e, canEdit: canEdit, focus: $focus) }
+        case .notes:
+            EditorRowBox(icon: .notes) { notes(canEdit: canEdit) }
+        case .calendar:
+            EditorRowBox(icon: .calendar) { calendar() }
+        case .reminders:
+            EditorRowBox(icon: .bell) { PanelReminders(e: e) }
         }
     }
 
     /// Date, start → end, length. All-day events show the date and "all day" (or "3 days").
-    private func when(writable: Bool) -> some View {
+    private func when(canEdit: Bool) -> some View {
         let m = model.math
         let days = e.isAllDay ? max(1, m.daysBetween(e.start, e.end)) : 1
         let dateText = days > 1 ? "\(PanelText.day(e.start, model.fmt)) \u{2013} \(PanelText.day(m.addDays(e.start, days - 1), model.fmt))" : PanelText.day(e.start, model.fmt)
         return HStack(spacing: 0) {
-            PanelCommitField(value: dateText, minWidth: 84, editable: writable && days == 1, focusKey: .date, focus: $focus,
+            PanelCommitField(value: dateText, minWidth: 84, editable: canEdit && days == 1, focusKey: .date, focus: $focus,
                              commit: { model.setSelectedDay($0) }, onReturn: submit)
             if !e.isAllDay {
                 Color.clear.frame(width: 4, height: 1)
-                PanelCommitField(value: model.fmt.time(e.start), width: 52, centered: true, tabular: true, editable: writable, focusKey: .start, focus: $focus,
+                PanelCommitField(value: model.fmt.time(e.start), width: 52, centered: true, tabular: true, editable: canEdit, focusKey: .start, focus: $focus,
                                  commit: { t in TimeParser.parse(t).map { model.setSelectedStart($0); return true } ?? false }, onReturn: submit)
                 PanelIcon(name: .arrow).frame(width: 16)
-                PanelCommitField(value: model.fmt.time(e.end), width: 52, centered: true, tabular: true, editable: writable, focusKey: .end, focus: $focus,
+                PanelCommitField(value: model.fmt.time(e.end), width: 52, centered: true, tabular: true, editable: canEdit, focusKey: .end, focus: $focus,
                                  commit: { t in TimeParser.parse(t).map { model.setSelectedEnd($0) } ?? false }, onReturn: submit)
             }
-            Text(e.isAllDay ? (days > 1 ? "\(days) days" : "all day") : PanelText.duration(e.durationMinutes))
+            Text(e.isAllDay ? (days > 1 ? "\(days) days" : "all day") : PanelText.editorDuration(e.durationMinutes))
                 .font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize().padding(.leading, 8)
         }
         .fixedSize()
+        .frame(height: 26)
     }
 
-    /// Writable: the calendar as a menu of writable calendars by account. Read-only: the name, a lock, "read-only".
-    @ViewBuilder
-    private func calendar(writable: Bool) -> some View {
+    /// The notes (Return adds a line), 18.75 pt lines. A text until clicked, then a field. Google's Meet block is hidden: one line says so.
+    private func notes(canEdit: Bool) -> some View {
+        let v = MeetNotes.visible(e.notes)
+        let editing = focus == .notes
+        return VStack(alignment: .leading, spacing: 0) {
+            ZStack(alignment: .topLeading) {
+                if editing {
+                    TextField("", text: Binding(get: { MeetNotes.visible(model.selectedEvent?.notes ?? "").text }, set: { model.setSelectedNotes($0) }), axis: .vertical)
+                        .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineLimit(1...14)
+                        .focused($focus, equals: .notes)
+                } else {
+                    Text(v.text.isEmpty ? EditorRow.notes.placeholder! : v.text).font(.text).foregroundStyle(v.text.isEmpty ? Theme.fg3 : Theme.fg)
+                        .lineSpacing(3.75).fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, -1.9)
+                        .contentShape(Rectangle())
+                        .onTapGesture { if canEdit { focus = .notes } }
+                    // keeps the focus target alive so a click can move the keyboard here
+                    TextField("", text: .constant("")).focused($focus, equals: .notes).opacity(0).frame(width: 1, height: 1).allowsHitTesting(false)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 20, alignment: .topLeading)
+            .editorField(focused: editing, editable: canEdit, key: "field:notes")
+            if v.hidden {
+                HStack(spacing: 10) {
+                    CallLogo(kind: .meet, size: 12)
+                    Text("Google Meet details hidden").font(.small).foregroundStyle(Theme.fg3)
+                }
+                .frame(height: 20)
+                .padding(.top, 10)
+                .help("Google's joining instructions are in the notes. Calendr shows the call above.")
+            }
+        }
+    }
+
+    /// `.calsel`: the event's colour, the calendar's name, a chevron; opens the calendar and colour menu. Under it availability and
+    /// visibility (`.pair`).
+    private func calendar() -> some View {
         let cal = model.calendarInfo(e.calendarID)
-        let dot = Circle().fill(Palettes.cc(cal?.colorHex ?? model.calendarColorHex(of: e), dark: scheme == .dark).color).frame(width: 8, height: 8)
-        if writable {
-            Menu {
-                ForEach(model.store.accounts) { a in
-                    let cals = a.calendars.filter(\.isWritable)
-                    if !cals.isEmpty {
-                        Section(a.name) {
-                            ForEach(cals) { c in
-                                Button { model.updateSelected { $0.calendarID = c.id } } label: {
-                                    Label { Text(c.title) } icon: { Image(nsImage: PanelDot.image(c.colorHex)) }
-                                }
-                            }
-                        }
+        let writable = model.isWritable(e)
+        return VStack(alignment: .leading, spacing: 0) {
+            Button { if writable { model.openPanelMenu(.calendar) } } label: {
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: Radius.swatch).fill(Palettes.cc(model.hexColor(of: e), dark: scheme == .dark).color).frame(width: 12, height: 12)
+                    Text(cal?.title ?? "Calendar").foregroundStyle(Theme.fg).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                    if writable { PanelIcon(name: .down, size: 12) } else {
+                        HStack(spacing: 4) { PanelIcon(name: .lock); Text("read-only").font(.small).foregroundStyle(Theme.fg3) }
                     }
                 }
-            } label: {
-                HStack(spacing: 7) {
-                    dot
-                    Text(cal?.title ?? "Calendar").font(.text).foregroundStyle(Theme.fg).lineLimit(1)
-                    PanelIcon(name: .down)
-                }
-                .padding(.trailing, -2)
-                .panelInput(focused: false, editable: true)
+                .padding(.leading, 8).padding(.trailing, 13)
+                .frame(height: Dim.field)
+                .background(HoverFill(key: "field:calendar", on: model.panelMenus.open == .calendar, enabled: writable, fill: Theme.bg2, radius: Radius.control))
                 .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .panelMenuAnchor(.calendar)
+            .padding(.horizontal, -8).padding(.top, -5)
+            HStack(spacing: 22) {
+                Menu {
+                    ForEach(Availability.allCases, id: \.self) { a in Button(a == .busy ? "Busy" : "Free") { model.updateSelected { $0.availability = a } } }
+                } label: { pairLabel(e.availability == .busy ? "Busy" : "Free", key: "field:busy") }
+                Menu {
+                    ForEach(EventVisibility.allCases, id: \.self) { v in Button(Self.visibility(v)) { model.updateSelected { $0.visibility = v } } }
+                } label: { pairLabel(Self.visibility(e.visibility), key: "field:vis") }
+            }
             .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-        } else {
-            HStack(spacing: 7) {
-                dot
-                Text(cal?.title ?? "Calendar").font(.text).foregroundStyle(Theme.fg).lineLimit(1)
-                HStack(spacing: 4) {
-                    PanelIcon(name: .lock)
-                    Text("read-only").font(.small).foregroundStyle(Theme.fg3)
-                }
-                .padding(.leading, 6)
-            }
-            .frame(height: 28)
+            .disabled(!writable)
+            .padding(.top, 6)
         }
     }
 
-    // MARK: Foot
-
-    private func foot(border: Bool) -> some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 6) {
-                PanelKbd(text: "esc")
-                Text("Discard").font(.small).foregroundStyle(Theme.fg3)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { model.discardDraft() }
-            Spacer(minLength: 0)
-            PanelFillButton(title: "Save", key: "\u{21A9}") { model.saveDraft() }
+    static func visibility(_ v: EventVisibility) -> String {
+        switch v {
+        case .standard: "Default visibility"
+        case .public: "Public"
+        case .private: "Private"
         }
-        .padding(.top, border ? 10 : 0)
-        .overlay(alignment: .top) { if border { Hairline() } }
     }
 
-    // MARK: Actions
+    private func pairLabel(_ text: String, key: String) -> some View {
+        HStack(spacing: 4) { Text(text).foregroundStyle(Theme.fg); PanelIcon(name: .down, size: 12) }
+            .frame(minHeight: 20)
+            .editorField(focused: false, editable: true, key: key)
+    }
 
     /// Return in a single-line field: saves the new event, or leaves the field.
     private func submit() {
         if model.isDraftOpen { model.saveDraft() } else { focus = nil }
     }
+}
 
-    private func add(_ f: PanelField) {
-        model.addPanelField(f)
-        let target: PanelFocus? = switch f {
-        case .place: .place
-        case .guests: model.store.canEditParticipants ? .guest : nil
-        case .notes: .notes
-        case .video: model.canInventVideoLink ? nil : .video
+// MARK: Row and field chrome
+
+/// `.prow`: the icon (16, fg3) at the left edge, 8 pt down (14 next to the big Join button); the content from 48 with 6 above and below.
+struct EditorRowBox<Content: View>: View {
+    let icon: PanelIcon.Name
+    var tall = false
+    @ViewBuilder var content: Content
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            PanelIcon(name: icon, size: 16).padding(.top, tall ? 14 : 8)
+            content.padding(.vertical, 6).frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
         }
-        if let target { after(0.02) { focus = target } }
+        .frame(minHeight: 32, alignment: .top)
+    }
+}
+
+/// `.hr` inside the editor.
+struct EditorRule: View {
+    var body: some View {
+        // "space instead of boxes" (mockup `po-quiet`): the rule is space only, 4 above and below.
+        Color.clear.frame(height: 1).padding(.vertical, 4)
+    }
+}
+
+/// A hover (or open) fill. `key` lets the walkthrough name it (`HoverProbe`).
+struct HoverFill: View {
+    var key: String = ""
+    var on = false
+    var enabled = true
+    var fill: Color = Theme.hover
+    var radius: CGFloat = Radius.row
+    @State private var hover = false
+    var body: some View {
+        let h = enabled && (on || hover || (!key.isEmpty && HoverProbe.shared.target == key))
+        RoundedRectangle(cornerRadius: radius).fill(h ? fill : Color.clear)
+            .onHover { hover = $0 }
+            .animation(Motion.fast, value: h)
+    }
+}
+
+/// `.in` / `.fld`: looks like text until hovered (wash) or focused (window colour, 1.5 pt fg3 ring); radius 6, 8 pt side and 3 pt
+/// top and bottom padding that hang outside the text column.
+struct EditorFieldChrome: ViewModifier {
+    var focused: Bool
+    var editable: Bool
+    var key = ""
+    /// Its menu is open: the hover wash stays.
+    var held = false
+    @State private var hover = false
+    func body(content: Content) -> some View {
+        let h = editable && (held || hover || (!key.isEmpty && HoverProbe.shared.target == key))
+        content
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(focused && editable ? Theme.bg : (h ? Theme.hover : Color.clear)))
+            .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(focused && editable ? Theme.fg3 : Color.clear, lineWidth: 1.5))
+            .padding(.horizontal, -8).padding(.vertical, -3)
+            .onHover { hover = $0 }
+            .animation(Motion.fast, value: h)
+            .animation(Motion.fast, value: focused)
+    }
+}
+
+extension View {
+    func editorField(focused: Bool, editable: Bool, key: String = "", held: Bool = false) -> some View {
+        modifier(EditorFieldChrome(focused: focused, editable: editable, key: key, held: held))
+    }
+}
+
+// MARK: Going?, reminders
+
+/// Going? Yes · Maybe · No. Read-only (the answer as text) when the store cannot write my reply (EventKit).
+struct PanelGoingRow: View {
+    @Environment(AppModel.self) private var model
+    let e: CalendarEvent
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("Going?").foregroundStyle(Theme.fg3)
+            if model.canRespond {
+                Segmented(options: [(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], selection: e.myReply,
+                          enabled: !e.iAmOrganizer) { model.setMyReply($0) }
+            } else {
+                Text(PanelText.response(e.myReply)).foregroundStyle(Theme.fg)
+                    .help("macOS Calendar cannot send your reply. Answer in Google Calendar.")
+            }
+        }
+        .frame(minHeight: 20)
+    }
+}
+
+/// One row per reminder ("10 min before", the remove button on hover), then "Add reminder" (the menu of choices).
+struct PanelReminders: View {
+    @Environment(AppModel.self) private var model
+    let e: CalendarEvent
+    var body: some View {
+        let writable = model.isWritable(e)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(e.reminders, id: \.self) { r in ReminderRow(minutes: r, removable: writable) }
+            if writable {
+                Button { model.openPanelMenu(.reminders) } label: {
+                    Text(EditorRow.reminders.placeholder!).foregroundStyle(Theme.fg3).frame(maxWidth: .infinity, minHeight: 20, alignment: .leading).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .editorField(focused: false, editable: true, key: "field:addReminder", held: model.panelMenus.open == .reminders)
+                .panelMenuAnchor(.reminders)
+                .padding(.top, e.reminders.isEmpty ? 0 : 7)
+            } else if e.reminders.isEmpty {
+                Text("No reminder").foregroundStyle(Theme.fg3)
+            }
+        }
+    }
+}
+
+struct ReminderRow: View {
+    @Environment(AppModel.self) private var model
+    let minutes: Int
+    let removable: Bool
+    @State private var hover = false
+    var body: some View {
+        let key = "rem:\(minutes)"
+        let h = hover || HoverProbe.shared.target == key
+        HStack(spacing: 4) {
+            Text(Reminders.amount(minutes)).font(.textTab).foregroundStyle(Theme.fg)
+            if minutes > 0 { Text("before").foregroundStyle(Theme.fg3) }
+            Spacer(minLength: 0)
+            if removable {
+                Button { model.removeReminder(minutes) } label: {
+                    PanelIcon(name: .x, size: 11, color: Theme.fg2).frame(width: 20, height: 20)
+                        .background(RoundedRectangle(cornerRadius: Radius.row).fill(Theme.hover)).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).help("Remove").opacity(h ? 1 : 0)
+            }
+        }
+        .padding(.horizontal, 8).frame(height: 28)
+        .background(RoundedRectangle(cornerRadius: Radius.row).fill(h && removable ? Theme.hover : Color.clear))
+        .padding(.horizontal, -8).padding(.vertical, -3)
+        .onHover { hover = $0 }
     }
 }
 

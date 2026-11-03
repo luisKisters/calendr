@@ -91,13 +91,14 @@ struct PanelTests {
         #expect(m.fmt.time(m.selectedEvent!.start) == "15:00" && m.fmt.time(m.selectedEvent!.end) == "17:30")
     }
 
-    @Test func addChipsShowEmptyRows() {
+    @Test func emptyRowsArePresentWithoutAddChips() {
         let m = makeModel()
         let e = SnapshotStates.find(m, "Sam / Alex", day: 1)!
         m.select(eventID: e.id)
-        #expect(!m.panelShows(.place, e) && m.panelShows(.guests, e) && m.panelShows(.video, e))
-        m.addPanelField(.place)
-        #expect(m.panelShows(.place, m.selectedEvent!))
+        // v4: no "+ Place" chips; the empty location and notes rows are there with their placeholders
+        let rows = EditorRows.rows(m.editorContext(e))
+        #expect(rows.contains(.location) && rows.contains(.notes) && rows.contains(.participants) && rows.contains(.call))
+        #expect(e.location.isEmpty && EditorRow.location.placeholder == "Add location")
         m.addGuest("Maya Sterling")
         #expect(m.selectedEvent!.participants == ["Sam Okafor", "Maya Sterling"])
     }

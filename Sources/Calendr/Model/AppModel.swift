@@ -88,6 +88,7 @@ final class AppModel {
     var gridState = GridV3State()
     var chromeState = ChromeV3State()
     var panelState = PanelV3State()
+    let panelMenus = PanelMenuState()
     /// Bumped on every store change, for observers that read the store directly (the menu bar item).
     private(set) var storeVersion = 0
 

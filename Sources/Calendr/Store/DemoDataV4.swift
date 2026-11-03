@@ -35,23 +35,28 @@ enum DemoDataV4 {
 
     // MARK: People (PEOPLE)
 
-    struct Person { var key: String; var name: String; var email: String }
+    struct Person {
+        var key: String; var name: String; var email: String
+        /// The name is only in Apple Contacts (mockup `cname` without `name` or `gname`): until Contacts access is allowed (v4 Phase 8a)
+        /// the guest list shows the bare address and counts it in "N without a name".
+        var contactsOnly = false
+    }
     /// The display name is `name`, else the Google name, else the Contacts name.
     static let people: [Person] = [
         Person(key: "me", name: "Sam Rivera", email: "sam.rivera@example.com"),
-        Person(key: "icloud", name: "Sam Rivera", email: "sam@example.net"),
+        Person(key: "icloud", name: "Sam Rivera", email: "sam@example.net", contactsOnly: true),
         Person(key: "svc", name: "Sam Rivera", email: "sam@northwind.example"),
         Person(key: "mara", name: "Mara Hoffmann", email: "mara.hoffmann@example.com"),
         Person(key: "jonas", name: "Jonas Weber", email: "jonas.weber@example.org"),
         Person(key: "theo", name: "Theo Park", email: "theo.park@example.com"),
         Person(key: "lea", name: "Lea Brandt", email: "lea.brandt@example.org"),
-        Person(key: "dion", name: "Dion Kraft", email: "dion.k@example.com"),
+        Person(key: "dion", name: "Dion Kraft", email: "dion.k@example.com", contactsOnly: true),
         Person(key: "ines", name: "Ines Duarte", email: "ines.d@example.com"),
         Person(key: "tom", name: "Tom Richter", email: "tom.richter@example.net"),
         Person(key: "sven", name: "Sven Krüger", email: "sven@client.example"),
         Person(key: "nina", name: "Nina Hale", email: "nina.hale@example.com"),
         Person(key: "nils", name: "Nils Bauer", email: "n.bauer@club.example"),
-        Person(key: "ida", name: "Ida Sommer", email: "ida.sommer@example.org"),
+        Person(key: "ida", name: "Ida Sommer", email: "ida.sommer@example.org", contactsOnly: true),
     ]
     static func person(_ key: String) -> Person { people.first { $0.key == key }! }
 
@@ -144,12 +149,13 @@ enum DemoDataV4 {
             $0.color = green; $0.repeatWeekday = 1
             $0.guests = [gu("me", .yes, org: true), gu("mara", .yes), gu("jonas", .maybe), gu("dion", .no), gu("icloud", .none)]
             $0.call = .meet("cmv-hjhb-qgb"); $0.location = "Kitchen, 12 Harbour Street"
-            $0.notes = "Everyone brings something to eat.\nPlan the cleaning rota for October."
+            // Google writes its Meet block into the notes; the editor hides it ("Google Meet details hidden").
+            $0.notes = "Everyone brings something to eat.\nPlan the cleaning rota for October.\n\n" + MeetNotes.boilerplate("cmv-hjhb-qgb")
         }
         g("d4") {
             $0.organizer = false; $0.repeatWeekday = 5
             $0.guests = [gu("jonas", .yes, org: true), gu("me", .yes), gu("mara", .none), gu("theo", .no)]
-            $0.call = .meet("qpe-tnwa-kdz"); $0.notes = "Put your questions in the doc first."
+            $0.call = .meet("qpe-tnwa-kdz"); $0.notes = "Put your questions in the doc first.\n\n" + MeetNotes.boilerplate("qpe-tnwa-kdz")
         }
         g("d5") { $0.guests = [gu("me", .yes, org: true), gu("sven", .yes)]; $0.call = .zoom("zoom.us/j/88123456789") }
         g("c3") { $0.guests = [gu("me", .yes, org: true), gu("theo", .yes)]; $0.location = "Market Hall, 42 Station Road" }
@@ -183,9 +189,10 @@ enum DemoDataV4 {
     }
 
     /// A guest as an `Attendee`: only the `me` key is Sam's own entry (Sam's other addresses are guests, as in the mockup).
+    /// A Contacts-only name is left out: the address is all the event carries.
     static func attendee(_ g: Guest) -> Attendee {
         let p = person(g.key)
-        return Attendee(email: p.email, name: p.name, isOrganizer: g.organizer, isMe: g.key == "me", status: status(g.reply))
+        return Attendee(email: p.email, name: p.contactsOnly ? nil : p.name, isOrganizer: g.organizer, isMe: g.key == "me", status: status(g.reply))
     }
 
     static func buildEvents() -> [CalendarEvent] {

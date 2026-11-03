@@ -6,24 +6,12 @@ import CalendrKit
 struct PanelV3State: Equatable {
     /// Today column: what runs now, what comes next, the rest of the day. Rebuilt with `refreshUpcoming`.
     var today = PanelToday()
-    /// Fields opened with an "add" chip, per event id, so an empty field can show while it is being filled in.
-    var added: [String: Set<PanelField>] = [:]
+    /// New events whose Google Meet link is made when they are saved.
+    var newMeet: Set<String> = []
     /// Times an event had before it was made all-day, so switching back restores them.
     var timedBefore: [String: DateInterval] = [:]
     /// The title was edited since the last focus request: later focus nudges must not select what was typed.
     var titleTyped = false
-}
-
-enum PanelField: String, CaseIterable, Hashable {
-    case place, guests, video, notes
-    var label: String {
-        switch self {
-        case .place: "Place"
-        case .guests: "Guests"
-        case .video: "Video call"
-        case .notes: "Notes"
-        }
-    }
 }
 
 /// app-views.js `upNext`: today's timed events that are not declined, by start.
@@ -127,6 +115,7 @@ extension AppModel {
         guard var d = draft else { return }
         d.title = d.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if d.title.isEmpty { d.title = "New event" }
+        if panelState.newMeet.contains(d.id) { d.conferencing = "https://meet.google.com/" + Self.meetCode(d.id) }
         closeDraft()
         do {
             let saved = try store.create(d)
@@ -151,7 +140,8 @@ extension AppModel {
     private func closeDraft() {
         guard let d = draft else { return }
         draft = nil
-        panelState.added[d.id] = nil
+        panelState.newMeet.remove(d.id)
+        panelMenus.open = nil
         panelState.timedBefore[d.id] = nil
         titleFocusPending = false
         if selectedEventID == d.id { selectedEventID = nil }
@@ -166,21 +156,6 @@ extension AppModel {
         if !visibleDays.contains(where: { math.isSameDay($0, e.start) }) { go(to: e.start) }
         select(eventID: e.id)
         scrollToHourTick += 1
-    }
-
-    func addPanelField(_ f: PanelField) {
-        guard let e = selectedEvent else { return }
-        panelState.added[e.id, default: []].insert(f)
-    }
-
-    func panelShows(_ f: PanelField, _ e: CalendarEvent) -> Bool {
-        let added = panelState.added[e.id]?.contains(f) ?? false
-        switch f {
-        case .place: return !e.location.isEmpty || added
-        case .guests: return !e.participants.isEmpty || added
-        case .video: return !e.conferencing.isEmpty || CallLink.parse(e) != nil || added
-        case .notes: return !e.notes.isEmpty || added
-        }
     }
 
     /// Start keeps the length; the event stays inside its day.
@@ -240,13 +215,6 @@ extension AppModel {
         guard let link = PanelText.videoLink(text) else { return false }
         updateSelected { $0.conferencing = link }
         return true
-    }
-
-    func createVideoLink() {
-        updateSelected { ev in
-            let slug = ev.title.lowercased().replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
-            ev.conferencing = "meet.example.com/" + String((slug.isEmpty ? "call" : slug).prefix(18))
-        }
     }
 
     /// Opens the event's call (`CallLink`: the conferencing field, else a call link in the notes or the location).

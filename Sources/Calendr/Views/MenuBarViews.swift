@@ -563,3 +563,41 @@ enum SVGPath {
         return p
     }
 }
+
+// MARK: Map logos (design/mockup-v4 `appleMaps`, `gMaps`): brand art for the location menu, so its colours stay here, like the call logos.
+
+struct MapLogo: View {
+    enum Kind { case apple, google }
+    let kind: Kind
+    var size: CGFloat = 16
+
+    static let apple: [(String, String)] = [
+        ("#93d36f", "M0 10 16 4.4v5L0 15z"), ("#f6c443", "M5.2 0h3L4.4 16h-3z"),
+        ("#ff4b3e", "M8.6 3.6a2.6 2.6 0 0 1 2.6 2.6c0 1.9-2.6 4.6-2.6 4.6S6 8.1 6 6.2a2.6 2.6 0 0 1 2.6-2.6z"),
+    ]
+    static let appleBase = "#f4f4f1"
+    static let google: [(String, String)] = [
+        ("#34a853", "M8 .8A5.2 5.2 0 0 0 2.8 6c0 3.7 5.2 9.2 5.2 9.2s5.2-5.5 5.2-9.2A5.2 5.2 0 0 0 8 .8z"),
+        ("#fbbc04", "M4.3 2.3 8 6 3.3 8.4A5 5 0 0 1 2.8 6c0-1.4.6-2.7 1.5-3.7z"),
+        ("#ea4335", "M4.3 2.3A5.2 5.2 0 0 1 11.7 2.3L8 6z"),
+        ("#4285f4", "M11.7 2.3A5.2 5.2 0 0 1 13.2 6c0 1-.3 2-.8 3L8 6z"),
+    ]
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let k = sz.width / 16, t = CGAffineTransform(scaleX: k, y: k)
+            func fill(_ d: String, _ hex: String) { var p = Path(); PanelIcon.svg(&p, d); ctx.fill(p.applying(t), with: .color(Color(hex: hex))) }
+            switch kind {
+            case .apple:
+                ctx.clip(to: Path(roundedRect: CGRect(origin: .zero, size: sz), cornerRadius: Radius.check * k))
+                ctx.fill(Path(CGRect(origin: .zero, size: sz)), with: .color(Color(hex: Self.appleBase)))
+                for (hex, d) in Self.apple { fill(d, hex) }
+                ctx.fill(Path(ellipseIn: CGRect(x: 7.6 * k, y: 5.2 * k, width: 2 * k, height: 2 * k)), with: .color(.white))
+            case .google:
+                for (hex, d) in Self.google { fill(d, hex) }
+                ctx.fill(Path(ellipseIn: CGRect(x: 6.1 * k, y: 4.1 * k, width: 3.8 * k, height: 3.8 * k)), with: .color(.white))
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}

@@ -4,6 +4,8 @@ import SwiftUI
 struct PanelIcon: View {
     enum Name {
         case clock, repeats, pin, users, video, help, calendar, notes, trash, x, plus, lock, down, arrow
+        // v4 editor (design/mockup-v4 `P`)
+        case bell, sparkle, reply, mail, more, copy, expand, collapse, history, check, link, contacts, q
     }
     let name: Name
     var size: CGFloat?
@@ -45,6 +47,19 @@ struct PanelIcon: View {
         case .lock: p.addRoundedRect(in: CGRect(x: 3.4, y: 7, width: 9.2, height: 6.6), cornerSize: CGSize(width: 1.6, height: 1.6)); svg(&p, "M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7")
         case .down: svg(&p, "M4 6.2 8 10l4-3.8")
         case .arrow: svg(&p, "M3 8h10M9.4 4.4 13 8l-3.6 3.6")
+        case .bell: svg(&p, "M4 11V7a4 4 0 0 1 8 0v4l1.2 1.5H2.8ZM6.5 14a1.6 1.6 0 0 0 3 0")
+        case .sparkle: svg(&p, "M8 2.5 9.2 6.8 13.5 8 9.2 9.2 8 13.5 6.8 9.2 2.5 8l4.3-1.2Z")
+        case .reply: circle(&p, 6.5, 5.3, 2.6); svg(&p, "M1.8 13.6c.5-2.6 2.3-4.1 4.7-4.1 1 0 1.9.2 2.7.7"); svg(&p, "M10.2 12.3l1.6 1.6 3-3.3")
+        case .mail: p.addRoundedRect(in: CGRect(x: 1.8, y: 3.5, width: 12.4, height: 9), cornerSize: CGSize(width: 1.5, height: 1.5)); svg(&p, "m2.3 4.3 5.7 4.5 5.7-4.5")
+        case .more: circle(&p, 3.5, 8, 0.45); circle(&p, 8, 8, 0.45); circle(&p, 12.5, 8, 0.45)
+        case .copy: p.addRoundedRect(in: CGRect(x: 5, y: 5, width: 8.5, height: 8.5), cornerSize: CGSize(width: 1.8, height: 1.8)); svg(&p, "M11 5V3.8A1.3 1.3 0 0 0 9.7 2.5H3.8a1.3 1.3 0 0 0-1.3 1.3v5.9A1.3 1.3 0 0 0 3.8 11H5")
+        case .expand: svg(&p, "m5 6 3-3 3 3M5 10l3 3 3-3")
+        case .collapse: svg(&p, "m5 3 3 3 3-3M5 13l3-3 3 3")
+        case .history: svg(&p, "M2.5 8a5.5 5.5 0 1 0 1.7-4M2 2.5v3h3M8 5v3.2l2 1.3")
+        case .check: svg(&p, "m3.5 8.3 3 3 6-6.6")
+        case .link: svg(&p, "M7 9a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2L8 3.8M9 7a3 3 0 0 0-4.2 0l-2 2A3 3 0 0 0 7 13.2l1-1")
+        case .contacts: p.addRoundedRect(in: CGRect(x: 3, y: 1.8, width: 10, height: 12.4), cornerSize: CGSize(width: 1.8, height: 1.8)); circle(&p, 8, 6.5, 2); svg(&p, "M5 11.5c.5-1.5 1.6-2.3 3-2.3s2.5.8 3 2.3")
+        case .q: svg(&p, "M5.6 5.6a2.4 2.4 0 0 1 4.7.7c0 1.7-2.3 2-2.3 3.4"); circle(&p, 8, 12.6, 0.3)
         }
         cache[n] = p
         return p

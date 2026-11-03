@@ -17,7 +17,9 @@ struct RootView: View {
             }
             .animation(Motion.slow, value: model.sidebarVisible)
             OverlayHost()
+            PanelMenuLayer()
         }
+        .coordinateSpace(.named(PanelMenuLayer.space))
         .ignoresSafeArea()
         .preferredColorScheme(model.settings.appearance == .dark ? .dark : model.settings.appearance == .light ? .light : nil)
         .font(.text)

@@ -246,6 +246,7 @@ extension AppModel {
     /// Esc peels one layer: command menu or sheet, then the event being created, then the selection, then the toast.
     func escapeOneLayer() -> Bool {
         if gridCancelDrag() {}
+        else if panelMenus.open != nil { closePanelMenu() }
         else if overlay != nil { overlay = nil }
         else if draftEventID != nil { discardDraft() }
         else if selectedEventID != nil || selectedSlot != nil { deselect() }

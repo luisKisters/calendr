@@ -22,6 +22,7 @@ struct RightPanelView: View {
                 .transition(.asymmetric(insertion: .opacity, removal: .identity))
             }
             .animation(Motion.base, value: key)
+            if let e, PanelFoot.shows(model, e) { PanelFoot(e: e).transition(.opacity) }
         }
         .padding(.leading, 1)
         .frame(width: PanelMetrics.width)
