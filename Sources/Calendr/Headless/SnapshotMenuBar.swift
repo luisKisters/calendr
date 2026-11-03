@@ -8,9 +8,8 @@ enum SnapshotMenuBar {
     /// The menu bar states are whole screens drawn by `run`, so no window state applies.
     static func apply(_ state: String, _ m: AppModel) -> Bool { false }
 
-    /// The menu bar screens of the v3 menu bar mockup (in git history) (moment m12, an open row menu, run, none).
-    /// "menubar-popover" and "menubar-empty" are the older names design/states.json still lists for "menubar" and "menubar-none".
-    static let screens = ["menubar-popover", "menubar", "menubar-submenu", "menubar-running", "menubar-none", "menubar-empty", "v4-menubar"]
+    /// The menu bar screens: "v4-menubar", the open menu at the fixture's clock.
+    static let screens = ["v4-menubar"]
 
     /// Renders a menu bar screen (`MenuBarScreenPreview`) instead of the window. Nil for every other state.
     static func run(_ state: String, _ m: AppModel, _ o: LaunchOptions, out: String) -> Int32? {
@@ -20,23 +19,12 @@ enum SnapshotMenuBar {
         let backdrop = behind.image(scale: o.scale).map { NSImage(cgImage: $0, size: NSSize(width: 1440, height: 900)) }
         behind.close()
 
-        let day = m.math.startOfDay(m.now)
-        switch state {
-        case "menubar-running": m.setNow(m.math.date(on: day, minutes: 12 * 60 + 20))
-        case "menubar-none", "menubar-empty": m.setNow(m.math.date(on: day, minutes: 23 * 60 + 30))
-        default: break
-        }
         let menu = m.menuBarMenu
-        var highlight: Int? = menu.rows.isEmpty ? nil : 0
-        var submenu: [MenuBarSubItem]?
-        if state == "menubar-submenu", let i = menu.rows.firstIndex(where: { $0.title == "Sam / Alex" }) {
-            highlight = i
-            submenu = m.menuBarSubmenu(for: menu.rows[i].event)
-        }
+        let highlight: Int? = menu.rows.isEmpty ? nil : 0
         let f = m.fmt
         let clock = "\(f.weekdayShort(m.now)) \(m.math.day(m.now)) \(f.monthShort(m.now))  \(f.time(m.now))"
         let view = MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock, backdrop: backdrop,
-                                        highlight: highlight, submenu: submenu)
+                                        highlight: highlight, submenu: nil)
         let w = OffscreenWindow(view, size: CGSize(width: 1440, height: 900), chrome: false)
         w.settle(6)
         let ok = w.writePNG(to: out, scale: o.scale)
