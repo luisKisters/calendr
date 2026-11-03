@@ -3,7 +3,7 @@ import SwiftUI
 import CalendrKit
 
 /// The v4 feature tours (`--walkthrough v4-a --record <mov>`), one per PR of the v4 stack, on the v4 fixture (Sun 4 Oct 2026 15:10).
-/// Each is 10-25 s at real speed and asserts every step, like the v3 tour.
+/// Each is 10-25 s at real speed and asserts every step, like the end-to-end tour (`Walkthrough.tour`).
 @MainActor
 enum WalkthroughV4 {
     /// Window points of the header's Day / Week / Month segments and of the settings rows (1440x900 window, v4 tokens).

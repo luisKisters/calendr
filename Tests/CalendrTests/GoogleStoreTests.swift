@@ -160,7 +160,7 @@ struct GoogleStoreTests {
     // MARK: CompositeStore
 
     @Test func compositeHidesTheCalDAVDuplicateAndRoutesWrites() async throws {
-        let base = DemoStore(fixture: .v4)
+        let base = DemoStore()
         let c = CompositeStore(base: base)
         let (g, http) = await store()
         #expect(c.accounts.map(\.name) == ["sam.rivera@example.com", "sam@northwind.example", "sam@sideproject.example"])
@@ -206,7 +206,7 @@ struct GoogleStoreTests {
     }
 
     @Test func modelUsesThePerCalendarCapabilities() {
-        let base = DemoStore(fixture: .v4)
+        let base = DemoStore()
         base.canSendUpdates = false; base.canRespond = false
         let o = LaunchOptions.parse(["Calendr", "--fixture", "v4", "--freeze-clock"])
         let m = AppModel(store: CompositeStore(base: base), options: o, persist: false)
@@ -361,7 +361,7 @@ extension GoogleStoreTests {
     }
 
     @Test func compositeIsAuthorizedWithGoogleAlone() async {
-        let c = CompositeStore(base: DemoStore(authorization: .denied, fixture: .v4))
+        let c = CompositeStore(base: DemoStore(authorization: .denied))
         #expect(c.authorization == .denied)
         let (g, _) = await store()
         c.add(g)
@@ -369,7 +369,7 @@ extension GoogleStoreTests {
     }
 
     @Test func eventKitCopiesAreHiddenByICalUID() async throws {
-        let base = DemoStore(fixture: .v4)
+        let base = DemoStore()
         let c = CompositeStore(base: base)
         let (g, _) = await store()
         c.add(g)
@@ -385,7 +385,7 @@ extension GoogleStoreTests {
 
 @MainActor func makeModelV4Composite() -> AppModel {
     let o = LaunchOptions.parse(["Calendr", "--fixture", "v4", "--freeze-clock"])
-    return AppModel(store: CompositeStore(base: DemoStore(fixture: .v4)), options: o, persist: false)
+    return AppModel(store: CompositeStore(base: DemoStore()), options: o, persist: false)
 }
 
 /// Blocks a fake server answer until opened.

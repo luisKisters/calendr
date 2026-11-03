@@ -144,13 +144,13 @@ final class AppModel {
         self.options = options
         self.services = services ?? Services.make(options)
         // The demo (the v4 fixture) is fixed (46 pt hours, pinned clock): it never reads or writes the user's settings.
-        let persist = persist && !(options.demo && options.fixture == .v4)
+        let persist = persist && !options.demo
         self.persist = persist
         var s = persist ? AppSettings.load() : AppSettings()
-        if options.demo && options.fixture == .v4 { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46
+        if options.demo { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46
         settings = s
         Motion.override = s.reduceMotion
-        let m = options.demo ? DemoData.math : CalendarMath.system
+        let m = options.demo ? DemoDataV4.math : CalendarMath.system
         use24h = options.demo || Fmt.uses24h()
         math = m
         let n = options.now ?? Date()

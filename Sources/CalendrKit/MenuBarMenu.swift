@@ -1,6 +1,6 @@
 import Foundation
 
-/// The menu bar item and its menu as plain data (the v3 menu bar mockup, in git history, and design/mockup-v4 `menubar`). The NSMenu and the
+/// The menu bar item and its menu as plain data (design/mockup-v4 `menubar`). The NSMenu and the
 /// snapshot preview both draw this, so what the tests check is what the menu shows.
 public struct MenuBarMenuModel: Equatable, Sendable {
     /// What the countdown is about: the running event until 15 minutes before the next one, otherwise the next one.

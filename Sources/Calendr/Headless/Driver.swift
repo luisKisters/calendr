@@ -30,8 +30,6 @@ final class Driver {
     private(set) var samples: [Sample] = []
     private(set) var clicks: [Click] = []
     private(set) var captions: [Caption] = []
-    struct Zoom { var start: Double; var end: Double?; var x: Double; var y: Double }
-    private(set) var zooms: [Zoom] = []
 
     init(model: AppModel, size: CGSize, recorder: VideoRecorder?) {
         self.model = model
@@ -65,27 +63,12 @@ final class Driver {
         captions.append(Caption(start: videoTime, end: nil, text: text, keys: keys))
     }
 
-    /// Starts a zoom region centred on a window point (Glide zooms in on it until `zoomOut`).
-    func zoomIn(on p: CGPoint) {
-        zoomOut()
-        zooms.append(Zoom(start: videoTime, end: nil, x: Double(p.x / size.width), y: Double(p.y / size.height)))
-    }
-
-    func zoomOut() {
-        if let i = zooms.indices.last, zooms[i].end == nil { zooms[i].end = videoTime }
-    }
-
     func endCaption() {
         if let i = captions.indices.last, captions[i].end == nil { captions[i].end = max(videoTime, captions[i].start + 0.3) }
     }
 
     func writeTelemetry(to base: String) {
-        endCaption(); zoomOut()
-        let zs = zooms.compactMap { z -> [String: Any]? in
-            guard let e = z.end, e > z.start else { return nil }
-            return ["start": (z.start * 100).rounded() / 100, "end": (e * 100).rounded() / 100, "x": (z.x * 1000).rounded() / 1000, "y": (z.y * 1000).rounded() / 1000]
-        }
-        if let data = try? JSONSerialization.data(withJSONObject: zs, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: base + ".zoom.json")) }
+        endCaption()
         func n(_ v: Double) -> String { String(format: "%.5f", min(1, max(0, v))) }
         let sj = samples.map { "{\"t\":\(Int($0.t)),\"x\":\(n($0.x)),\"y\":\(n($0.y))}" }.joined(separator: ",")
         let cj = clicks.map { "{\"t\":\(Int($0.t)),\"x\":\(n($0.x)),\"y\":\(n($0.y)),\"button\":1,\"double\":\($0.double)}" }.joined(separator: ",")

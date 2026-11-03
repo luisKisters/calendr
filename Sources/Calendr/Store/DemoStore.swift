@@ -1,17 +1,13 @@
 import Foundation
 import CalendrKit
 
-/// Which demo data a `DemoStore` holds: the v3 showcase year (`DemoData`) or the design/mockup-v4 week (`DemoDataV4`, `--fixture v4`).
-enum DemoFixture: String, Sendable { case v3, v4 }
-
-/// In-memory store used for `--demo`, tests, snapshots, the walkthrough and perf runs.
+/// In-memory store used for `--demo`, tests, snapshots, the walkthrough and perf runs: the design/mockup-v4 week (`DemoDataV4`).
 @MainActor
 final class DemoStore: CalendarStore {
     private(set) var accounts: [CalendarAccount]
     let teammates: [Teammate]
     var authorization: StoreAuthorization = .authorized
     let defaultCalendarID: String?
-    let fixture: DemoFixture
     let canEditParticipants = true
     var isDemo: Bool { true }
     /// The demo calendars behave like Google: updates can be sent or not, replies are written. Tests flip these to play EventKit.
@@ -29,22 +25,21 @@ final class DemoStore: CalendarStore {
     private var events: [CalendarEvent]          // sorted by start
     private var maxDuration: TimeInterval = 0
     private let teamEvents: [String: [CalendarEvent]]
-    private let math = DemoData.math
+    private let math = DemoDataV4.math
     private(set) var refreshCount = 0
 
-    init(dense: Bool = false, authorization: StoreAuthorization = .authorized, fixture: DemoFixture = .v4) {
+    /// `dense`: 300 more events a week for 120 weeks (the perf run).
+    init(dense: Bool = false, authorization: StoreAuthorization = .authorized) {
         self.authorization = authorization
-        self.fixture = fixture
-        let v4 = fixture == .v4
-        accounts = v4 ? DemoDataV4.accounts : DemoData.accounts
-        teammates = v4 ? DemoDataV4.teammates : DemoData.teammates
-        defaultCalendarID = v4 ? DemoDataV4.personal : DemoData.personal
+        accounts = DemoDataV4.accounts
+        teammates = DemoDataV4.teammates
+        defaultCalendarID = DemoDataV4.personal
         let t0 = CFAbsoluteTimeGetCurrent()
-        events = v4 ? (DemoDataV4.buildEvents() + (dense ? DemoDataV4.denseEvents() : [])).sorted { $0.start < $1.start } : DemoData.buildEvents(dense: dense)
+        events = (DemoDataV4.buildEvents() + (dense ? DemoDataV4.denseEvents() : [])).sorted { $0.start < $1.start }
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "buildEvents %.0f ms (%d events)", (CFAbsoluteTimeGetCurrent() - t0) * 1000, events.count)) }
         let t1 = CFAbsoluteTimeGetCurrent()
         var byMail: [String: [CalendarEvent]] = [:]
-        for e in v4 ? DemoDataV4.teammateEvents() : DemoData.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
+        for e in DemoDataV4.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
         teamEvents = byMail
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "teammates %.0f ms", (CFAbsoluteTimeGetCurrent() - t1) * 1000)) }
         recomputeMax()

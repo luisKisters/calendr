@@ -52,18 +52,16 @@ final class Services {
     /// The services for a run: the real ones for the app, fakes for `--demo`, snapshots, tours and tests.
     static func make(_ o: LaunchOptions) -> Services {
         // Real Contacts only inside the app bundle (the usage description lives in its Info.plist): never in `swift test` or `swift run`.
-        if o.demo || !Bundle.main.bundlePath.hasSuffix(".app") { return demo(o.fixture) }
+        if o.demo || !Bundle.main.bundlePath.hasSuffix(".app") { return demo() }
         return Services(contacts: SystemContacts(), google: GoogleAccounts(config: .load(), tokens: KeychainTokenStore(), http: URLSessionHTTPClient()))
     }
 
     /// The demo Contacts book: the names the v4 fixture keeps only in Contacts (mockup `cname`), not allowed yet.
-    static func demo(_ fixture: DemoFixture = .v4, access: ContactsAccess = .notDetermined) -> Services {
+    static func demo(access: ContactsAccess = .notDetermined) -> Services {
         var table: [String: String] = [:]
-        if fixture == .v4 {
-            for p in DemoDataV4.people where p.contactsOnly { table[p.email] = p.name }
-            // a few more people only Contacts knows, for the guest field
-            table["kim.lindqvist@example.org"] = "Kim Lindqvist"
-        }
+        for p in DemoDataV4.people where p.contactsOnly { table[p.email] = p.name }
+        // a few more people only Contacts knows, for the guest field
+        table["kim.lindqvist@example.org"] = "Kim Lindqvist"
         return Services(contacts: FakeContacts(table, access: access))
     }
 }
