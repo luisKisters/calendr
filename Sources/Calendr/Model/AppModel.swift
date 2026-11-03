@@ -82,18 +82,18 @@ final class AppModel {
     var scrollToHourTick = 0
     var secondTimeZoneVisible = false
 
-    // MARK: v3 area state (each area owns its struct and file)
+    // MARK: Area state (each area owns its struct and file)
     /// The event being created (drag, double-click, C): drawn dashed on the grid, shown with Save / Discard in the panel.
-    /// It lives only here until it is saved (`saveDraft`, `settleDraft`); set by `createEvent`, cleared by the draft functions in PanelV3State.swift.
+    /// It lives only here until it is saved (`saveDraft`, `settleDraft`); set by `createEvent`, cleared by the draft functions in PanelState.swift.
     var draft: CalendarEvent?
     /// Setting nil settles the draft (kept with a title, dropped without).
     var draftEventID: String? {
         get { draft?.id }
         set { if newValue == nil { settleDraft() } }
     }
-    var gridState = GridV3State()
-    var chromeState = ChromeV3State()
-    var panelState = PanelV3State()
+    var gridState = GridState()
+    var chromeState = ChromeState()
+    var panelState = PanelState()
     let panelMenus = PanelMenuState()
     /// Contacts and Google (v4 Phase 8): logic in Services/ and Model/ServicesModel.swift.
     let services: Services

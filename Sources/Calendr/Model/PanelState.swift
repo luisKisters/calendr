@@ -2,8 +2,8 @@ import Foundation
 import AppKit
 import CalendrKit
 
-/// v3 view state of the PANEL area (RightPanelView, RootView). Stored on `AppModel.panelState`.
-struct PanelV3State: Equatable {
+/// View state of the PANEL area (RightPanelView, RootView). Stored on `AppModel.panelState`.
+struct PanelState: Equatable {
     /// Today column: what runs now, what comes next, the rest of the day. Rebuilt with `refreshUpcoming`.
     var today = PanelToday()
     /// Changes to events with guests that are not sent yet, by event id (v4 Phase 7b, `PanelV4State.swift`).

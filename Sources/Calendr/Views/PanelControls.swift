@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import CalendrKit
 
-// Controls of the right column (design/mockup-v3/app.css "Detail", "today column, up next").
+// Controls of the right column (design/mockup-v4 `.ds`, from the v3 "Detail" and "today column, up next" rules).
 
 enum PanelMetrics {
     /// One column, one width: 320 including the hairline.

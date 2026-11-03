@@ -84,8 +84,8 @@ Sources/Calendr      SwiftUI + AppKit shell. AppModel (@Observable @MainActor) o
                      bundled Instrument Sans for titles, Resources/Fonts).
   Headless/          --snapshot, --walkthrough, --perf drivers (offscreen window, video writer).
 Tests/CalendrTests   App-level tests (model, gestures entry points, demo data vs the reference screenshot).
-design/              LOCKED.md (the v3 decisions) and mockup-v3 (the specification), DESIGN.md (v2, superseded),
-                     mockup-v2, icon, the v1 Notion references and mockup, states.json.
+design/              mockup-v4 (the v4 mockup, DECISIONS.md, the implementation plan, shots), LOCKED.md (the v3 decisions,
+                     superseded), DESIGN.md (v2, superseded), icon, states.json.
 ```
 
 AppKit is used only where SwiftUI cannot: window chrome, the key event monitor, offscreen rendering, video writing, opening the menu bar item.
@@ -114,7 +114,7 @@ Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--s
 - The time zone is read at launch; changing it while running needs a relaunch.
 - Search and the teammate list fetch a year each way on a background thread; visible-range fetches (a month plus a week either side) still run on the main thread.
 - All-day events cannot be dragged in the grid (use the right panel). Participants can be added only in the demo store.
-- The menu bar design is not locked yet (`design/mockup-v3/menubar.html` is the proposal); the menu uses the system font on purpose so it looks native.
+- The menu bar keeps the native `NSMenu` (plan Q5) with custom Join rows; it uses the system font on purpose so it looks native.
 - The DMG has no custom background.
 - Screen capture of the running app needs Screen Recording permission, so pixel evidence comes from the offscreen renderer; real mouse gestures were never driven through the live window, and the animations were only observed through the offscreen window.
 - `artifacts/walkthrough-v3.mov` and the snapshots show fictional demo data only. Older git history contains the previous personal demo data.

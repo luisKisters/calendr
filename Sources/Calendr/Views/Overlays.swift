@@ -169,11 +169,11 @@ struct CommandMenu: View {
         }
     }
 
-    static func crumb(_ m: ChromeV3State.PaletteMode) -> String? {
+    static func crumb(_ m: ChromeState.PaletteMode) -> String? {
         switch m { case .all: nil; case .goTo: "Go to date"; case .search: "Events"; case .meet: "Meet with" }
     }
 
-    static func placeholder(_ m: ChromeV3State.PaletteMode) -> String {
+    static func placeholder(_ m: ChromeState.PaletteMode) -> String {
         switch m {
         case .all: "Search, go to a date, or run a command"
         case .goTo: "oct 12, next friday, w42, 2026-12-24"
@@ -230,7 +230,7 @@ struct PaletteRowView: View {
 }
 
 struct PaletteEmpty: View {
-    let mode: ChromeV3State.PaletteMode
+    let mode: ChromeState.PaletteMode
     let query: String
     var body: some View {
         let q = !query.trimmingCharacters(in: .whitespaces).isEmpty
