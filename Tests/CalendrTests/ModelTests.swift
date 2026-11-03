@@ -6,8 +6,8 @@ import CoreText
 
 @MainActor
 func makeModel() -> AppModel {
-    var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow
-    return AppModel(store: DemoStore(), options: o, persist: false)
+    var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow; o.fixture = .v3
+    return AppModel(store: DemoStore(fixture: .v3), options: o, persist: false)
 }
 
 @MainActor
@@ -209,9 +209,9 @@ struct ModelBehaviourTests {
 @Suite("Write paths")
 struct WritePathTests {
     @Test func typingIsCoalescedIntoOneStoreWriteWhenTheStoreSyncsOverTheNetwork() {
-        let store = DemoStore()
+        let store = DemoStore(fixture: .v3)
         store.coalescesTextEdits = true
-        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow
+        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow; o.fixture = .v3
         let m = AppModel(store: store, options: o, persist: false)
         let e = m.layout.timed[1].first { $0.event.title == "Data Structures" }!.event
         m.select(eventID: e.id)

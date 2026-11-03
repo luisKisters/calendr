@@ -12,8 +12,8 @@ struct CrossFixTests {
         #expect(m.math.calendar.firstWeekday == 2 && m.visibleStart == DemoData.refWeekStart)
     }
     @Test func realModeFollowsTheSystemLocale() {
-        var o = LaunchOptions(); o.freezeClock = true; o.now = DemoData.defaultNow
-        let m = AppModel(store: DemoStore(), options: o, persist: false)
+        var o = LaunchOptions(); o.freezeClock = true; o.now = DemoData.defaultNow; o.fixture = .v3
+        let m = AppModel(store: DemoStore(fixture: .v3), options: o, persist: false)
         #expect(m.use24h == Fmt.uses24h(.current))
         #expect(m.math.calendar.firstWeekday == Calendar.autoupdatingCurrent.firstWeekday)
         #expect(m.math.timeZone == TimeZone.current)

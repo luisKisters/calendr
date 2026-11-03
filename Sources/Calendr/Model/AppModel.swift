@@ -143,11 +143,11 @@ final class AppModel {
         self.store = store
         self.options = options
         self.services = services ?? Services.make(options)
-        // The v4 fixture is a fixed demo (46 pt hours, pinned clock): it never reads or writes the user's settings.
-        let persist = persist && options.fixture != .v4
+        // The demo (the v4 fixture) is fixed (46 pt hours, pinned clock): it never reads or writes the user's settings.
+        let persist = persist && !(options.demo && options.fixture == .v4)
         self.persist = persist
         var s = persist ? AppSettings.load() : AppSettings()
-        if options.fixture == .v4 { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46
+        if options.demo && options.fixture == .v4 { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46
         settings = s
         Motion.override = s.reduceMotion
         let m = options.demo ? DemoData.math : CalendarMath.system

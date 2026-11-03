@@ -6,7 +6,7 @@ import Foundation
 /// A store that cannot read other people's calendars (EventKit's position), backed by the demo data.
 @MainActor
 final class OwnCalendarsOnlyStore: CalendarStore {
-    let base = DemoStore()
+    let base = DemoStore(fixture: .v3)
     var accounts: [CalendarAccount] { base.accounts }
     var teammates: [Teammate] { base.teammates }
     var authorization: StoreAuthorization { .authorized }
@@ -104,7 +104,7 @@ struct ChromeFixTests {
     }
 
     @Test func meetWithOnlyWhereOtherCalendarsCanBeRead() {
-        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow
+        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow; o.fixture = .v3
         let m = AppModel(store: OwnCalendarsOnlyStore(), options: o, persist: false)
         m.openPalette(.all)
         #expect(!m.paletteRows.contains { if case .command(let c) = $0.kind { return c.id == .meetWith }; return false })

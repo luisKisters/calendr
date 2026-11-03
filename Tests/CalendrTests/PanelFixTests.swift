@@ -113,9 +113,9 @@ struct PanelFixTests {
     }
 
     @Test func coalescedTypingReachesTheGridAtOnce() {
-        let store = DemoStore()
+        let store = DemoStore(fixture: .v3)
         store.coalescesTextEdits = true
-        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow
+        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow; o.fixture = .v3
         let m = AppModel(store: store, options: o, persist: false)
         let e = m.layout.timed[1].first { $0.event.title == "Data Structures" }!.event
         m.select(eventID: e.id)

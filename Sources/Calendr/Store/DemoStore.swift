@@ -32,7 +32,7 @@ final class DemoStore: CalendarStore {
     private let math = DemoData.math
     private(set) var refreshCount = 0
 
-    init(dense: Bool = false, authorization: StoreAuthorization = .authorized, fixture: DemoFixture = .v3) {
+    init(dense: Bool = false, authorization: StoreAuthorization = .authorized, fixture: DemoFixture = .v4) {
         self.authorization = authorization
         self.fixture = fixture
         let v4 = fixture == .v4
