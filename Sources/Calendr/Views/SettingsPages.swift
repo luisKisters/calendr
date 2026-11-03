@@ -73,6 +73,16 @@ struct SettingsAccountsPage: View {
                 .background(RoundedRectangle(cornerRadius: Radius.row).fill(Theme.bg2))
                 .padding(.top, 10)
                 .tourAnchor("settings:clientIDNote")
+                // demo runs only (`--demo`, tours): a Google account answered by an in-memory fake server, no network
+                if model.canUseDemoGoogle && googleAccounts.isEmpty {
+                    HStack(spacing: 8) {
+                        Text("Demo mode: try a fake Google account (no network).").font(.small).foregroundStyle(Theme.fg3)
+                        Spacer(minLength: 0)
+                        SecondaryButton(title: "Use demo account", small: true) { model.connectDemoGoogle() }
+                            .tourAnchor("settings:demoGoogle")
+                    }
+                    .padding(.top, 8)
+                }
             }
             ForEach(model.settingsAccounts, id: \.id) { a in
                 let google = googleAccounts.first { $0.accountID == a.id }

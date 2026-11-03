@@ -26,7 +26,7 @@ struct CenterView: View {
             }
         }
         .background(Theme.bg)
-        .overlay(alignment: .bottom) { ToastHost() }
+        .overlay(alignment: .bottom) { ToastHost(yieldsToSheet: true) }
     }
 }
 

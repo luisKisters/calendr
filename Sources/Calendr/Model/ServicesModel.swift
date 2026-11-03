@@ -76,6 +76,9 @@ extension AppModel {
     /// macOS Calendar accounts hidden because a connected Google account syncs them directly.
     var hiddenDuplicateAccounts: [String] { (store as? CompositeStore)?.hiddenBaseAccounts.map(\.name) ?? [] }
 
+    /// "Use demo account" exists only in demo runs whose store can take a Google account.
+    var canUseDemoGoogle: Bool { options.demo && store is CompositeStore }
+
     /// Headless runs: connects the demo Google account (fake server) and waits until its first sync is in.
     @discardableResult
     func connectDemoGoogle() -> GoogleStore? {

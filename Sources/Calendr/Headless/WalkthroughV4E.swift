@@ -102,21 +102,23 @@ extension WalkthroughV4 {
         d.hold(0.6)
         if let p = spot(m, "settings:connectGoogle", fx: 0.5) {
             d.moveCursor(to: p, duration: 0.5)
-            d.say("Click Connect Google account")
-            d.hold(0.4)
             d.click(at: p) { m.connectGoogle() }
-        }
+        } else { d.check(false, "Connect Google account is on screen") }
         d.settle(4)
+        d.say("No client ID in this build: nothing connects")
         d.check(m.services.google.showsClientIDNote && m.services.google.accounts.isEmpty && m.services.google.config.clientID == nil
                 && m.toast?.text == "A Google client ID is needed first",
                 "no client ID in this build: a toast and a note explain it, nothing connects")
-        d.say("No client ID in this build: nothing connects")
-        d.hold(3.0)
-        d.play(0.3) { m.toast = nil }
+        // `hold` repeats the last frame: let the toast's spring run to the end on video (`animate`), then read it, then let it go
+        d.animate(1.0)
         d.hold(1.4)
-        d.say("Demo mode: a fake Google account, no network")
-        d.hold(1.0)
-        d.play(0.4) { m.connectDemoGoogle() }
+        d.play(0.6) { m.toast = nil }
+        if let p = spot(m, "settings:demoGoogle", fx: 0.5) {
+            d.say("Demo mode: a fake Google account, no network")
+            d.moveCursor(to: p, duration: 0.6)
+            d.hold(0.6)
+            d.click(at: p) { m.connectDemoGoogle() }
+        } else { d.check(false, "Use demo account is on screen") }
         d.settle(4)
         let g = m.services.google.accounts.first
         d.check(g?.email == "sam.rivera@example.com" && g?.calendarCount == 4, "sam.rivera@example.com connects with 4 calendars")

@@ -29,6 +29,8 @@ struct OverlayHost: View {
         }
         .animation(isSheet ? Motion.slow : Motion.base, value: model.overlay)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // while a sheet is open its toast sits above the scrim (the column's own toast would be dimmed under it)
+        .overlay(alignment: .bottom) { if isSheet { ToastHost() } }
     }
 }
 
@@ -52,9 +54,12 @@ extension View {
 /// Bottom centre of the grid column.
 struct ToastHost: View {
     @Environment(AppModel.self) private var model
+    /// The grid column's host steps aside while a sheet shows the toast above its scrim.
+    var yieldsToSheet = false
     var body: some View {
+        let sheetOpen: Bool = { if case .command? = model.overlay { return false }; return model.overlay != nil }()
         ZStack {
-            if let t = model.toast { ToastView(toast: t).id(t.id).transition(.toast) }
+            if let t = model.toast, !(yieldsToSheet && sheetOpen) { ToastView(toast: t).id(t.id).transition(.toast) }
         }
         .padding(.bottom, 20)
         .animation(Motion.spring, value: model.toast)
