@@ -9,13 +9,17 @@ enum PanelMenu: String, Hashable, CaseIterable {
     case calendar, reminders, maps, places, call, guests, send, inviteSend, deleteSend
 }
 
+/// Edits to an event with guests that are not sent yet (v4 Phase 7b): `base` is what the store has, `edited` what the editor shows.
+struct UnsentEdit: Equatable {
+    var base: CalendarEvent
+    var edited: CalendarEvent
+}
+
 /// The open menu and the frames of the controls menus anchor to. A class of its own so that frames changing while the column scrolls
 /// re-render only the menu layer, not every view that reads `panelState`.
 @MainActor @Observable
 final class PanelMenuState {
     var open: PanelMenu?
-    /// Frames in the root view's coordinate space ("root"), by anchor.
-    var anchors: [PanelMenu: CGRect] = [:]
     /// The location field's suggestions (`places` menu).
     var places: [PlaceSuggestion] = []
     /// The text the suggestions are for.
@@ -29,7 +33,12 @@ final class PanelMenuState {
     /// "Paste a link…" was chosen: the call row shows a link field.
     var pastingLink = false
 
-    func setAnchor(_ m: PanelMenu, _ r: CGRect) { if anchors[m] != r { anchors[m] = r } }
+    /// Frames (window points, top-left origin) of the editor's rows and controls by name: "menu.<menu>" for the control a menu
+    /// opens from, the rest for the walkthrough to point at. Written by `PanelMenuLayer` from the anchor preferences; not observed.
+    @ObservationIgnored var frames: [String: CGRect] = [:]
+    /// A field the editor should focus (the walkthrough, and "Paste a link…").
+    var focusRequest: PanelFocus?
+    var focusTick = 0
 }
 
 /// Place search behind a protocol, so tests and snapshots never reach the network.
@@ -84,8 +93,13 @@ extension AppModel {
         EditorContext(e, canEdit: editorCanEdit(e), isDraft: draft?.id == e.id)
     }
 
-    /// The store writes my reply (the demo store). EventKit shows Going? read-only.
-    var canRespond: Bool { canChangeResponse }
+    /// Edits to an event I organise with guests wait for "Send update" when the store can send updates (Google). EventKit saves at once.
+    func buffersUpdates(_ e: CalendarEvent) -> Bool {
+        store.canSendUpdates && e.iAmOrganizer && e.attendees.contains { !$0.isMe } && draft?.id != e.id
+    }
+
+    /// The store writes my reply (Google). EventKit shows Going? read-only.
+    var canRespond: Bool { store.canRespond }
 
     // MARK: Menus
 
@@ -93,6 +107,71 @@ extension AppModel {
         panelMenus.open = panelMenus.open == m ? nil : m
     }
     func closePanelMenu() { panelMenus.open = nil }
+
+    /// Moves the keyboard to an editor field.
+    func focusEditorField(_ f: PanelFocus) { panelMenus.focusRequest = f; panelMenus.focusTick += 1 }
+
+    // MARK: Unsent changes
+
+    var selectedUnsent: UnsentEdit? { selectedEventID.flatMap { panelState.unsent[$0] } }
+
+    /// Called by `updateSelected`: keeps a change to the shared fields in the editor until it is sent. My own fields (reminders,
+    /// colour, calendar, reply) are written at once, under the held change. Returns false when the change is not held.
+    func holdUnsent(before: CalendarEvent, after e: CalendarEvent) -> Bool {
+        let held = panelState.unsent[e.id]
+        guard held != nil || (buffersUpdates(e) && EditorRows.sharedChanged(before, e)) else { return false }
+        let base = held?.base ?? before
+        let mine = EditorRows.personal(of: e, onto: base)
+        panelState.unsent[e.id] = EditorRows.sharedChanged(base, e) ? UnsentEdit(base: mine, edited: e) : nil
+        if mine != base {
+            flushPendingEdit()
+            commit(mine, span: .this, old: nil)
+        } else {
+            reload()
+        }
+        return true
+    }
+
+    /// Send update (notify) or Save without sending: the held change goes to the store.
+    func sendUnsent(notify: Bool) {
+        guard let id = selectedEventID, let u = panelState.unsent[id] else { return }
+        closePanelMenu()
+        panelState.unsent[id] = nil
+        do {
+            try store.update(u.edited, span: .this, notify: notify)
+            showToast(notify ? "Update sent" : "Saved without sending")
+        } catch { showToast("Could not save event") }
+        storeChanged()
+    }
+
+    /// Discard: the event goes back to what the store has.
+    func discardUnsent() {
+        guard let id = selectedEventID, panelState.unsent[id] != nil else { return }
+        closePanelMenu()
+        panelState.unsent[id] = nil
+        storeChanged()
+    }
+
+    /// ⌘↩: send the held change, or save (and invite) the event being created.
+    func sendShortcut() -> Bool {
+        if selectedUnsent != nil { sendUnsent(notify: true); return true }
+        if isDraftOpen { saveDraft(); return true }
+        return false
+    }
+
+    // MARK: Delete with guests
+
+    /// Deleting an event I organise with guests asks first: guests get a cancellation email, or not.
+    func deleteNeedsGuestDialog(_ e: CalendarEvent) -> Bool {
+        store.canSendUpdates && e.iAmOrganizer && e.attendees.contains { !$0.isMe }
+    }
+
+    func deleteWithGuests(_ id: String, notify: Bool) {
+        closePanelMenu()
+        guard let e = event(id: id) else { overlay = nil; return }
+        panelState.unsent[id] = nil
+        delete(e, span: .this, notify: notify)
+    }
 
     // MARK: Fields
 
@@ -216,6 +295,14 @@ extension AppModel {
         updateSelected { ev in
             if let i = ev.attendees.firstIndex(where: { !$0.isMe && $0.email == email && $0.name == name }) { ev.attendees.remove(at: i) }
         }
+    }
+
+    /// Puts back a guest removed in the unsent change.
+    func restoreGuest(_ a: Attendee) { updateSelected { ev in if !ev.attendees.contains(a) { ev.attendees.append(a) } } }
+
+    func restoreCall() {
+        guard let u = selectedUnsent else { return }
+        updateSelected { $0.conferencing = u.base.conferencing }
     }
 
     /// The people the guest field suggests: the store's people not on the list yet, matched by name or address.

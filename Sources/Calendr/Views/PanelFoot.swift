@@ -8,14 +8,22 @@ struct PanelFoot: View {
     @Environment(AppModel.self) private var model
     let e: CalendarEvent
 
-    static func shows(_ m: AppModel, _ e: CalendarEvent) -> Bool { m.draft?.id == e.id }
+    static func shows(_ m: AppModel, _ e: CalendarEvent) -> Bool { m.draft?.id == e.id || m.panelState.unsent[e.id] != nil }
 
     var body: some View {
         HStack(spacing: 8) {
             if model.draft?.id == e.id {
                 Spacer(minLength: 0)
                 GhostButton(title: "Discard", key: "esc") { model.discardDraft() }
-                PanelFillButton(title: "Save", key: "\u{21A9}") { model.saveDraft() }.frame(height: Dim.field)
+                if model.store.canSendUpdates && e.attendees.contains(where: { !$0.isMe }) {
+                    SplitButton(title: "Send invite", menu: .inviteSend, help: "Send invite  \u{2318}\u{21A9}") { model.saveDraft() }
+                } else {
+                    PanelFillButton(title: "Save", key: "\u{21A9}") { model.saveDraft() }.frame(height: Dim.field)
+                }
+            } else {
+                Text("Not sent yet").font(.small).foregroundStyle(Theme.fg3)
+                Spacer(minLength: 0)
+                SplitButton(title: "Send update", menu: .send, help: "Send update  \u{2318}\u{21A9}") { model.sendUnsent(notify: true) }
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
@@ -43,6 +51,7 @@ struct GhostButton: View {
         }
         .buttonStyle(PressStyle(scale: 0.97))
         .onHover { hover = $0 }
+        .tourAnchor("btn:\(title)")
     }
 }
 
@@ -61,6 +70,7 @@ struct PlainButton: View {
         }
         .buttonStyle(PressStyle(scale: 0.97))
         .onHover { hover = $0 }
+        .tourAnchor("btn:\(title)")
     }
 }
 

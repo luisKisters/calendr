@@ -44,6 +44,9 @@ final class KeyRouter {
             }
         }
 
+        // ⌘↩ sends the held update, or saves (and invites) the event being created.
+        if input.command && !input.option && !input.control && input.keyCode == ShortcutResolver.keyReturn && model.overlay == nil && model.sendShortcut() { return true }
+
         guard let action = ShortcutResolver.resolve(input, textFocused: typing) else {
             // A sheet keeps every other key from the grid underneath. Outside a field a bare character has no other
             // meaning: swallow it rather than let it beep.
@@ -59,7 +62,7 @@ final class KeyRouter {
         case .settings?:
             if action == .settings { model.overlay = nil; return true }
             if action != .escape && action != .commandMenu && action != .showShortcuts { return true }
-        case .deleteRecurring?:
+        case .deleteRecurring?, .deleteWithGuests?:
             if action != .escape { return true }
         case nil: break
         }
@@ -80,6 +83,6 @@ final class KeyRouter {
     }
 
     private func isSheet(_ o: Overlay?) -> Bool {
-        switch o { case .shortcuts?, .settings?, .deleteRecurring?: true; default: false }
+        switch o { case .shortcuts?, .settings?, .deleteRecurring?, .deleteWithGuests?: true; default: false }
     }
 }

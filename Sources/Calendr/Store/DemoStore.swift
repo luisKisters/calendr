@@ -13,6 +13,11 @@ final class DemoStore: CalendarStore {
     let defaultCalendarID: String?
     let fixture: DemoFixture
     let canEditParticipants = true
+    /// The demo calendars behave like Google: updates can be sent or not, replies are written. Tests flip these to play EventKit.
+    var canSendUpdates = true
+    var canRespond = true
+    /// Every write that chose whether guests hear about it: (event id, "update" or "delete", notify).
+    private(set) var notices: [(id: String, kind: String, notify: Bool)] = []
     /// Tests flip this to exercise the debounced write path that EventKit uses.
     var coalescesTextEdits = false
     var onChange: (() -> Void)?
@@ -116,6 +121,17 @@ final class DemoStore: CalendarStore {
         recomputeMax()
         onChange?()
         return event
+    }
+
+    @discardableResult
+    func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent {
+        notices.append((event.id, "update", notify))
+        return try update(event, span: span)
+    }
+
+    func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws {
+        notices.append((event.id, "delete", notify))
+        try delete(event, span: span)
     }
 
     func delete(_ event: CalendarEvent, span: EditSpan) throws {

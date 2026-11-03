@@ -23,6 +23,7 @@ struct OverlayHost: View {
                 case .shortcuts: ShortcutsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .settings: SettingsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .deleteRecurring(let id): DeleteRecurringDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)
+                case .deleteWithGuests(let id): DeleteWithGuestsDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)
                 }
             }
         }

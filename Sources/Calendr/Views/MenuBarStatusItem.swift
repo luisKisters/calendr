@@ -14,7 +14,7 @@ extension AppModel {
     }
 
     /// EventKit cannot set the user's own attendee status; the demo store can.
-    var canChangeResponse: Bool { store is DemoStore }
+    var canChangeResponse: Bool { store.canRespond }
 
     /// The other guests' addresses: their own, or a teammate's of that name.
     func menuBarGuestAddresses(_ e: CalendarEvent) -> [String] {

@@ -74,5 +74,6 @@ struct SwatchGrid: View {
         }
         .buttonStyle(.plain)
         .help(name)
+        .tourAnchor("swatch:\(hex ?? "none")")
     }
 }

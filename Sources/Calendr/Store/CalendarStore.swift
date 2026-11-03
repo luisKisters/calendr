@@ -14,6 +14,11 @@ protocol CalendarStore: AnyObject {
     var defaultCalendarID: String? { get }
     /// EventKit cannot add attendees; the inspector shows them read-only and says so.
     var canEditParticipants: Bool { get }
+    /// The store can tell guests about a change or not (Google `sendUpdates=all|none`): the editor holds edits to events with guests
+    /// until "Send update" or "Save without sending", and asks before deleting. EventKit cannot choose: a plain Save.
+    var canSendUpdates: Bool { get }
+    /// The store writes my reply (Going?). EventKit cannot: Going? is read-only.
+    var canRespond: Bool { get }
     var onChange: (() -> Void)? { get set }
     /// True when every save is a network sync (EventKit): the model debounces text edits.
     var coalescesTextEdits: Bool { get }
@@ -32,12 +37,19 @@ protocol CalendarStore: AnyObject {
     @discardableResult func create(_ event: CalendarEvent) throws -> CalendarEvent
     @discardableResult func update(_ event: CalendarEvent, span: EditSpan) throws -> CalendarEvent
     func delete(_ event: CalendarEvent, span: EditSpan) throws
+    /// `notify`: guests get the update (or the cancellation) by email. Stores that cannot choose ignore it.
+    @discardableResult func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent
+    func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws
     func series(of event: CalendarEvent) -> [CalendarEvent]
 }
 
 extension CalendarStore {
     var coalescesTextEdits: Bool { false }
     var searchCorpusIsAsync: Bool { false }
+    var canSendUpdates: Bool { false }
+    var canRespond: Bool { false }
+    @discardableResult func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent { try update(event, span: span) }
+    func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws { try delete(event, span: span) }
     func loadSearchCorpus(around date: Date) async -> [CalendarEvent] { searchCorpus(around: date) }
     func calendar(_ id: String) -> CalendarInfo? {
         for a in accounts { if let c = a.calendars.first(where: { $0.id == id }) { return c } }

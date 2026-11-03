@@ -13,7 +13,8 @@ struct PanelCallRow: View {
     var body: some View {
         let call = CallLink.parse(e)
         let link = e.conferencing.trimmingCharacters(in: .whitespacesAndNewlines)
-        let base: CalendarEvent? = nil
+        let base = model.panelState.unsent[e.id]?.base
+        let gone = base.flatMap { CallLink.parse($0) }
         VStack(alignment: .leading, spacing: 0) {
             if model.panelState.newMeet.contains(e.id) {
                 HStack(spacing: 8) {
@@ -33,6 +34,14 @@ struct PanelCallRow: View {
                 // a web address that is not a call: the link only
                 LinkField(value: link, editable: canEdit, focus: focus, unsentAdded: false, copy: { model.copyToPasteboard(link) },
                           remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
+            } else if let gone, base != nil {
+                HStack(spacing: 4) {
+                    Text(gone.kind == .meet ? "Google Meet \(gone.code ?? "")" : gone.display).strikethrough().foregroundStyle(Theme.fg3).lineLimit(1)
+                    Spacer(minLength: 0)
+                    UnsentDot(removed: true)
+                    PanelIconButton(icon: .history) { model.restoreCall() }.help("Keep the call")
+                }
+                .frame(minHeight: 20)
             } else if model.panelMenus.pastingLink {
                 PanelCommitField(value: "", placeholder: "Paste a Zoom, Teams or other link, then Return", editable: true, focusKey: .video, focus: focus,
                                  commit: { model.setCallLink($0) })
@@ -73,6 +82,7 @@ struct JoinBigButton: View {
         .onHover { hover = $0 }
         .animation(Motion.fast, value: h)
         .help("Join \(call.name)")
+        .tourAnchor("joinbig")
     }
 }
 

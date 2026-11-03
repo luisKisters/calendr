@@ -6,6 +6,8 @@ import CalendrKit
 struct PanelV3State: Equatable {
     /// Today column: what runs now, what comes next, the rest of the day. Rebuilt with `refreshUpcoming`.
     var today = PanelToday()
+    /// Changes to events with guests that are not sent yet, by event id (v4 Phase 7b, `PanelV4State.swift`).
+    var unsent: [String: UnsentEdit] = [:]
     /// New events whose Google Meet link is made when they are saved.
     var newMeet: Set<String> = []
     /// Times an event had before it was made all-day, so switching back restores them.

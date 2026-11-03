@@ -88,6 +88,10 @@
       "js": "const i=document.querySelector('[data-f=search]'); i.value='walk'; i.dispatchEvent(new Event('input',{bubbles:true}))",
       "fixture": "v4"
     },
+    "v4-invited": {
+      "mockup": "invited",
+      "fixture": "v4"
+    },
     "v4-call": {
       "mockup": "call",
       "fixture": "v4"
@@ -106,6 +110,18 @@
     },
     "v4-reminders": {
       "mockup": "reminders",
+      "fixture": "v4"
+    },
+    "v4-guests": {
+      "mockup": "guests",
+      "fixture": "v4"
+    },
+    "v4-invite": {
+      "mockup": "invite",
+      "fixture": "v4"
+    },
+    "v4-pending": {
+      "mockup": "pending",
       "fixture": "v4"
     }
   }

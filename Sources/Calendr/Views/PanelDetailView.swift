@@ -19,7 +19,7 @@ struct PanelDetailView: View {
             top(canEdit: canEdit)
             ForEach(rows.filter { $0 != .title }, id: \.self) { r in
                 if r == .participants || r == .calendar { EditorRule() }
-                row(r, canEdit: canEdit)
+                row(r, canEdit: canEdit).tourAnchor("row:\(r.rawValue)")
             }
         }
         .padding(.top, 12).padding(.leading, 20).padding(.trailing, 14).padding(.bottom, 16)
@@ -28,6 +28,7 @@ struct PanelDetailView: View {
         .onChange(of: model.focusTitleTick) { _, _ in if model.titleFocusPending { focus = .title } }
         // Esc itself is KeyRouter's: it leaves the field and peels one layer (`escapeOneLayer`).
         .onChange(of: model.blurTick) { _, _ in focus = nil }
+        .onChange(of: model.panelMenus.focusTick) { _, _ in focus = model.panelMenus.focusRequest }
         .onChange(of: focus) { old, new in
             if old == .place && new != .place, model.panelMenus.open == .places || model.panelMenus.open == .maps {
                 after(0.15) { if focus != .place && (model.panelMenus.open == .places) { model.closePanelMenu() } }
@@ -61,6 +62,7 @@ struct PanelDetailView: View {
         }
         .frame(height: 26)
         .padding(.bottom, 8)
+        .tourAnchor("row:title")
     }
 
     // MARK: Rows
@@ -91,12 +93,7 @@ struct PanelDetailView: View {
                 .editorField(focused: false, editable: true, key: "field:findTime")
             }
         case .participants:
-            EditorRowBox(icon: .users) {
-                VStack(alignment: .leading, spacing: 0) {
-                    if e.attendees.isEmpty { Text(EditorRow.participants.placeholder!).foregroundStyle(Theme.fg3) }
-                    ForEach(Array(e.attendees.enumerated()), id: \.offset) { _, a in Text(a.label).foregroundStyle(Theme.fg).frame(height: 28) }
-                }
-            }
+            EditorRowBox(icon: .users) { PanelParticipants(e: e, canEdit: canEdit, focus: $focus) }
         case .going:
             EditorRowBox(icon: .reply) { PanelGoingRow(e: e) }
         case .call:
@@ -191,6 +188,7 @@ struct PanelDetailView: View {
             }
             .buttonStyle(.plain)
             .panelMenuAnchor(.calendar)
+            .tourAnchor("field:calendar")
             .padding(.horizontal, -8).padding(.top, -5)
             HStack(spacing: 22) {
                 Menu {
@@ -285,6 +283,7 @@ struct EditorFieldChrome: ViewModifier {
             .onHover { hover = $0 }
             .animation(Motion.fast, value: h)
             .animation(Motion.fast, value: focused)
+            .tourAnchor(key)
     }
 }
 
@@ -362,6 +361,7 @@ struct ReminderRow: View {
         .background(RoundedRectangle(cornerRadius: Radius.row).fill(h && removable ? Theme.hover : Color.clear))
         .padding(.horizontal, -8).padding(.vertical, -3)
         .onHover { hover = $0 }
+        .tourAnchor(key)
     }
 }
 

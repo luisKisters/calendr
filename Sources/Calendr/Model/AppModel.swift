@@ -15,6 +15,7 @@ func after(_ delay: TimeInterval, _ block: @escaping @MainActor () -> Void) {
 enum Overlay: Equatable {
     case command, shortcuts, settings
     case deleteRecurring(String)   // event id
+    case deleteWithGuests(String)  // event id: the v4 dialog with the guest list
 }
 
 /// Everything the views bind to. Derived data (layouts, month cells, upcoming) is computed in `reload()`
@@ -276,6 +277,11 @@ final class AppModel {
             eventsByID.removeAll(keepingCapacity: true)
             for e in windowEvents { eventsByID[e.id] = e }
         }
+        // Unsent edits (events with guests) show on the grid as the editor holds them.
+        for (id, u) in panelState.unsent {
+            if let i = windowEvents.firstIndex(where: { $0.id == id }) { windowEvents[i] = u.edited }
+            eventsByID[id] = u.edited
+        }
         // Filter and sort by index: CalendarEvent is a large reference-heavy struct, so copying it around is the real cost.
         let showDeclined = settings.showDeclined
         let hidden = hiddenCalendars
@@ -378,6 +384,7 @@ final class AppModel {
     func event(id: String?) -> CalendarEvent? {
         guard let id else { return nil }
         if let d = draft, d.id == id { return d }
+        if let u = panelState.unsent[id] { return u.edited }
         return eventsByID[id]
     }
     var selectedEvent: CalendarEvent? { event(id: selectedEventID) }
@@ -528,6 +535,7 @@ final class AppModel {
             if textOnly { patchLayout(e) } else { reload() }
             return
         }
+        if holdUnsent(before: before, after: e) { return }
         // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
         if store.coalescesTextEdits && textOnly {
             pendingEdit = (e, span)
@@ -562,10 +570,11 @@ final class AppModel {
     func requestDeleteSelected() {
         guard let e = selectedEvent, isWritable(e) else { return }
         if isDraftOpen { discardDraft(); return }
+        if deleteNeedsGuestDialog(e) && !(e.isRecurring && store.series(of: e).count > 1) { overlay = .deleteWithGuests(e.id); return }
         if e.isRecurring && store.series(of: e).count > 1 { overlay = .deleteRecurring(e.id) } else { delete(e, span: .this) }
     }
 
-    func delete(_ e: CalendarEvent, span: EditSpan) {
+    func delete(_ e: CalendarEvent, span: EditSpan, notify: Bool = true) {
         flushPendingEdit()
         let removed: [CalendarEvent]
         switch span {
@@ -574,7 +583,7 @@ final class AppModel {
         case .future: removed = store.series(of: e).filter { $0.start >= e.start }
         }
         do {
-            try store.delete(e, span: span)
+            try store.delete(e, span: span, notify: notify)
             undoStack.push(.deleted(removed))
             selectedEventID = nil
             overlay = nil

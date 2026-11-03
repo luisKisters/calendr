@@ -17,9 +17,10 @@ struct RootView: View {
             }
             .animation(Motion.slow, value: model.sidebarVisible)
             OverlayHost()
-            PanelMenuLayer()
         }
-        .coordinateSpace(.named(PanelMenuLayer.space))
+        .overlayPreferenceValue(EditorAnchorKey.self) { anchors in
+            GeometryReader { g in PanelMenuLayer(frames: anchors.mapValues { g[$0] }) }
+        }
         .ignoresSafeArea()
         .preferredColorScheme(model.settings.appearance == .dark ? .dark : model.settings.appearance == .light ? .light : nil)
         .font(.text)

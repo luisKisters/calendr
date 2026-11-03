@@ -5,31 +5,43 @@ import CalendrKit
 // The editor's menus (design/mockup-v4 `.pop`, `popHTML`, `place()`): Theme.pop, radius 12, a hair2 edge, padding 6, 28 pt rows.
 // They are drawn in the window (not as NSMenus) so the calendar menu can hold the colour grid and snapshots can show them.
 
-/// The layer over the whole window that draws the open menu next to its anchor. A press outside closes it.
+/// The layer over the whole window that draws the open menu next to its anchor. A press outside closes it. `frames` are the anchor
+/// preferences resolved in the window (RootView's `overlayPreferenceValue`): they are exact in every layout pass.
 struct PanelMenuLayer: View {
     @Environment(AppModel.self) private var model
     static let space = "calendr.root"
-    @State private var size = CGSize.zero
+    let frames: [String: CGRect]
+    /// Measured size per menu: a menu stays invisible until it is measured, so it never shows in the wrong place.
+    @State private var sizes: [PanelMenu: CGSize] = [:]
 
     var body: some View {
         let menus = model.panelMenus
         GeometryReader { geo in
-            if let m = menus.open, let a = menus.anchors[m] {
+            if let m = menus.open, let a = frames["menu.\(m.rawValue)"] {
                 ZStack(alignment: .topLeading) {
                     if m != .places {
                         Color.clear.contentShape(Rectangle()).onTapGesture { model.closePanelMenu() }
                     }
+                    let size = sizes[m]
                     PanelMenuContent(menu: m)
                         .padding(6)
                         .frame(width: Self.width(m), alignment: .topLeading)
                         .surface()
-                        .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
-                        .offset(Self.origin(m, anchor: a, size: size, in: geo.size))
+                        .onGeometryChange(for: CGSize.self) { $0.size } action: { sizes[m] = $0 }
+                        .opacity(size == nil ? 0 : 1)
+                        .offset(Self.origin(m, anchor: a, size: size ?? .zero, in: geo.size))
                         .transition(.opacity.combined(with: .offset(y: -4)))
+                }
+                // the menu's own rows, for the walkthrough's pointer
+                .backgroundPreferenceValue(EditorAnchorKey.self) { rows in
+                    GeometryReader { g in
+                        Color.clear.onChange(of: rows.mapValues { g[$0] }, initial: true) { _, r in menus.frames.merge(r) { _, new in new } }
+                    }
                 }
             }
         }
         .animation(Motion.fast, value: menus.open)
+        .onChange(of: frames, initial: true) { _, f in menus.frames = f }
     }
 
     static func width(_ m: PanelMenu) -> CGFloat {
@@ -78,16 +90,21 @@ struct PanelMenuLayer: View {
     }
 }
 
-extension View {
-    /// Publishes this control's frame for the menu it opens.
-    func panelMenuAnchor(_ m: PanelMenu) -> some View { modifier(PanelMenuAnchor(menu: m)) }
+/// Named frames of the editor (`tourAnchor`, `panelMenuAnchor`), as anchors: resolved in the window by RootView.
+struct EditorAnchorKey: PreferenceKey {
+    static let defaultValue: [String: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
+        value.merge(nextValue()) { _, new in new }
+    }
 }
 
-private struct PanelMenuAnchor: ViewModifier {
-    @Environment(AppModel.self) private var model
-    let menu: PanelMenu
-    func body(content: Content) -> some View {
-        content.onGeometryChange(for: CGRect.self) { $0.frame(in: .named(PanelMenuLayer.space)) } action: { model.panelMenus.setAnchor(menu, $0) }
+extension View {
+    /// Publishes this control's frame for the menu it opens.
+    func panelMenuAnchor(_ m: PanelMenu) -> some View { tourAnchor("menu.\(m.rawValue)") }
+    /// Publishes this view's frame under a name (menus, and the walkthrough's pointer: `PanelMenuState.frames`).
+    func tourAnchor(_ key: String) -> some View {
+        // merged with the names inside it (a row keeps its fields' names)
+        transformAnchorPreference(key: EditorAnchorKey.self, value: .bounds) { all, a in if !key.isEmpty { all[key] = a } }
     }
 }
 
@@ -123,6 +140,7 @@ struct PopItem<Label: View, End: View>: View {
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
+        .tourAnchor(key)
     }
 }
 
@@ -174,7 +192,21 @@ struct PanelMenuContent: View {
             case .places: places
             case .call: call
             case .guests: PanelGuestMenu()
-            case .send, .inviteSend, .deleteSend: EmptyView()
+            case .send:
+                PopItem(key: "menu:discard", danger: true, action: { model.discardUnsent() }) { Text("Discard changes") }
+                PopItem(key: "menu:quiet", action: { model.sendUnsent(notify: false) }) { Text("Save without sending") } end: {
+                    PanelIcon(name: .help, size: 15).help("Saves the change in Google. Nobody gets an email.")
+                }
+            case .inviteSend:
+                PopItem(key: "menu:noinvite", action: { model.closePanelMenu(); model.saveDraft() }) { Text("Save without sending invite") } end: {
+                    PanelIcon(name: .help, size: 15).help("Saves the event. Guests get nothing yet.")
+                }
+            case .deleteSend:
+                PopItem(key: "menu:noemail", action: {
+                    if case .deleteWithGuests(let id)? = model.overlay { model.deleteWithGuests(id, notify: false) }
+                }) { Text("Delete without cancellation email") } end: {
+                    PanelIcon(name: .help, size: 15).help("Guests keep the event in their calendars.")
+                }
             }
         }
     }
