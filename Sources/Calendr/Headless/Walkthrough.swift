@@ -27,7 +27,10 @@ enum Walkthrough {
         case "v4-d-1": WalkthroughV4.d1(d, model)
         case "v4-d-2": WalkthroughV4.d2(d, model)
         case "v4-d-3": WalkthroughV4.d3(d, model)
-        case let t?: print("unknown tour \(t) (tours: v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-3)"); return 2
+        case "v4-d-4": WalkthroughV4.d4(d, model)
+        case "v4-d-5": WalkthroughV4.d5(d, model)
+        case "v4-d-6": WalkthroughV4.d6(d, model)
+        case let t?: print("unknown tour \(t) (tours: v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-6)"); return 2
         }
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }
