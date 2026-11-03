@@ -24,7 +24,8 @@ extension AppModel {
     }
 
     func menuBarSubmenu(for e: CalendarEvent) -> [MenuBarSubItem] {
-        MenuBarMenu.submenu(for: e, canRespond: canChangeResponse, guestAddresses: menuBarGuestAddresses(e))
+        // per calendar: with Google connected, EventKit events still cannot take a reply
+        MenuBarMenu.submenu(for: e, canRespond: store.canRespond(calendarID: e.calendarID), guestAddresses: menuBarGuestAddresses(e))
     }
 
     /// The editor's reply path (`setReply`): the same guards, and a held change stays held.
