@@ -7,8 +7,8 @@ import CalendrKit
 @MainActor
 enum WalkthroughV4 {
     /// Window points of the header's Day / Week / Month segments and of the settings rows (1440x900 window, v4 tokens).
-    static let tabs: [(ViewMode, String, CGPoint)] = [(.day, "Day", CGPoint(x: 726, y: 30)), (.week, "Week", CGPoint(x: 772, y: 30)),
-                                                      (.month, "Month", CGPoint(x: 825, y: 30))]
+    static let tabs: [(ViewMode, String, CGPoint)] = [(.day, "Day", CGPoint(x: 848, y: 30)), (.week, "Week", CGPoint(x: 895, y: 30)),
+                                                      (.month, "Month", CGPoint(x: 948, y: 30))]
     static let weekNumbersOn = CGPoint(x: 975, y: 413)
 
     /// Brightness (0...1) of the frame at a window point: hover and selection fills change it.
@@ -102,7 +102,8 @@ enum WalkthroughV4 {
         d.clickGrid(Walkthrough.centerOf(d, board))
         guard let e = m.selectedEvent, e.title == "Club board meeting" else { d.check(false, "click selects Club board meeting"); return }
         d.check(e.status == .needsAction && e.myReply == .needsAction && e.isUnaccepted, "Club board meeting: myReply is needsAction")
-        d.check(e.organizer?.label == "Nils Bauer" && e.participants == ["Nils Bauer", "Ida Sommer", "Tom Richter"], "guests from attendees, Sam left out")
+        d.check(e.organizer?.label == "Nils Bauer" && e.participants == ["Nils Bauer", "ida.sommer@example.org", "Tom Richter"],
+                "guests from attendees, Sam left out (Ida's name is only in Contacts)")
         d.hold(0.8)
         d.say("Going? shows no answer yet")
         d.moveCursor(to: CGPoint(x: 1233, y: 304), duration: 0.5)

@@ -7,7 +7,7 @@ struct LaunchOptions {
     var snapshot: String?
     var out: String?
     var walkthrough = false
-    /// `--walkthrough <tour>`: nil is the v3 tour; "v4-a" ... are the v4 feature tours (they use the v4 fixture).
+    /// `--walkthrough <tour>`: nil (or "e2e") is the end-to-end tour scripts/verify.sh runs; "v4-a" ... are the v4 feature tours.
     var tour: String?
     /// The demo data: the design/mockup-v4 week with its clock (Sun 4 Oct 2026 15:10) and 46 pt hours. `--fixture v4` is accepted as an alias of `--demo`.
     var fixture = DemoFixture.v4
@@ -36,7 +36,6 @@ struct LaunchOptions {
             case "--walkthrough":
                 o.walkthrough = true; o.demo = true; o.freezeClock = true
                 if i + 1 < args.count, !args[i + 1].hasPrefix("-") { o.tour = value() }
-                if o.tour == nil { o.fixture = .v3 }      // the v3 tour, until it is replaced
             case "--fixture": o.demo = true; o.fixture = value().flatMap(DemoFixture.init(rawValue:)) ?? .v4
             case "--record": o.record = value()
             case "--perf": o.perf = true; o.demo = true; o.freezeClock = true; o.fixture = .v3
