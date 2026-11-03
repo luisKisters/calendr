@@ -1,7 +1,7 @@
 import SwiftUI
 import CalendrKit
 
-/// Chrome metrics from design/mockup-v3/app.css (`.head`, `--side-w`).
+/// Chrome metrics (`.head`, `--side-w` of the v3 app.css, restyled by design/mockup-v4 `.ds`).
 enum ChromeDim {
     static let headerHeight: CGFloat = 60
     static let sidebarWidth: CGFloat = 236
@@ -26,7 +26,7 @@ struct CenterView: View {
             }
         }
         .background(Theme.bg)
-        .overlay(alignment: .bottom) { ToastHost() }
+        .overlay(alignment: .bottom) { ToastHost(yieldsToSheet: true) }
     }
 }
 

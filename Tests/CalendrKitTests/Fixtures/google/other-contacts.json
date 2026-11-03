@@ -1,0 +1,7 @@
+{
+  "otherContacts": [
+    { "resourceName": "otherContacts/o1", "names": [{ "displayName": "Dion K." }], "emailAddresses": [{ "value": "dion.k@example.com" }] },
+    { "resourceName": "otherContacts/o2", "emailAddresses": [{ "value": "noname@example.com" }] },
+    { "resourceName": "otherContacts/o3", "names": [{ "displayName": "Pia Neumann" }], "emailAddresses": [{ "value": "pia.neumann@example.net" }] }
+  ]
+}

@@ -123,6 +123,14 @@
     "v4-pending": {
       "mockup": "pending",
       "fixture": "v4"
+    },
+    "v4-contacts": {
+      "mockup": "contacts",
+      "fixture": "v4"
+    },
+    "v4-settings-accounts": {
+      "mockup": "settings",
+      "fixture": "v4"
     }
   }
 }

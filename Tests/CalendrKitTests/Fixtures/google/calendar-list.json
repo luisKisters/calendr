@@ -1,0 +1,8 @@
+{
+  "kind": "calendar#calendarList",
+  "items": [
+    { "id": "sam.rivera@example.com", "summary": "sam.rivera@example.com", "summaryOverride": "Personal", "backgroundColor": "#5B8DEF", "accessRole": "owner", "primary": true, "selected": true, "timeZone": "Europe/Berlin", "defaultReminders": [{ "method": "popup", "minutes": 10 }] },
+    { "id": "family0123@group.calendar.google.com", "summary": "Family", "backgroundColor": "#F2884B", "accessRole": "writer", "selected": true, "timeZone": "Europe/Berlin" },
+    { "id": "en.german#holiday@group.v.calendar.google.com", "summary": "Holidays in Germany", "backgroundColor": "#16a765", "accessRole": "reader", "selected": false }
+  ]
+}

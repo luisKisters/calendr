@@ -2,8 +2,8 @@ import Foundation
 import AppKit
 import CalendrKit
 
-/// v3 view state of the PANEL area (RightPanelView, RootView). Stored on `AppModel.panelState`.
-struct PanelV3State: Equatable {
+/// View state of the PANEL area (RightPanelView, RootView). Stored on `AppModel.panelState`.
+struct PanelState: Equatable {
     /// Today column: what runs now, what comes next, the rest of the day. Rebuilt with `refreshUpcoming`.
     var today = PanelToday()
     /// Changes to events with guests that are not sent yet, by event id (v4 Phase 7b, `PanelV4State.swift`).
@@ -118,7 +118,7 @@ extension AppModel {
         guard var d = draft else { return }
         d.title = d.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if d.title.isEmpty { d.title = "New event" }
-        if panelState.newMeet.contains(d.id) { d.conferencing = "https://meet.google.com/" + Self.meetCode(d.id) }
+        if panelState.newMeet.contains(d.id) { d.conferencing = newMeetLink(d) }
         closeDraft()
         do {
             let saved = try store.create(d, notify: notify)
@@ -210,8 +210,8 @@ extension AppModel {
         updateSelected { $0.addGuest(v) }
     }
 
-    /// Only the demo store makes up a call link; real calendars take a pasted one (`setVideoLink`).
-    var canInventVideoLink: Bool { store is DemoStore }
+    /// The demo store makes up a Meet link and Google makes a real one; EventKit calendars take a pasted one (`setVideoLink`).
+    var canInventVideoLink: Bool { selectedEvent.map { store.canCreateMeetLinks(calendarID: $0.calendarID) } ?? store.isDemo }
 
     /// Returns false when the text is not a web address.
     func setVideoLink(_ text: String) -> Bool {

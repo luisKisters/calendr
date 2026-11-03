@@ -62,7 +62,7 @@ public enum OverlapLayout {
         })
     }
 
-    /// `pack()` of design/mockup-v3/app-core.js: columns per overlap cluster, then each event reaches right across later columns
+    /// `pack()` of the v3 mockup (app-core.js, in git history): columns per overlap cluster, then each event reaches right across later columns
     /// unless one of them has an event starting inside this event's head. Events that start together split the column.
     public static func pack(_ input: [(id: String, y0: Double, y1: Double)]) -> [Placement] {
         let items = input.indices.sorted {

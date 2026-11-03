@@ -1,0 +1,9 @@
+{
+  "connections": [
+    { "resourceName": "people/c1", "names": [{ "displayName": "Dion Kraft", "metadata": { "primary": true } }], "emailAddresses": [{ "value": "dion.k@example.com", "metadata": { "primary": true } }, { "value": "dion@club.example" }] },
+    { "resourceName": "people/c2", "names": [{ "displayName": "Ida Sommer" }], "emailAddresses": [{ "value": "Ida.Sommer@example.org" }] },
+    { "resourceName": "people/c3", "names": [{ "displayName": "No Address" }] }
+  ],
+  "nextPageToken": "conn-2",
+  "totalPeople": 4
+}

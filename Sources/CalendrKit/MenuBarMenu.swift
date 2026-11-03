@@ -1,6 +1,6 @@
 import Foundation
 
-/// The menu bar item and its menu as plain data (design/mockup-v3/menubar.html). The NSMenu and the
+/// The menu bar item and its menu as plain data (the v3 menu bar mockup, in git history, and design/mockup-v4 `menubar`). The NSMenu and the
 /// snapshot preview both draw this, so what the tests check is what the menu shows.
 public struct MenuBarMenuModel: Equatable, Sendable {
     /// What the countdown is about: the running event until 15 minutes before the next one, otherwise the next one.
@@ -98,6 +98,13 @@ public enum MenuBarMenu {
     public static func build(events: [CalendarEvent], now: Date, fmt: Fmt, canRespond: Bool = false,
                              guestAddresses: (CalendarEvent) -> [String] = MenuBarMenu.guestAddresses,
                              colorHex: (CalendarEvent) -> String) -> MenuBarMenuModel {
+        build(events: events, now: now, fmt: fmt, canRespondTo: { _ in canRespond }, guestAddresses: guestAddresses, colorHex: colorHex)
+    }
+
+    /// `canRespondTo`: per event (a mix of Google calendars, which take a reply, and EventKit ones, which do not).
+    public static func build(events: [CalendarEvent], now: Date, fmt: Fmt, canRespondTo canRespond: (CalendarEvent) -> Bool,
+                             guestAddresses: (CalendarEvent) -> [String] = MenuBarMenu.guestAddresses,
+                             colorHex: (CalendarEvent) -> String) -> MenuBarMenuModel {
         let math = fmt.math
         let today = math.startOfDay(now)
         let t = math.date(on: today, minutes: math.minutesSinceMidnight(now))   // the clock in whole minutes
@@ -118,7 +125,7 @@ public enum MenuBarMenu {
             let running = isToday && !e.isAllDay && e.start <= t && e.end > t
             return .init(event: e, start: e.isAllDay ? "all-day" : fmt.time(e.start), end: e.isAllDay ? nil : fmt.time(e.end),
                          colorHex: colorHex(e), left: running ? "\(span(minutes(t, e.end))) left" : nil,
-                         hasSubmenu: submenu(for: e, canRespond: canRespond, guestAddresses: guestAddresses(e)) != [.show],
+                         hasSubmenu: submenu(for: e, canRespond: canRespond(e), guestAddresses: guestAddresses(e)) != [.show],
                          call: CallLink.parse(e))
         }
 

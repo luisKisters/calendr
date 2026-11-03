@@ -1,9 +1,13 @@
-# Locked designs: what to build (v3)
+# Locked designs: what to build (v3, superseded by v4)
 
-Locked by the owner on 1 October 2026 from `design/mockup-v3/`. One chosen design per element. Every other
-fassung in the mockup is reference only; do not implement it. The mockup is the specification: serve it
-(`node design/mockup-v3/serve.mjs`), click through it, and match it. Where this table and the mockup disagree, the
-mockup wins. `design/DESIGN.md` (v2) is superseded wherever it disagrees with this file.
+> **Superseded.** The design to build is v4: `design/mockup-v4/DECISIONS.md` (the decisions) and `design/mockup-v4/index.html`
+> (the mockup, with its `LOCKED` picks and the `.ds` design system). The order of authority is DECISIONS.md, then the mockup-v4
+> picks and CSS, then README, then this file, then SPEC (`design/mockup-v4/IMPLEMENTATION-PLAN.md` section 2). This file stays as
+> the record of the v3 decisions (1 October 2026); the v3 mockup it was locked from is no longer in the repository (see git history).
+
+Locked by the owner on 1 October 2026 from the v3 mockup. One chosen design per element. Every other
+fassung in the mockup was reference only. Where this table and the mockup disagreed, the
+mockup won. `design/DESIGN.md` (v2) is superseded wherever it disagrees with this file.
 
 The mockup opens on the locked design. The first option of every element in the picker is the locked one.
 
@@ -58,7 +62,7 @@ The mockup opens on the locked design. The first option of every element in the 
 
 ## Menu bar: not locked yet
 
-`design/mockup-v3/menubar.html` is the proposal (Notion Calendar's menu as the base, with a countdown in the item and in the list, a time column, row menus only where an event has a call or guests). It is waiting for the owner's picks.
+The v3 menu bar proposal (Notion Calendar's menu as the base, with a countdown in the item and in the list, a time column, row menus only where an event has a call or guests). It is waiting for the owner's picks.
 Already done in the app: the "Start transcription" button is removed from the menu bar popover.
 
 ## Not designed in v3
@@ -67,6 +71,6 @@ The no-calendar-access empty state and recurrence editing are unchanged from v2.
 
 ## Verifying an implementation
 
-1. `node design/mockup-v3/serve.mjs` and open the mockup next to the running app at 1440 x 900.
-2. `node design/mockup-v3/check.mjs` must pass before and after any change to the mockup.
-3. Differences between the app and the locked mockup are bugs.
+v4: render the mockup scenes with `swift scripts/render-mockup.swift`, the app states with `scripts/snapshots.sh`, and compare them
+with `scripts/compare-all.sh` (see `design/states.json`). Differences between the app and design/mockup-v4 are bugs, as
+DECISIONS.md describes.

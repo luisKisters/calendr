@@ -83,6 +83,9 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
     public var colorHex: String?
     /// Optional second leading bar (e.g. a tag color next to the calendar bar).
     public var secondaryBarHex: String?
+    /// The id the server shares with other clients (Google `iCalUID`, EventKit `calendarItemExternalIdentifier`): the same event seen
+    /// through EventKit's CalDAV copy and through the Google API has the same one.
+    public var externalID: String? = nil
 
     public init(id: String = UUID().uuidString, seriesID: String? = nil, calendarID: String, title: String,
                 start: Date, end: Date, isAllDay: Bool = false,

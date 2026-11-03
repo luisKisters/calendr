@@ -2,7 +2,7 @@ import Foundation
 import CalendrKit
 
 /// Fictional seed data (Alex Rivera, a design student with a freelance studio and a part-time job at Northwind). The week of Mon Sep 28 -
-/// Sun Oct 4 2026 is the showcase week and matches the v3 mockup fixture (design/mockup-v3/data.js); other weeks
+/// Sun Oct 4 2026 is the showcase week and matches the v3 mockup fixture (data.js, in git history); other weeks
 /// get the same recurring rhythm plus deterministic one-off appointments so month view and search have content.
 /// The Tasks calendar is an ordinary calendar: its entries are plain events with their titles as they arrive ("[P1] ...").
 enum DemoData {
@@ -182,7 +182,7 @@ enum DemoData {
         CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: from, end: math.addDays(from, days), isAllDay: true, status: status, notes: notes)
     }
 
-    /// The showcase week, as in design/mockup-v3/data.js.
+    /// The showcase week, as in the v3 mockup's data.js.
     static func referenceWeekOneOffs() -> [CalendarEvent] {
         let mon = refWeekStart, tue = day(9, 29), wed = day(9, 30), thu = day(10, 1), fri = day(10, 2), sat = day(10, 3), sun = day(10, 4)
         return [

@@ -1,0 +1,13 @@
+{
+  "kind": "calendar#events",
+  "nextSyncToken": "sync-2",
+  "items": [
+    { "id": "trip", "status": "cancelled" },
+    {
+      "id": "run",
+      "summary": "Sunday long run",
+      "start": { "dateTime": "2026-10-04T10:00:00+02:00", "timeZone": "Europe/Berlin" },
+      "end": { "dateTime": "2026-10-04T11:30:00+02:00", "timeZone": "Europe/Berlin" }
+    }
+  ]
+}

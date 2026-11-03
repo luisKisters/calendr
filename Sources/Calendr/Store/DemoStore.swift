@@ -13,6 +13,7 @@ final class DemoStore: CalendarStore {
     let defaultCalendarID: String?
     let fixture: DemoFixture
     let canEditParticipants = true
+    var isDemo: Bool { true }
     /// The demo calendars behave like Google: updates can be sent or not, replies are written. Tests flip these to play EventKit.
     var canSendUpdates = true
     var canRespond = true

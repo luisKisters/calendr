@@ -1,0 +1,51 @@
+{
+  "kind": "calendar#events",
+  "timeZone": "Europe/Berlin",
+  "defaultReminders": [{ "method": "popup", "minutes": 10 }],
+  "nextPageToken": "page-2",
+  "items": [
+    {
+      "id": "flatdinner_20261004T170000Z",
+      "status": "confirmed",
+      "summary": "Flat dinner",
+      "description": "Everyone brings something to eat.",
+      "location": "Kitchen, 12 Harbour Street",
+      "colorId": "2",
+      "start": { "dateTime": "2026-10-04T19:00:00+02:00", "timeZone": "Europe/Berlin" },
+      "end": { "dateTime": "2026-10-04T20:00:00+02:00", "timeZone": "Europe/Berlin" },
+      "recurringEventId": "flatdinner",
+      "organizer": { "email": "sam.rivera@example.com", "self": true },
+      "attendees": [
+        { "email": "sam.rivera@example.com", "displayName": "Sam Rivera", "organizer": true, "self": true, "responseStatus": "accepted" },
+        { "email": "mara.hoffmann@example.com", "displayName": "Mara Hoffmann", "responseStatus": "accepted" },
+        { "email": "jonas.weber@example.org", "displayName": "Jonas Weber", "responseStatus": "tentative" },
+        { "email": "dion.k@example.com", "responseStatus": "declined" },
+        { "email": "sam@example.net", "optional": true, "responseStatus": "needsAction" },
+        { "email": "kitchen-room@resource.calendar.google.com", "resource": true, "responseStatus": "accepted" }
+      ],
+      "hangoutLink": "https://meet.google.com/cmv-hjhb-qgb",
+      "conferenceData": {
+        "entryPoints": [
+          { "entryPointType": "video", "uri": "https://meet.google.com/cmv-hjhb-qgb", "label": "meet.google.com/cmv-hjhb-qgb" },
+          { "entryPointType": "phone", "uri": "tel:+1-555-0100", "label": "+1 555-0100" }
+        ],
+        "conferenceSolution": { "key": { "type": "hangoutsMeet" }, "name": "Google Meet" },
+        "conferenceId": "cmv-hjhb-qgb"
+      },
+      "reminders": { "useDefault": false, "overrides": [{ "method": "popup", "minutes": 30 }, { "method": "email", "minutes": 1440 }, { "method": "popup", "minutes": 10 }] }
+    },
+    {
+      "id": "officehours_20261001T150000Z",
+      "status": "confirmed",
+      "summary": "Office hours",
+      "start": { "dateTime": "2026-10-01T15:00:00Z" },
+      "end": { "dateTime": "2026-10-01T16:00:00.000Z" },
+      "organizer": { "email": "jonas.weber@example.org", "displayName": "Jonas Weber" },
+      "attendees": [
+        { "email": "jonas.weber@example.org", "displayName": "Jonas Weber", "organizer": true, "responseStatus": "accepted" },
+        { "email": "sam.rivera@example.com", "self": true, "responseStatus": "needsAction" }
+      ],
+      "reminders": { "useDefault": true }
+    }
+  ]
+}
