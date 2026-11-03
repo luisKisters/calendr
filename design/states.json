@@ -75,6 +75,30 @@
     },
     "v4-settings-accounts": {
       "mockup": "settings"
+    },
+    "month": {},
+    "day": {},
+    "light-week": {},
+    "month-light": {},
+    "sidebar-hidden": {},
+    "create-drag": {},
+    "week-numbers": {},
+    "week-zoomed": {},
+    "teammate-picker": {},
+    "meet-with": {},
+    "teammate-overlay": {},
+    "go-to-date": {},
+    "search-empty": {},
+    "shortcuts-sheet": {},
+    "toast": {},
+    "empty-access": {},
+    "create-event": {},
+    "delete-recurring": {},
+    "readonly-event": {},
+    "menubar-empty": {},
+    "week-reference-size": {
+      "state": "v4-week",
+      "size": "1798x1126"
     }
   }
 }

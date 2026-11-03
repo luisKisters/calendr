@@ -612,6 +612,8 @@ final class AppModel {
 
     func undo() {
         flushPendingEdit()
+        // The pill offering this undo goes at once, whether its button or Cmd-Z ran it.
+        if toast?.undo == true { toast = nil }
         guard let change = undoStack.pop() else { showToast("Nothing to undo"); return }
         switch change {
         case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }

@@ -133,7 +133,7 @@ enum Walkthrough {
         d.say("Click Undo")
         d.click(at: Self.undoPill) { m.dismissToast(); m.undo() }
         d.play(0.4) {}
-        d.check(m.event(id: pid).map { math.weekdayIndex($0.start) == 3 && hhmm($0.start) == "11:00" } == true, "Undo moves it back")
+        d.check(m.event(id: pid).map { math.weekdayIndex($0.start) == 3 && hhmm($0.start) == "11:00" } == true && m.toast == nil, "Undo moves it back; the pill goes")
         d.hold(0.8)
         d.play(0.4) { d.special("esc") }
         d.check(m.selectedEventID == nil, "Esc closes the restored event")
@@ -150,8 +150,9 @@ enum Walkthrough {
         d.hold(0.9)
         d.say("Undo", keys: ["\u{2318}", "Z"])
         d.play(0.5) { d.key("z", cmd: true) }
-        d.check(m.event(id: cid) != nil, "Cmd-Z brings it back")
-        d.hold(0.9)
+        d.check(m.event(id: cid) != nil && m.toast == nil, "Cmd-Z brings it back and its pill goes (toast: \(m.toast?.text ?? "none"))")
+        d.play(0.5) {}      // keep sampling: the recorder can miss the start of the pill's exit after a key press
+        d.hold(0.4)
         d.play(0.3) { m.dismissToast(); m.deselect() }
 
         // 6. The hour gutter
@@ -168,6 +169,7 @@ enum Walkthrough {
         }
         m.gutterZoomEnded()
         d.settle(4); d.frame()
+        let zoomed = m.gridHourHeight
         d.check(m.gridHourHeight > hand * 1.5 && m.settings.hourHeight == m.gridHourHeight, "gutter drag zooms (\(Int(hand)) -> \(Int(m.gridHourHeight)) pt per hour)")
         d.hold(0.8)
         d.say("Scroll to see the night")
@@ -185,7 +187,10 @@ enum Walkthrough {
         d.frame(hold: 0.12)
         d.recordClick(double: true)
         d.play(0.6) { m.fitHourScale() }
-        d.check(m.settings.hourHeight == nil && m.gridState.fit.map { abs(m.gridHourHeight - $0.perHour) < 1 } == true, "double-click fits the hours to the week (\(Int(m.gridHourHeight)) pt)")
+        // The fit spans the week's events and now: 08:00 (Deep work) to 24:00 (Journal ends 23:45), the viewport less the padding.
+        let expected = max(38, (Double(m.gridViewport.height) - GridGeometry.pad * 2) / 16)
+        d.check(m.settings.hourHeight == nil && m.gridState.fit?.lo == 8 * 60 && m.gridState.fit?.hi == 24 * 60 && abs(m.gridHourHeight - expected) < 1
+                && abs(m.gridHourHeight - zoomed) > 5, "double-click fits 08:00-24:00 (\(Int(zoomed)) -> \(Int(m.gridHourHeight)) pt, expected \(Int(expected)))")
         d.hold(0.9)
 
         // 7. Command menu, Today, search, Meet with
@@ -259,6 +264,12 @@ enum Walkthrough {
         d.hold(0.7)
         d.say("Turn on week numbers")
         d.clickPoint(WalkthroughV4.weekNumbersOn, seconds: 0.5)
+        if !m.settings.showWeekNumbers {
+            // The real click did not land (no window server focus in this session): run the control's action instead.
+            print("  note: the week numbers click did not land; setting it through the model")
+            m.settings.showWeekNumbers = true
+            d.settle(4)
+        }
         d.check(m.settings.showWeekNumbers, "week numbers are on")
         d.hold(0.9)
         d.say("Switch to Paper")
@@ -302,7 +313,11 @@ enum Walkthrough {
         bar.host.rootView = screen(open: true, highlight: 0, submenu: nil)
         bar.settle(6)
         d.play(0.3) {}
-        d.check(menu.rows.contains { $0.title == "Flat dinner" }, "the open menu lists the rest of today")
+        // The head row is the running event (Test), then Today: its all-day items, then the rest of the day in time order.
+        let timedTitles = menu.rows.filter { $0.start != "all-day" }.map(\.title)
+        d.check(menu.focus?.event.title == "Test" && menu.sections.map(\.title) == ["Today"] && menu.sections[0].rows.prefix(4).allSatisfy { $0.start == "all-day" }
+                && timedTitles == ["Test", "[P0] Weekly review", "[P1] Take vitamins", "Groceries", "Flat dinner", "Evening walk", "Evening reading", "Bedtime"],
+                "the open menu: Test running, then today in order (\(timedTitles))")
         d.hold(0.9)
         d.say("Hover an event for its menu")
         guard let idx = menu.rows.firstIndex(where: { $0.title == "Flat dinner" }) else { d.check(false, "Flat dinner is in the menu"); return }

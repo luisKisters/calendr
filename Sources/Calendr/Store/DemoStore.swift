@@ -45,6 +45,15 @@ final class DemoStore: CalendarStore {
         recomputeMax()
     }
 
+    /// Snapshots: a calendar becomes read-only (a subscribed calendar), as the fixture has none.
+    func makeReadOnly(_ calendarID: String) {
+        accounts = accounts.map { a in
+            var a = a
+            a.calendars = a.calendars.map { c in var c = c; if c.id == calendarID { c.isWritable = false }; return c }
+            return a
+        }
+    }
+
     private func recomputeMax() { maxDuration = events.reduce(0) { max($0, $1.end.timeIntervalSince($1.start)) } }
 
     private func lowerBound(_ t: Date) -> Int {

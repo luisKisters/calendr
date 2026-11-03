@@ -205,8 +205,36 @@ struct ModelBehaviourTests {
         m.select(eventID: m.layout.timed[1][0].event.id)
         m.handle(.escape); #expect(m.selectedEventID == nil)
     }
+    @Test func calendarsHiddenAtLaunchStartHidden() {
+        let store = TweakedCalendarStore(DemoDataV4.club) { $0.isVisibleByDefault = false }
+        let m = AppModel(store: store, options: LaunchOptions.parse(["Calendr", "--demo", "--freeze-clock"]), persist: false)
+        #expect(m.hiddenCalendars == [DemoDataV4.club])
+        #expect(!m.layout.timed.joined().contains { $0.event.calendarID == DemoDataV4.club })
+        #expect(!m.layout.timed[3].contains { $0.event.title == "Club committee" } && m.layout.timed[6].allSatisfy { $0.event.title != "Long run" })
+        m.toggleCalendar(DemoDataV4.club)
+        #expect(m.hiddenCalendars.isEmpty && m.layout.timed[3].contains { $0.event.title == "Club committee" })
+    }
+    @Test func aNewerToastReplacesTheOldAndUndoDismissesIt() {
+        let m = makeModel()
+        let club = m.layout.timed[3].first { $0.event.title == "Club committee" }!.event
+        var later = club; later.end = club.end.addingTimeInterval(1800)
+        m.commit(later, span: .this, old: club)
+        #expect(m.toast?.undo == true && m.toast?.text.hasPrefix("Ends") == true)
+        var moved = later; moved.start = club.start.addingTimeInterval(3600); moved.end = later.end.addingTimeInterval(3600)
+        m.commit(moved, span: .this, old: later)
+        #expect(m.toast?.text.hasPrefix("Moved to") == true)          // the newer action's pill, at once
+        m.handle(.undo)                                               // Cmd-Z: the pill that offered it goes
+        #expect(m.toast == nil && m.event(id: club.id)?.start == club.start)
+        m.select(eventID: club.id)
+        m.handle(.deleteSelection)
+        #expect(m.toast?.undo == true && m.event(id: club.id) == nil)
+        m.undo()
+        #expect(m.toast == nil && m.event(id: club.id) != nil)
+        m.undo(); m.undo()
+        #expect(m.toast?.text == "Nothing to undo")                   // a plain message still shows
+    }
     @Test func readOnlyCalendarEventsCannotBeMovedOrEdited() {
-        let m = AppModel(store: ReadOnlyFamilyStore(), options: LaunchOptions.parse(["Calendr", "--demo", "--freeze-clock"]), persist: false)
+        let m = AppModel(store: TweakedCalendarStore(), options: LaunchOptions.parse(["Calendr", "--demo", "--freeze-clock"]), persist: false)
         let lunch = m.layout.timed[3].first { $0.event.title == "Lunch" }!.event
         #expect(!m.isWritable(lunch) && m.isWritable(m.layout.timed[3].first { $0.event.title == "Club committee" }!.event))
         m.select(eventID: lunch.id)

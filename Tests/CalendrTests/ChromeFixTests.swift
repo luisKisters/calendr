@@ -24,14 +24,19 @@ final class OwnCalendarsOnlyStore: CalendarStore {
     func series(of event: CalendarEvent) -> [CalendarEvent] { base.series(of: event) }
 }
 
-/// The demo data with the Family calendar read-only (a subscribed calendar): the read-only paths.
+/// The demo data with one calendar changed: Family read-only (a subscribed calendar) by default, or hidden at launch.
 @MainActor
-final class ReadOnlyFamilyStore: CalendarStore {
+final class TweakedCalendarStore: CalendarStore {
     let base = DemoStore()
+    let calendarID: String
+    let change: (inout CalendarInfo) -> Void
+    init(_ calendarID: String = DemoDataV4.family, change: @escaping (inout CalendarInfo) -> Void = { $0.isWritable = false }) {
+        self.calendarID = calendarID; self.change = change
+    }
     var accounts: [CalendarAccount] {
         base.accounts.map { a in
             var a = a
-            a.calendars = a.calendars.map { c in var c = c; if c.id == DemoDataV4.family { c.isWritable = false }; return c }
+            a.calendars = a.calendars.map { c in var c = c; if c.id == calendarID { change(&c) }; return c }
             return a
         }
     }
@@ -113,7 +118,7 @@ struct ChromeFixTests {
     }
 
     @Test func optionArrowsRespectReadOnly() {
-        let m = AppModel(store: ReadOnlyFamilyStore(), options: LaunchOptions.parse(["Calendr", "--demo", "--freeze-clock"]), persist: false)
+        let m = AppModel(store: TweakedCalendarStore(), options: LaunchOptions.parse(["Calendr", "--demo", "--freeze-clock"]), persist: false)
         let e = m.layout.timed[3].first { $0.event.title == "Lunch" }!.event
         m.select(eventID: e.id)
         m.handle(.nudge(dx: 1, dy: 0))

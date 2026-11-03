@@ -8,7 +8,11 @@ enum HeadlessRunner {
 
     static func start(_ o: LaunchOptions) {
         setvbuf(stdout, nil, _IOLBF, 0)
-        UserDefaults.standard.set(0, forKey: "AppleFontSmoothing")
+        // Grey-scale text in the offscreen frames, for this process only: the argument domain is volatile, so nothing is written to the
+        // app's defaults (a persisted value would leak into the real app).
+        var args = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        args["AppleFontSmoothing"] = 0
+        UserDefaults.standard.setVolatileDomain(args, forName: UserDefaults.argumentDomain)
         let app = NSApplication.shared
         app.setActivationPolicy(o.walkthrough ? .regular : .accessory)
         DispatchQueue.main.async {
@@ -32,7 +36,7 @@ enum HeadlessRunner {
 
     static func runSnapshot(_ state: String, _ o: LaunchOptions) -> Int32 {
         Motion.forcedInstant = true
-        let model = makeModel(o)
+        let model = state == "empty-access" ? AppModel(store: DemoStore(authorization: .notDetermined), options: o, persist: false) : makeModel(o)
         guard let out = o.out else { print("--snapshot needs --out"); return 2 }
         KeyRouter.shared.install(model: model)
         if let code = SnapshotMenuBar.run(state, model, o, out: out) { return code }
@@ -42,6 +46,7 @@ enum HeadlessRunner {
         w.settle(6)
         model.gridGeometry = model.gridGeometry
         guard SnapshotStates.apply(state, to: model) else { print("unknown state \(state)"); return 2 }
+        if SnapshotGrid.paper.contains(state) { w.setDark(false) }
         w.settle(8)
         let ok = w.writePNG(to: out, scale: o.scale)
         print(ok ? "wrote \(out)" : "failed \(out)")
