@@ -40,28 +40,30 @@ Each spec uses the tokens in `foundations.md`. Sizes are in points.
 | Today column | `todayTint` under the column and its day header |
 | Hour labels | `small` 11, `hourc`, right-aligned in the 56 gutter, tabular |
 | Now line | Across the week 1 px `live` at 30 %. Today 2 px with an 8 px dot ringed by 1.5 px `bg`. The time sits on a `live` pill (`onLive` text). |
-| Day header | Height 32. Weekday `body` 400 in `fg2`, date `body-strong` 500. The today date sits on an `accent` circle (`onAccent`, 600). |
+| Day header | Height 32. Weekday 12 in `fg3` (500 Dark, 400 Paper; `fg1` today), 8 from the column edge; date `body-strong` 500 (`fg2` before today) 6 after it. The today date sits on an `accent` pill 18 high, at least 20 wide (`onAccent`, 600). Hover only turns the text `fg1`. No rule under it: the all-day lane's `hairStrong` bottom edge is the one line. |
 
 ## Header
 | Part | Spec |
 |---|---|
 | Month title | `title` 15 / 600 `fg1`, the year in 400 `fg3` |
-| View switch | Segmented control: `surface` track, the selected segment `raised` with `fg1` |
-| Buttons | Height 28, radius 8 |
+| Height | 48, padding 0 12 0 20, gap 10. No week label (the ISO week is the title's tooltip). |
+| View switch | Segmented control, 26 high: `surface` track (padding 2, radius 8), segments 22 high, radius 6; the selected one `raised` with `fg1` 500 and a 1 px `segRing` edge. Hover only turns the text `fg1` (no fill). |
+| Buttons | Icon buttons 26 (radius 6, `fg3` glyph, hover wash + `fg1`); Today 26 high, radius 8, on `raised`. ‹ Today › 4 apart, then the right-column button. |
 
 ## Sidebar
 | Part | Spec |
 |---|---|
-| Mini month | Title `body-strong` 12 / 500. Day numbers `small` 11, 24 per cell. Today = `accent` fill. |
-| Group header | `label` 12 / 500 `fg3`, height 24, 16 space above |
-| Calendar row | Height 26. A 10 px colour square (the calendar mark `oklch(.70 Dark / .60 Paper, min(C₀, .14), H)`), gap 10, name `body` 12. |
-| Padding | 12 left and right |
+| Mini month | Title `body-strong` 12 / 500 (year 400 `fg3`) with 22 pt ‹ ›. Weekday letters and week numbers `small` `fg3` (500 Dark, 400 Paper). Day cells 24 high, 2 apart, numbers `small` 11 tabular: `fg2` in the month, `fg3` outside, `fg1` in the visible week, which sits on one `hoverRail` band (radius 6 at its ends). Today = `selected` cell with a 1 px `segRing` edge, 600. |
+| Group header | `label` 12 / 500 `fg3`, height 24, 12 above and 2 below. Hover: `fg1` and a 12 pt chevron. A click folds the group; folded, the chevron points right and stays, and the count follows the name ("9 · 1 hidden"). |
+| Calendar row | Height 26, radius 6, the hover box 4 past the pane padding. A 12 px colour square, radius 3 (the calendar mark `oklch(.70 Dark / .60 Paper, min(C₀, .14), H)`), gap 10, name `body` 12. An eye (15, `fg3`, 22 box) at the right on hover. Hidden: square at 35 % over the rail, name `fg3`, eye-slash always shown. |
+| Settings | 28 high at the foot, "Settings" `body` `fg2` (no icon), ⌘ , in `fg3` at the right; hover `hoverRail` + `fg1` |
+| Padding | 8 top, 12 left, right and bottom |
 
 ## Right column
 | Part | Spec |
 |---|---|
-| Lead (Now) | Title 12 / 600 `fg1`, meta `small` `fg2`, Join button height 28 on `raised` with a hairline |
-| List rows | Time 11 `fg2` tabular, a 3 × 14 bar in the calendar mark, title `body` 12 |
+| Lead (Now) | Label 11 / 500 `fg3` + countdown in `live`; a 36 pt time column (start `fg2`, end `fg3`), a 3 pt bar in the calendar mark, title 12 / 600 `fg1`, meta `small` `fg2`. Join 30 high on `raised` with a 1 px edge, 12 / 500 `fg1`, ⌘J in `fg3` (a ghost with a `hairStrong` edge on Up next). A pane edge under the lead card. No "Today" heading, no shortcut list. |
+| List rows | "Later today" label; rows 26 high, time 11 `fg2` tabular right-aligned in 36, a 3 × 14 bar in the calendar mark, title `body` 12 |
 
 ## Alignment
 - Events, all-day chips and sidebar text: each set of text shares one left edge per column. G shows 0 red boxes in Dark and Paper.
