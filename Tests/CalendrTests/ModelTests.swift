@@ -281,13 +281,34 @@ struct WritePathTests {
     }
 }
 
+enum TextWidth {
+    static func of(_ s: String, _ f: CTFont) -> CGFloat {
+        let l = CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [NSAttributedString.Key(kCTFontAttributeName as String): f]))
+        return CGFloat(CTLineGetTypographicBounds(l, nil, nil, nil))
+    }
+}
+
 @Suite("Typeface")
 struct TypefaceTests {
-    @Test func instrumentSansIsBundledAndRegistered() {
-        #expect(Typeface.locate() != nil)
+    @Test func geistIsBundledAndRegistered() throws {
+        let url = try #require(Typeface.locate())
         #expect(Typeface.register())
-        let f = Typeface.ctFont(13, weight: 600, tabular: true)
-        #expect(CTFontCopyFamilyName(f) as String == Typeface.family)
+        #expect(Typeface.family == "Geist")
+        // The SIL OFL 1.1 licence ships next to the font.
+        let ofl = try String(contentsOf: url.deletingLastPathComponent().appendingPathComponent("Geist-OFL.txt"), encoding: .utf8)
+        #expect(ofl.contains("SIL OPEN FONT LICENSE Version 1.1") && ofl.contains("The Geist Project Authors"))
+        for w in [400, 500, 600] {
+            let f = Typeface.ctFont(12, weight: w, tabular: true)
+            #expect(CTFontCopyFamilyName(f) as String == "Geist")
+            let v = (CTFontCopyVariation(f) as? [NSNumber: NSNumber]) ?? [:]
+            #expect((v[NSNumber(value: 0x77676874)]?.intValue ?? 400) == w,   // 400 is the default instance
+            "wght \(w): \(v)")
+        }
+        // Tabular figures: every digit has the same advance.
+        let tab = Typeface.ctFont(11, weight: 400, tabular: true)
+        let widths = (0...9).map { TextWidth.of("\($0)", tab) }
+        #expect(Set(widths.map { ($0 * 100).rounded() }).count == 1, "\(widths)")
+        #expect(TextWidth.of("1", Typeface.ctFont(11)) < TextWidth.of("0", Typeface.ctFont(11)))
     }
     @Test func oldSettingsDecodeWithDefaults() throws {
         let old = #"{"appearance":"Light","weekStartsOnMonday":true,"defaultDurationMinutes":45,"showDeclined":true,"use24h":true,"firstVisibleHour":7,"reduceMotion":false}"#
