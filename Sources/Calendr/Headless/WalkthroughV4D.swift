@@ -8,15 +8,15 @@ import CalendrKit
 extension WalkthroughV4 {
     /// Window points (1440 x 900, v4 fixture) of the chrome the tours point at.
     enum ChromePoint {
-        static let account = CGPoint(x: 58, y: 277)
-        static let personal = CGPoint(x: 96, y: 306)
-        static let family = CGPoint(x: 90, y: 334)
-        static let search = CGPoint(x: 1250, y: 28)
-        static func result(_ i: Int) -> CGPoint { CGPoint(x: 1240, y: 98 + Double(i) * 62) }
-        static let nowCard = CGPoint(x: 1250, y: 142)
+        /// v11 sidebar: the first group header at y 268 … 292, its rows from 294 in 26 pt steps; the eye at x 213.
+        static let account = CGPoint(x: 40, y: 280)
+        static func row(_ i: Int) -> CGPoint { CGPoint(x: 90, y: 307 + Double(i) * 26) }
+        static func eye(_ i: Int) -> CGPoint { CGPoint(x: 213, y: 307 + Double(i) * 26) }
+        static let search = CGPoint(x: 1250, y: 24)
+        static func result(_ i: Int) -> CGPoint { CGPoint(x: 1240, y: 92 + Double(i) * 62) }
+        static let nowCard = CGPoint(x: 1250, y: 92)
         static let nextCard = CGPoint(x: 1250, y: 222)
-        static func shortcut(_ i: Int) -> CGPoint { CGPoint(x: 1200, y: 549 + Double(i) * 28) }
-        static let settings = CGPoint(x: 64, y: 878)
+        static let settings = CGPoint(x: 64, y: 874)
     }
 
     static func probe(_ d: Driver, _ target: String?, at p: CGPoint, hold: Double = 0.5) {
@@ -34,17 +34,27 @@ extension WalkthroughV4 {
         d.check(m.store.accounts.map { AccountName.display($0.name) } == ["sam.rivera", "sam", "sam"], "accounts show their names without the domain")
         d.say("v4 chrome: the sidebar lists calendars by account")
         d.frame(hold: 1.0)
-        d.say("Hover the account: its domain shows")
-        probe(d, "acct:\(acc.id)", at: ChromePoint.account, hold: 1.2)
-        d.say("Calendar rows are 28 pt, text at 40")
-        probe(d, "cal:\(personal.id)", at: ChromePoint.personal, hold: 0.8)
-        probe(d, "cal:\(family.id)", at: ChromePoint.family, hold: 0.4)
-        d.say("Click a calendar to hide it")
-        d.click(at: ChromePoint.family) { m.toggleCalendar(family.id) }
-        d.check(m.hiddenCalendars.contains(family.id), "Family is hidden")
+        let pi = acc.calendars.firstIndex { $0.id == personal.id } ?? 0, fi = acc.calendars.firstIndex { $0.id == family.id } ?? 1
+        d.say("Hover the group header: a chevron shows")
+        probe(d, "acct:\(acc.id)", at: ChromePoint.account, hold: 1.0)
+        d.say("Click it: the group folds, its count follows the name")
+        d.click(at: ChromePoint.account) { m.toggleGroup(acc.id) }
+        d.check(m.collapsedGroups.contains(acc.id) && m.hiddenCalendars.isDisjoint(with: acc.calendars.map(\.id)), "the group folds; its calendars stay shown")
         d.hold(1.0)
-        d.say("Click again to show it")
-        d.click(at: ChromePoint.family) { m.toggleCalendar(family.id) }
+        d.click(at: ChromePoint.account) { m.toggleGroup(acc.id) }
+        d.check(!m.collapsedGroups.contains(acc.id), "a second click unfolds it")
+        d.hold(0.6)
+        d.say("Calendar rows: 26 pt, a colour square, the name, an eye on hover")
+        probe(d, "cal:\(personal.id)", at: ChromePoint.row(pi), hold: 0.8)
+        probe(d, "cal:\(family.id)", at: ChromePoint.row(fi), hold: 0.4)
+        d.say("Click the eye to hide a calendar")
+        probe(d, "eye:\(family.id)", at: ChromePoint.eye(fi), hold: 0.3)
+        d.click(at: ChromePoint.eye(fi)) { m.toggleCalendar(family.id) }
+        d.check(m.hiddenCalendars.contains(family.id), "Family is hidden: dimmed, with an eye-slash")
+        HoverProbe.shared.target = nil
+        d.hold(1.0)
+        d.say("The eye-slash stays; click it to show the calendar again")
+        d.click(at: ChromePoint.eye(fi)) { m.toggleCalendar(family.id) }
         d.check(!m.hiddenCalendars.contains(family.id), "Family is shown again")
         d.hold(0.6)
         HoverProbe.shared.target = nil
@@ -107,23 +117,41 @@ extension WalkthroughV4 {
         HoverProbe.shared.target = nil
         d.play(0.4) { m.toast = nil }      // the clock stays at 18:40 for the rest of the tour
 
-        d.section("Useful shortcuts")
-        d.say("Useful shortcuts under Today")
-        let rows = m.usefulShortcuts
-        d.check(rows.map(\.title) == Shortcuts.useful.map(\.title), "six useful shortcuts in order")
-        // the rows sit under Today, which is shorter at 18:40: point at where they are now
-        func at(_ i: Int) -> CGPoint { spot(m, "short:\(rows[i].title)", fx: 0.3) ?? ChromePoint.shortcut(i) }
-        for i in [0, 2, 3, 5] { probe(d, "short:\(rows[i].title)", at: at(i), hold: 0.35) }
-        d.say("Each row runs its shortcut: Command menu")
-        probe(d, "short:\(rows[0].title)", at: at(0), hold: 0.3)
-        d.clickPoint(at(0), seconds: 0.6)
-        HoverProbe.shared.target = nil
-        d.check(m.overlay == .command, "the Command menu row opens the command menu")
-        d.hold(1.2)
-        d.say("Esc closes it", keys: ["esc"])
+        // v8 decision C (v5 I): no shortcut list in the right column; the shortcuts stay behind ? and ⌘K.
+        d.section("Shortcuts")
+        d.check(spot(m, "short:Command menu", fx: 0.3) == nil, "the right column has no shortcut list")
+        d.say("The shortcuts stay behind ⌘K and ?", keys: ["\u{2318}", "K"])
+        d.play(0.6) { d.key("k", cmd: true) }
+        d.check(m.overlay == .command, "⌘K opens the command menu")
+        d.hold(1.0)
         d.play(0.4) { d.special("esc") }
         d.check(m.overlay == nil, "Esc closes it")
-        d.hold(0.8)
+        d.say("? lists every shortcut", keys: ["?"])
+        d.play(0.6) { d.key("?") }
+        d.check(m.overlay == .shortcuts, "? opens the keyboard shortcuts")
+        d.hold(1.0)
+        d.play(0.4) { d.special("esc") }
+        d.check(m.overlay == nil, "Esc closes them")
+        d.hold(0.6)
+
+        // v5 I: the v11 chrome heights, and the header's right-column button (⌥⌘I, mockup C6).
+        d.section("Right column")
+        d.check(abs(m.gridState.allDayFrame.minY - (Dim.toolbarHeight + Dim.dayHeaderHeight)) < 0.5,
+                "header 48 + day header 32: the all-day lane starts at \(m.gridState.allDayFrame.minY)")
+        let wide = m.gridViewport.width
+        let toggle = CGPoint(x: 1095, y: 24)
+        d.say("The header's right-column button hides the column", keys: ["\u{2325}", "\u{2318}", "I"])
+        probe(d, "togRight", at: toggle, hold: 0.3)
+        d.click(at: toggle) { m.toggleRightColumn() }
+        HoverProbe.shared.target = nil
+        d.settle(8)
+        d.check(!m.rightColumnVisible && abs(m.gridViewport.width - wide - PanelMetrics.width) < 1, "the grid takes the column's 320 pt")
+        d.hold(1.0)
+        d.say("⌥⌘I brings it back")
+        d.play(0.6) { d.key("i", cmd: true, opt: true) }
+        d.settle(8)
+        d.check(m.rightColumnVisible && abs(m.gridViewport.width - wide) < 1, "⌥⌘I shows the column again")
+        d.hold(0.6)
 
         d.section("Settings")
         d.say("Settings: the 12 pt pop surface")

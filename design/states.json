@@ -12,6 +12,15 @@
     "v11-week-paper": {
       "_mockup11": "as v11-week in Paper: ?demo=1#tab=read&look=R&fs=1&appear=paper"
     },
+    "v11-sidebar": {
+      "_mockup11": "v5 I sidebar states (v8 decisions D, E): Family hidden, iCloud folded, the pointer on Work"
+    },
+    "v11-sidebar-paper": {
+      "_mockup11": "as v11-sidebar in Paper"
+    },
+    "v11-right-hidden": {
+      "_mockup11": "the right column hidden by the header button (mockup C6)"
+    },
     "v4-overlap": {
       "mockup": "overlap"
     },
