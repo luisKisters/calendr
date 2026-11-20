@@ -27,7 +27,7 @@ struct PanelFoot: View {
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(Theme.bg)
+        .background(Theme.rail)
         .overlay(alignment: .top) { Hairline() }
     }
 }
@@ -46,7 +46,7 @@ struct GhostButton: View {
                 if let key { Keycap(text: key) }
             }
             .padding(.horizontal, 12).frame(height: Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.hover : Color.clear))
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.hoverRail : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle(scale: 0.97))

@@ -217,8 +217,9 @@ enum MonthPainter {
                     cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
                     ring(cg, r, ink)
                 } else {
+                    s.hovered = hovered
                     let c = s.colors
-                    cg.addPath(shape); cg.setFillColor((hovered ? Palettes.brighter(c.stripe ?? c.fill) : c.stripe ?? c.fill).cg); cg.fillPath()
+                    cg.addPath(shape); cg.setFillColor((c.stripe ?? c.fill).cg); cg.fillPath()
                     if let o = c.outline { cg.addPath(EventPainter.chipPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event - 0.5, squareLeft: it.openLeft, squareRight: it.openRight)); cg.setStrokeColor(o.cg); cg.setLineWidth(1); cg.strokePath() }
                 }
                 let color: CGColor = e.id == draft || e.id == selected ? ink.fg : s.colors.title.cg

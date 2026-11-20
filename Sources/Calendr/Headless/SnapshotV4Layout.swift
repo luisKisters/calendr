@@ -73,7 +73,7 @@ private struct LayoutDebugView: View {
         ZStack(alignment: .topLeading) {
             Theme.bg
             VStack(alignment: .leading, spacing: 4) {
-                Text("OverlapV5 on the v4 fixture: Wed 30 Sep, 17:00\u{2013}21:30").font(.title18).foregroundStyle(Theme.fg)
+                Text("OverlapV5 on the v4 fixture: Wed 30 Sep, 17:00\u{2013}21:30").font(.title15).foregroundStyle(Theme.fg)
                 Text("Debug render of CalendrKit OverlapV5.layout (PR B). Picks: smart, unaccepted right, +N stack, short block. Not app UI.")
                     .font(.small).foregroundStyle(Theme.fg3)
             }

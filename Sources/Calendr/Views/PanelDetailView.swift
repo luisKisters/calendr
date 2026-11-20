@@ -40,14 +40,14 @@ struct PanelDetailView: View {
     // MARK: Title
 
     private func top(canEdit: Bool) -> some View {
-        let bar = Palettes.cc(model.hexColor(of: e), dark: scheme == .dark).color
+        let bar = Palettes.barColor(model.hexColor(of: e), dark: scheme == .dark).color
         return HStack(spacing: 4) {
             RoundedRectangle(cornerRadius: Radius.bar).fill(bar).frame(width: 3, height: 22).padding(.leading, 6.5).padding(.trailing, 14.5)
             Group {
                 if canEdit {
                     TextField("", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { model.setSelectedTitle($0) }), prompt: nil)
                         .textFieldStyle(.plain)
-                        .panelPlaceholder(model.isDraftOpen ? "New event" : "(No title)", when: e.title.isEmpty, font: .title18)
+                        .panelPlaceholder(model.isDraftOpen ? "New event" : "(No title)", when: e.title.isEmpty, font: .title15)
                         .focused($focus, equals: .title)
                         .onSubmit { model.isDraftOpen ? model.saveDraft() : (focus = nil) }
                         .editorField(focused: focus == .title, editable: true, key: "field:title")
@@ -55,7 +55,7 @@ struct PanelDetailView: View {
                     Text(e.title.isEmpty ? "(No title)" : e.title).lineLimit(1).truncationMode(.tail)
                 }
             }
-            .font(.title18).tracking(-0.27).foregroundStyle(Theme.fg)
+            .font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg)
             .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
             if model.isWritable(e) && !model.isDraftOpen { PanelIconButton(icon: .trash) { model.requestDeleteSelected() }.help("Delete event  \u{232B}") }
             PanelIconButton(icon: .x) { model.closePanel() }.help("Close  esc")
@@ -253,7 +253,7 @@ struct HoverFill: View {
     var key: String = ""
     var on = false
     var enabled = true
-    var fill: Color = Theme.hover
+    var fill: Color = Theme.hoverRail
     var radius: CGFloat = Radius.row
     @State private var hover = false
     var body: some View {
@@ -277,7 +277,7 @@ struct EditorFieldChrome: ViewModifier {
         let h = editable && (held || hover || (!key.isEmpty && HoverProbe.shared.target == key))
         content
             .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(focused && editable ? Theme.bg : (h ? Theme.hover : Color.clear)))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(focused && editable ? Theme.bg : (h ? Theme.hoverRail : Color.clear)))
             .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(focused && editable ? Theme.fg3 : Color.clear, lineWidth: 1.5))
             .padding(.horizontal, -8).padding(.vertical, -3)
             .onHover { hover = $0 }
@@ -352,13 +352,13 @@ struct ReminderRow: View {
             if removable {
                 Button { model.removeReminder(minutes) } label: {
                     PanelIcon(name: .x, size: 11, color: Theme.fg2).frame(width: 20, height: 20)
-                        .background(RoundedRectangle(cornerRadius: Radius.row).fill(Theme.hover)).contentShape(Rectangle())
+                        .background(RoundedRectangle(cornerRadius: Radius.row).fill(Theme.hoverRail)).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).help("Remove").opacity(h ? 1 : 0)
             }
         }
         .padding(.horizontal, 8).frame(height: 28)
-        .background(RoundedRectangle(cornerRadius: Radius.row).fill(h && removable ? Theme.hover : Color.clear))
+        .background(RoundedRectangle(cornerRadius: Radius.row).fill(h && removable ? Theme.hoverRail : Color.clear))
         .padding(.horizontal, -8).padding(.vertical, -3)
         .onHover { hover = $0 }
         .tourAnchor(key)

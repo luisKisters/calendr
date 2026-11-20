@@ -65,7 +65,7 @@ private struct GridStackRow: View {
         var c = pal.colors(reply: reply, past: false)
         if reply == .declined { c.bar = pal.barRGB; c.barAlpha = 1 }
         let hot = model.gridState.pointer.hoveredStackRow == e.id
-        let k = hot ? 1.15 : 1.0
+        if hot && reply != .notAnswered { c.fill = pal.hoverFillRGB; c.stripe = nil }
         let span = placed.endMinute > placed.startMinute && e.end > e.start
             ? TextCache.range(model.fmt, placed.startMinute, placed.endMinute) : TextCache.time(model.fmt, minutes: placed.startMinute)
         return Button { model.pickFromStack(e.id) } label: {
@@ -85,9 +85,9 @@ private struct GridStackRow: View {
                     ctx.withCGContext { cg in
                         let r = CGRect(origin: .zero, size: size)
                         let shape = EventPainter.roundedPath(r, Radius.row)
-                        cg.addPath(shape); cg.setFillColor(Palettes.brighter(c.stripe ?? c.fill, k).cg); cg.fillPath()
+                        cg.addPath(shape); cg.setFillColor((c.stripe ?? c.fill).cg); cg.fillPath()
                         cg.addPath(shape); cg.clip()
-                        if c.stripe != nil { EventPainter.stripes(cg, r, color: Palettes.brighter(c.fill, k).cg) }
+                        if c.stripe != nil { EventPainter.stripes(cg, r, color: c.fill.cg) }
                         if let o = c.outline {
                             cg.addPath(EventPainter.roundedPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.row - 0.5)); cg.setStrokeColor(o.cg); cg.setLineWidth(1); cg.strokePath()
                         }

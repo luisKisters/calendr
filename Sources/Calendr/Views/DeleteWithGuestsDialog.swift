@@ -11,7 +11,7 @@ struct DeleteWithGuestsDialog: View {
         if let e = model.event(id: eventID) {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Delete event \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}").font(.title18).tracking(-0.27).foregroundStyle(Theme.fg).lineLimit(1)
+                    Text("Delete event \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}").font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg).lineLimit(1)
                     Text("Delete the event and send a cancellation email, or delete it without an email.").font(.text).foregroundStyle(Theme.fg2)
                         .lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                 }
