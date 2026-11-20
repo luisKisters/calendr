@@ -147,7 +147,7 @@ final class AppModel {
         let persist = persist && !options.demo
         self.persist = persist
         var s = persist ? AppSettings.load() : AppSettings()
-        if options.demo { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46
+        if options.demo { s.hourHeight = options.fixture == .v11 ? DemoDataV11.hourHeight : DemoDataV4.hourHeight }      // the mockups' H: 46 (v4), 44 (v11)
         settings = s
         Motion.override = s.reduceMotion
         let m = options.demo ? DemoDataV4.math : CalendarMath.system

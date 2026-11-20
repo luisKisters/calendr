@@ -6,6 +6,12 @@
     "v4-week": {
       "mockup": "week"
     },
+    "v11-week": {
+      "_mockup11": "the v11 demo week (--fixture v11): design/mockup-v11 ?demo=1#tab=read&look=R&fs=1 (local, not in the repo)"
+    },
+    "v11-week-paper": {
+      "_mockup11": "as v11-week in Paper: ?demo=1#tab=read&look=R&fs=1&appear=paper"
+    },
     "v4-overlap": {
       "mockup": "overlap"
     },
