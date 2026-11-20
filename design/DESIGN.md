@@ -1,5 +1,8 @@
 # Calendr design system (v2)
 
+> **Superseded (2026-11-20) by `design/mockup-v11/DECISIONS.md` and `design/design-system/`.** Kept for history.
+
+
 > Superseded by `design/mockup-v4/DECISIONS.md` and `design/mockup-v4/` (v4), which build on `design/LOCKED.md` (v3). Kept for history; where they disagree, DECISIONS.md wins.
 
 v1 was a pixel copy of Notion Calendar. v2 keeps what makes Notion Calendar good (layout, density, keyboard-first flows, command palette, right-hand inspector, menu bar list) and gives Calendr its own identity, borrowing the NoteTakr design language (`/tmp/notetakr/design/DESIGN-SYSTEM.md`) so both apps feel like siblings.
