@@ -50,6 +50,7 @@ extension CommandID {
         case .nextPeriod: .right
         case .previousPeriod: .left
         case .toggleSidebar: .side
+        case .toggleRightColumn: .sideRight
         case .switchAppearance: .moon
         case .searchEvents: .search
         case .meetWith: .users
@@ -197,6 +198,7 @@ extension AppModel {
         case .viewWeek: setMode(.week)
         case .viewMonth: setMode(.month)
         case .toggleSidebar: toggleSidebar()
+        case .toggleRightColumn: toggleRightColumn()
         case .switchAppearance: settings.appearance = isPaper ? .dark : .light
         case .undo: undo()
         case .deleteSelected: requestDeleteSelected()
@@ -229,10 +231,12 @@ extension AppModel {
         case .viewWeek: setMode(.week)
         case .viewMonth: setMode(.month)
         case .toggleSidebar: toggleSidebar()
+        case .toggleRightColumn: toggleRightColumn()
         case .menuBarCalendar: if !MenuBarControl.open() { showToast("Menu bar calendar: click the menu bar item") }
         case .mainWindow: NSApp.activate(ignoringOtherApps: true)
         case .undo: undo()
         case .refresh: store.refresh(); showToast("Refreshed")
+        case .joinCall: return joinLeadCall()
         case .deleteSelection: requestDeleteSelected()
         case .arrow(let dx, let dy): return arrowKey(dx: dx, dy: dy)
         case .nudge(let dx, let dy): return nudgeSelected(dx: dx, dy: dy)

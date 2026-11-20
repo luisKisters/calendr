@@ -228,6 +228,21 @@ extension AppModel {
         NSWorkspace.shared.open(call.url)
     }
 
+    /// The event ⌘J joins: the open event in the editor, else the running one, else the next one (the first with a call).
+    var leadCallEvent: CalendarEvent? {
+        if let e = selectedEvent { return CallLink.parse(e) != nil ? e : nil }
+        return [panelState.today.live, panelState.today.next].compactMap { $0 }.first { CallLink.parse($0) != nil }
+    }
+
+    /// ⌘J (the hint on the right column's Join buttons): the call of the running event, else of the next one.
+    /// False (key not consumed) when neither has a call.
+    @discardableResult
+    func joinLeadCall() -> Bool {
+        guard let e = leadCallEvent else { return false }
+        joinCall(e)
+        return true
+    }
+
     /// Opens the web address in the conferencing field that is not a call (a website, a document).
     func openConferencingLink(_ e: CalendarEvent) {
         let link = e.conferencing.trimmingCharacters(in: .whitespacesAndNewlines)

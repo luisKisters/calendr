@@ -13,9 +13,12 @@ struct RootView: View {
                     SidebarView().transition(.move(edge: .leading).combined(with: .opacity))
                 }
                 CenterView()
-                RightPanelView()
+                if model.rightColumnVisible {
+                    RightPanelView().transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
             .animation(Motion.slow, value: model.sidebarVisible)
+            .animation(Motion.slow, value: model.rightColumnVisible)
             OverlayHost()
         }
         .overlayPreferenceValue(EditorAnchorKey.self) { anchors in

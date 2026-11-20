@@ -13,7 +13,8 @@ struct TimeGridView: View {
         let n = max(1, model.visibleDays.count)
         let gutter = Theme.gutterWidth
         VStack(spacing: 0) {
-            Rectangle().fill(Theme.hair2).frame(height: 1)
+            // The all-day edge: inside the all-day lane when it has chips (`.ad { box-shadow: inset 0 -1px 0 hairStrong }`), else here.
+            if model.layout.allDay.laneCount == 0 { Rectangle().fill(Theme.hair2).frame(height: 1) }
             GeometryReader { geo in
                 let dw = max(1, (geo.size.width - gutter) / CGFloat(n))
                 let g = GridGeometry(dayWidth: Double(dw), hourHeight: model.gridHourHeight, dayCount: n)

@@ -14,8 +14,10 @@ public enum ShortcutAction: Equatable, Sendable {
     case commandMenu, today, nextPeriod, previousPeriod
     case createEvent, meetWith, goToDate, searchEvents, showShortcuts
     case viewDay, viewWeek, viewMonth
-    case toggleSidebar, settings, menuBarCalendar, mainWindow
+    case toggleSidebar, toggleRightColumn, settings, menuBarCalendar, mainWindow
     case undo, refresh, deleteSelection, escape
+    /// ⌘J: joins the call of the right column's lead card (Now, or Up next).
+    case joinCall
     /// An arrow key: walks the selection with one, pages the period (left, right) without.
     case arrow(dx: Int, dy: Int)
     /// Option-arrow: moves the selected event by a day (dx) or 15 minutes (dy).
@@ -50,7 +52,7 @@ public enum ShortcutResolver {
         let c = k.characters.lowercased()
         if k.command {
             if k.control && !k.option { return c == "k" ? .menuBarCalendar : nil }
-            if k.option { return nil }
+            if k.option { return c == "i" && !k.shift ? .toggleRightColumn : nil }
             switch c {
             case "k": return .commandMenu
             case ",": return .settings
@@ -58,6 +60,7 @@ public enum ShortcutResolver {
             case "\\": return .toggleSidebar
             case "z": return k.shift ? nil : (textFocused ? nil : .undo)
             case "r": return .refresh
+            case "j": return .joinCall
             case "f": return .searchEvents
             default: return nil
             }
@@ -88,25 +91,6 @@ public enum ShortcutResolver {
         default: return nil
         }
     }
-}
-
-/// A row of the right column's "Useful shortcuts": its label, its key hint (one glyph per key) and what it runs.
-public struct UsefulShortcut: Equatable, Sendable {
-    public var title: String
-    public var keys: [String]
-    public var action: ShortcutAction
-}
-
-public enum Shortcuts {
-    /// The right column's "Useful shortcuts" under Today (design/mockup-v4 `.short`), in order.
-    public static let useful: [UsefulShortcut] = [
-        .init(title: "Command menu", keys: ["\u{2318}", "K"], action: .commandMenu),
-        .init(title: "Meet with", keys: ["F"], action: .meetWith),
-        .init(title: "New event", keys: ["C"], action: .createEvent),
-        .init(title: "Menu bar calendar", keys: ["\u{2303}", "\u{2318}", "K"], action: .menuBarCalendar),
-        .init(title: "Toggle sidebar", keys: ["`"], action: .toggleSidebar),
-        .init(title: "All keyboard shortcuts", keys: ["?"], action: .showShortcuts),
-    ]
 }
 
 public enum AccountName {

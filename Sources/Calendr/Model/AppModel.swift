@@ -48,6 +48,8 @@ final class AppModel {
     // MARK: Visibility
     var hiddenCalendars: Set<String>
     var shownTeammates: [Teammate] = []
+    /// Sidebar groups (accounts) folded by a click on their header (v8 decision D); their calendars stay as they are.
+    var collapsedGroups: Set<String> = []
 
     // MARK: Selection
     /// Selecting anything else settles the draft, so a draft is always the selected event.
@@ -55,6 +57,8 @@ final class AppModel {
         didSet {
             if let d = draft, selectedEventID != d.id { settleDraft() }
             if selectedEventID != oldValue { resetEditorTransients() }
+            // The editor lives in the right column, so selecting opens it again (mockup C6).
+            if selectedEventID != nil && !rightColumnVisible { rightColumnVisible = true }
         }
     }
     var selectedSlot: Date?
@@ -65,6 +69,7 @@ final class AppModel {
 
     // MARK: Chrome
     var sidebarVisible = true
+    var rightColumnVisible = true
     var overlay: Overlay? {
         didSet {
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
@@ -443,6 +448,10 @@ final class AppModel {
         reload()
         refreshUpcoming()
     }
+    /// A sidebar group header: folds or unfolds that account's calendar rows.
+    func toggleGroup(_ id: String) {
+        if collapsedGroups.contains(id) { collapsedGroups.remove(id) } else { collapsedGroups.insert(id) }
+    }
 
     /// Identity of what the grid shows: a change slides the content in.
     var periodID: String { "\(viewMode.title)|\(visibleStart.timeIntervalSince1970)" }
@@ -694,6 +703,8 @@ final class AppModel {
     // MARK: Commands
 
     func toggleSidebar() { sidebarVisible.toggle() }
+    /// The header's right-column button and ⌥⌘I. Selecting an event or searching opens the column again (the editor lives there).
+    func toggleRightColumn() { rightColumnVisible.toggle() }
 
     func closeOverlay() { overlay = nil }
 
