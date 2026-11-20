@@ -48,6 +48,34 @@ struct IconButton: View {
     }
 }
 
+/// The v11 `.ibtn` with one of the mockup's stroke icons: 26 pt square with a 16 pt glyph (header), or 22 with 14 (`small`:
+/// sidebar), radius 6, fg3; hover (and `on`) is the hover wash with an fg1 glyph. `rail`: on the sidebar or the right column, whose
+/// hover is `hoverRail`. `probe` names the control for the tours' forced hover.
+struct ChromeIconButton: View {
+    let icon: ChromeIcon.Name
+    var small = false
+    var on = false
+    var rail = false
+    var probe: String?
+    var help: String = ""
+    let action: () -> Void
+    @State private var hover = false
+    var body: some View {
+        let hot = hover || on || (probe != nil && HoverProbe.shared.target == probe)
+        let glyph = small ? Dim.iconGlyphSmall : Dim.iconGlyph, box = small ? Dim.iconButtonSmall : Dim.iconButton
+        Button(action: action) {
+            ChromeIcon(name: icon, size: glyph, color: hot ? Theme.fg : Theme.fg3)
+                .frame(width: box, height: box)
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? (rail ? Theme.hoverRail : Theme.hover) : Color.clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .onHover { hover = $0 }
+        .animation(Motion.fast, value: hot)
+        .help(help)
+    }
+}
+
 /// A shortcut hint (round 3): grey small tabular text, no box.
 struct Keycap: View {
     let text: String
@@ -128,9 +156,9 @@ struct SecondaryButton: View {
     var body: some View { TextButton(title: title, kind: .line, keys: keys, small: small, action: action) }
 }
 
-/// The one segmented control (Day / Week / Month, Going?, every settings choice): a hair2 frame inset 1 pt, padding 2, radius 8.
-/// Segments are 22 pt high, radius 6, 10 pt side padding. The selected one sits on the thumb in fg 600; the others are fg2 400
-/// with a hover fill.
+/// The one segmented control (Day / Week / Month, Going?, every settings choice), mockup-v11 `.segc`: a `surface` track, padding 2,
+/// radius 8, 26 pt in all. Segments are 22 pt high, radius 6, 10 pt side padding. The selected one is fg1 500 on `raised` with a
+/// 1 pt `segRing` edge (and a soft shadow in Paper); the others are fg2 400, and hover only turns their text fg1.
 struct Segmented<T: Hashable>: View {
     let options: [(T, String)]
     let selection: T
@@ -153,10 +181,10 @@ struct Segmented<T: Hashable>: View {
 }
 
 private extension View {
-    /// The frame of `Segmented`: padding 2, 1 pt hair2 edge inside, radius 8.
+    /// The track of `Segmented`: padding 2 on `surface`, radius 8, no edge.
     func segmentedFrame() -> some View {
         padding(2)
-            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.hair2, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(Theme.bg1))
             .fixedSize()
     }
 }
@@ -176,15 +204,18 @@ struct SegmentButton: View {
     var enabled = true
     let action: () -> Void
     @State private var hover = false
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
         let h = (hover || HoverProbe.shared.target == title) && enabled && !on
         Button { if enabled { action() } } label: {
-            // `.segc button`: 12 / 400 fg2, the selected segment 12 / 500 fg1 on raised with a 1 px `seg-ring` edge.
+            // `.segc button`: 12 / 400 fg2 (fg1 on hover, no fill), the selected segment 12 / 500 fg1 on raised with a 1 px
+            // `seg-ring` edge; Paper adds `0 1px 2px rgba(60,50,35,.10)`. Disabled (`.segc.off`): fg4, the selected one fg3 with a hair2 edge.
             Text(title).font(on ? .textMedium : .text).tracking(TypeTrack.text)
-                .foregroundStyle(on || h ? Theme.fg : Theme.fg2)
+                .foregroundStyle(!enabled ? (on ? Theme.fg3 : Theme.fg4) : on || h ? Theme.fg : Theme.fg2)
                 .padding(.horizontal, 10).frame(minWidth: minWidth, minHeight: Dim.segment, maxHeight: Dim.segment)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(on ? Theme.thumb : h ? Theme.bg3 : Color.clear))
-                .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(on ? Theme.segRing : Color.clear, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(on && enabled ? Theme.thumb : Color.clear)
+                    .shadow(color: on && enabled && scheme == .light ? InkRGB.segShadow.color.opacity(0.10) : .clear, radius: 1, y: 1))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(on ? (enabled ? Theme.segRing : Theme.hair2) : Color.clear, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
