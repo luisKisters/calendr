@@ -1,31 +1,60 @@
 import SwiftUI
 import CalendrKit
 
-/// Month and calendars: a 56 pt top with the hide button, the mini month, the calendar list by account, Settings at the foot.
+/// Sidebar metrics (mockup-v11 `.side`: 236 wide, padding 8 12 12). Rows and group headers reach 4 pt past the padding
+/// (x 8 … 228); their content starts at 16 (square, labels) and the names at 38. Trailing buttons end at 224.
+enum SidebarDim {
+    static let top: CGFloat = 8
+    static let pad: CGFloat = 12
+    static let bottom: CGFloat = 12
+    /// The 28 pt top row (`.wtop`) with the hide button.
+    static let topRow: CGFloat = 28
+    /// `.cal`: 26 pt; `.grp`: 24 pt with 12 above and 2 below.
+    static let row: CGFloat = 26
+    static let groupRow: CGFloat = 24
+    static let groupTop: CGFloat = 12
+    static let groupBottom: CGFloat = 2
+    /// The calendar square (`.cal .cb`) and the gap to the name.
+    static let square: CGFloat = 12
+    static let squareGap: CGFloat = 10
+    /// Rows reach 4 pt outside the pane padding; their leading padding is 8 (content at 16), trailing 4 (buttons end at 224).
+    static let rowOutset: CGFloat = 4
+    static let rowLeading: CGFloat = 8
+    static let rowTrailing: CGFloat = 4
+    /// Content edge (16) and the name edge (38).
+    static let glyph: CGFloat = pad + rowLeading - rowOutset
+    static let text: CGFloat = glyph + square + squareGap
+}
+
+/// Month and calendars: the top row with the hide button, the mini month, the calendar groups by account, Settings at the foot.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
-                IconButton(name: "sidebar.left", small: true, help: "Hide sidebar  `") { model.toggleSidebar() }
+                ChromeIconButton(icon: .side, small: true, rail: true, probe: "hideSidebar", help: "Hide sidebar  `") { model.toggleSidebar() }
             }
-            .padding(.horizontal, 12).frame(height: 56)
+            .frame(height: SidebarDim.topRow)
+            .padding(.bottom, Space.m)
 
-            MiniMonth().padding(.horizontal, 14)
+            MiniMonth()
 
             if model.authState != .authorized {
                 SidebarSkeleton()
                 Spacer(minLength: 0)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    CalendarList().padding(.bottom, 14)
+                    CalendarList().padding(.bottom, Space.m)
                 }
+                .padding(.top, Space.s)
             }
             SidebarFoot()
         }
+        .padding(.top, SidebarDim.top).padding(.horizontal, SidebarDim.pad).padding(.bottom, SidebarDim.bottom)
         .frame(width: ChromeDim.sidebarWidth)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.rail)
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair).frame(width: 1) }
     }
@@ -44,24 +73,35 @@ struct SidebarSkeleton: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Radius.card).fill(Theme.bg1))
         .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Theme.hair, lineWidth: 1))
-        .padding(.horizontal, 14).padding(.top, 14)
+        .padding(.top, 14)
     }
 }
 
-/// Numerals only: today an inverted 22 pt pill, the visible week banded, other months in fg3.
-/// With week numbers on, a 24 pt column of ISO week numbers opens that week.
+/// Mockup-v11 `.mm-h` + `.mm`: the title (12 / 500, the year 400 fg3) with ‹ ›, the weekday letters (11, fg3, 500 in Dark),
+/// six rows of 24 pt day cells 2 pt apart (11 tabular: fg2 in the month, fg3 outside, fg1 in the visible week, whose cells sit on
+/// one rounded `hoverRail` band). Today is a `selected` cell with a 1 pt `segRing` edge and a 600 numeral; in day view the open
+/// day has a 1 pt fg3 ring. With week numbers on, a 20 pt column of ISO week numbers opens that week.
 struct MiniMonth: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
     @State private var hoverDay: Date?
     @State private var hoverWeek: Date?
     /// The grid on screen, read by the day buttons' actions when they run: the buttons are not re-rendered when only the month
     /// changes, so their closures must not capture the dates.
     @State private var shown = MiniMonthGrid()
-    static let cell: CGFloat = 28
+    /// Day cell height and the row pitch (`.mm .d { height: 24 }`, `row-gap: 2`).
+    static let cell: CGFloat = 24
+    static let rowGap: CGFloat = 2
+    static let pitch: CGFloat = cell + rowGap
+    /// `.mm-h`: a 22 pt row and 4 below; the weekday letters 18 (+ the 2 pt row gap).
+    static let titleRow: CGFloat = 22
+    static let weekdayRow: CGFloat = 18
+    /// `.mm.wn`: the week-number column.
+    static let weekColumn: CGFloat = 20
 
-    /// Natural height of the mini month for `rows` week rows: title 28 + 4, weekday letters 22, rows of `cell`.
-    static func height(rows: Int) -> CGFloat { 28 + 4 + 22 + CGFloat(rows) * cell }
-    static let width: CGFloat = ChromeDim.sidebarWidth - 28
+    /// Natural height of the mini month for `rows` week rows: title 22 + 4, weekday letters 18, rows of 2 + 24.
+    static func height(rows: Int) -> CGFloat { titleRow + 4 + weekdayRow + CGFloat(rows) * pitch }
+    static let width: CGFloat = ChromeDim.sidebarWidth - 2 * SidebarDim.pad
 
     var body: some View {
         let math = model.math
@@ -69,33 +109,35 @@ struct MiniMonth: View {
         let grid = math.monthGrid(for: month)
         let rows = Array(grid.indices)     // always six rows, as the mockup's mini month (42 cells)
         let weeks = model.settings.showWeekNumbers
+        let lead = weeks ? Self.weekColumn : 0
         let band = model.viewMode.baseMode == .week ? math.startOfWeek(model.visibleStart) : nil
         let first = math.calendar.firstWeekday
         let now = model.now
+        let dark = scheme == .dark
         let selectedDay: Date? = model.viewMode == .day ? model.visibleStart : nil
         let shown = shown
         let _ = shown.grid = grid
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
+            HStack(spacing: 2) {
                 Button { model.miniMonth = math.startOfMonth(model.visibleStart) } label: {
-                    (Text(verbatim: model.fmt.monthLong(month)).font(.textSemibold).foregroundColor(Theme.fg)
-                     + Text(verbatim: " " + String(math.year(month))).font(.textTab).foregroundColor(Theme.fg3))
-                        .padding(.leading, 2).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                    (Text(verbatim: model.fmt.monthLong(month)).font(.textMedium).tracking(TypeTrack.text).foregroundColor(Theme.fg)
+                     + Text(verbatim: " " + String(math.year(month))).font(.textTab).tracking(TypeTrack.text).foregroundColor(Theme.fg3))
+                        .padding(.leading, SidebarDim.rowOutset).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).help("Back to the visible \(model.viewMode.title.lowercased())")
-                IconButton(name: "chevron.left", small: true) { model.stepMiniMonth(-1) }
-                IconButton(name: "chevron.right", small: true) { model.stepMiniMonth(1) }
+                ChromeIconButton(icon: .left, small: true, rail: true, help: "Previous month") { model.stepMiniMonth(-1) }
+                ChromeIconButton(icon: .right, small: true, rail: true, help: "Next month") { model.stepMiniMonth(1) }
             }
-            .frame(height: 28).padding(.bottom, 4)
+            .frame(height: Self.titleRow).padding(.bottom, 4)
 
             HStack(spacing: 0) {
-                if weeks { Color.clear.frame(width: 24) }
+                if weeks { Color.clear.frame(width: Self.weekColumn) }
                 ForEach(0..<7, id: \.self) { i in
                     Text(String(Fmt.weekdayShort[(first - 1 + i) % 7].prefix(1)))
-                        .font(.small).foregroundStyle(Theme.fg3).frame(maxWidth: .infinity)
+                        .font(.smallLabel(dark: dark)).tracking(TypeTrack.small).foregroundStyle(Theme.fg3).frame(maxWidth: .infinity)
                 }
             }
-            .frame(height: 22)
+            .frame(height: Self.weekdayRow)
 
             VStack(spacing: 0) {
                 // All six rows always exist; a row the month does not need collapses (the original inserted and removed it, which
@@ -103,36 +145,43 @@ struct MiniMonth: View {
                 ForEach(grid.indices, id: \.self) { r in
                     let week = grid[r]
                     let visible = rows.contains(r)
+                    let banded = band.map { math.isSameDay($0, week[0]) } == true
                     HStack(spacing: 0) {
                         if weeks {
-                            MiniWeekNumber(week: week[0], number: model.isoWeek(week[0]), hovered: hoverWeek == week[0],
+                            MiniWeekNumber(week: week[0], number: model.isoWeek(week[0]), hovered: hoverWeek == week[0], dark: dark,
                                            action: { model.openWeek(week[0]) },
                                            onHover: { hoverWeek = $0 ? week[0] : (hoverWeek == week[0] ? nil : hoverWeek) })
                                 .equatable()
                         }
                         // Cells keep their place (identity by column) when the month changes: they update instead of being rebuilt.
-                        ForEach(0..<7, id: \.self) { c in
-                            let d = week[c]
-                            MiniDay(today: math.isSameDay(d, now), selected: selectedDay.map { math.isSameDay(d, $0) } == true, hovered: hoverDay == d,
-                                    action: { model.go(to: shown.grid[r][c]) },
-                                    onHover: { on in
-                                        let d = shown.grid[r][c]
-                                        hoverDay = on ? d : (hoverDay == d ? nil : hoverDay)
-                                    })
-                                .equatable()
-                                .accessibilityLabel(String(math.day(d)))   // the numeral, which the canvas draws
-                                .help(model.chromeDay(d, long: true))
+                        HStack(spacing: 0) {
+                            ForEach(0..<7, id: \.self) { c in
+                                let d = week[c]
+                                MiniDay(today: math.isSameDay(d, now), selected: selectedDay.map { math.isSameDay(d, $0) } == true, hovered: hoverDay == d,
+                                        action: { model.go(to: shown.grid[r][c]) },
+                                        onHover: { on in
+                                            let d = shown.grid[r][c]
+                                            hoverDay = on ? d : (hoverDay == d ? nil : hoverDay)
+                                        })
+                                    .equatable()
+                                    .accessibilityLabel(String(math.day(d)))   // the numeral, which the canvas draws
+                                    .help(model.chromeDay(d, long: true))
+                            }
                         }
+                        // `.mm .wk`: the visible week's seven cells on one band, rounded at its ends.
+                        .background(RoundedRectangle(cornerRadius: Radius.row).fill(banded ? Theme.hoverRail : .clear))
                     }
-                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(band.map { math.isSameDay($0, week[0]) } == true ? Theme.hoverRail : .clear))
-                    .frame(height: visible ? Self.cell : 0, alignment: .top)
+                    .frame(height: Self.cell)
+                    .padding(.top, Self.rowGap)
+                    .frame(height: visible ? Self.pitch : 0, alignment: .top)
                     .opacity(visible ? 1 : 0)
                     .allowsHitTesting(visible)
                     .accessibilityHidden(!visible)
                 }
             }
             .overlay {
-                MiniMonthNumerals(phase: Double(MiniMonthNumerals.index(month, math)), month: month, today: math.startOfDay(now), leading: weeks ? 24 : 0, math: math)
+                MiniMonthNumerals(phase: Double(MiniMonthNumerals.index(month, math)), month: month, today: math.startOfDay(now),
+                                  band: band, hover: hoverDay, leading: lead, math: math)
                     .equatable()
             }
         }
@@ -142,8 +191,8 @@ struct MiniMonth: View {
     }
 }
 
-/// One mini-month day: hover and today circles, the day-view ring, the button (its tooltip is set by `MiniMonth`). The numeral is
-/// drawn by `MiniMonthNumerals`. Equatable on what it shows, so neither a week step nor a month change re-renders 42 buttons.
+/// One mini-month day: the hover and today cells, the day-view ring, the button (its tooltip is set by `MiniMonth`). The numeral
+/// is drawn by `MiniMonthNumerals`. Equatable on what it shows, so neither a week step nor a month change re-renders 42 buttons.
 private struct MiniDay: View, Equatable {
     let today: Bool
     let selected: Bool
@@ -155,10 +204,9 @@ private struct MiniDay: View, Equatable {
 
     var body: some View {
         Button(action: action) {
-            Color.clear
-                .frame(width: 22, height: 22)
-                .background(Circle().fill(today ? Theme.act : hovered ? Theme.hoverRail : .clear))
-                .overlay(Circle().strokeBorder(selected && !today ? Theme.ring : .clear, lineWidth: 1.5))
+            RoundedRectangle(cornerRadius: Radius.row)
+                .fill(today ? Theme.selected : hovered ? Theme.hoverRail : .clear)
+                .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(today ? Theme.segRing : selected ? Theme.fg3 : .clear, lineWidth: 1))
                 .frame(maxWidth: .infinity).frame(height: MiniMonth.cell)
                 .contentShape(Rectangle())
         }
@@ -173,14 +221,17 @@ private final class MiniMonthGrid {
     var grid: [[Date]] = []
 }
 
-/// The mini month's numerals in one Canvas. Each numeral is a `Text` symbol (1 to 31 in fg and fg3, today's in its pill style),
-/// laid out once and reused, so a month change redraws one canvas instead of re-resolving 42 texts.
+/// The mini month's numerals in one Canvas. Each numeral is a `Text` symbol (1 to 31 in fg2, fg3 and fg1, today's in 600), laid
+/// out once and reused, so a month change redraws one canvas instead of re-resolving 42 texts.
 /// `phase` is the month as a month index and is animatable: when the month changes inside an animation (the week band moving into
 /// another month), the old and new numerals cross-fade the way the per-day views they replace faded out and in.
 private struct MiniMonthNumerals: View, Equatable, Animatable {
     var phase: Double
     let month: Date
     let today: Date
+    /// The visible week (its numerals are fg1) and the hovered day (fg1).
+    let band: Date?
+    let hover: Date?
     let leading: CGFloat
     let math: CalendarMath
     @Environment(\.displayScale) private var scale
@@ -193,16 +244,23 @@ private struct MiniMonthNumerals: View, Equatable, Animatable {
     static func index(_ month: Date, _ math: CalendarMath) -> Int { math.year(month) * 12 + math.month(month) - 1 }
 
     static func == (a: Self, b: Self) -> Bool {
-        a.phase == b.phase && a.month == b.month && a.today == b.today && a.leading == b.leading && a.math.calendar == b.math.calendar
+        a.phase == b.phase && a.month == b.month && a.today == b.today && a.band == b.band && a.hover == b.hover
+            && a.leading == b.leading && a.math.calendar == b.math.calendar
     }
 
-    /// Symbol ids of the visible cells of the month `offset` months from `month`, row by row: the day, plus 100 outside the month,
-    /// or 200 for today (the rows shown are those `MiniMonth` shows).
+    /// Symbol ids of the visible cells of the month `offset` months from `month`, row by row: the day (fg2), plus 100 outside the
+    /// month (fg3), 300 in the visible week or under the pointer (fg1), or 200 for today (the rows shown are those `MiniMonth` shows).
     private func cells(_ offset: Int) -> [Int] {
         let m = math.addMonths(month, offset)
         let grid = math.monthGrid(for: m)
         return grid.indices.flatMap { r in
-            grid[r].map { d in math.isSameDay(d, today) ? 200 + math.day(d) : math.isSameMonth(d, m) ? math.day(d) : 100 + math.day(d) }
+            let banded = band.map { math.isSameDay($0, grid[r][0]) } == true
+            return grid[r].map { d in
+                let n = math.day(d)
+                if math.isSameDay(d, today) { return 200 + n }
+                if !math.isSameMonth(d, m) { return hover.map { math.isSameDay($0, d) } == true ? 300 + n : 100 + n }
+                return banded || hover.map { math.isSameDay($0, d) } == true ? 300 + n : n
+            }
         }
     }
 
@@ -220,38 +278,41 @@ private struct MiniMonthNumerals: View, Equatable, Animatable {
                 if opacity < 1 { ctx.opacity = opacity }
                 for (i, code) in codes.enumerated() {
                     guard let sym = ctx.resolveSymbol(id: code) else { continue }
-                    let x = px(leading + CGFloat(i % 7) * cw + (cw - 22) / 2), y = px(CGFloat(i / 7) * MiniMonth.cell + (MiniMonth.cell - 22) / 2)
-                    ctx.draw(sym, in: CGRect(x: x, y: y, width: 22, height: 22))
+                    let x = leading + (CGFloat(i % 7) + 0.5) * cw, y = CGFloat(i / 7) * MiniMonth.pitch + MiniMonth.rowGap + MiniMonth.cell / 2
+                    ctx.draw(sym, at: CGPoint(x: px(x), y: px(y)), anchor: .center)
                 }
             }
         } symbols: {
-            ForEach(1...31, id: \.self) { n in numeral(n, today: false, color: Theme.fg).tag(n) }
+            ForEach(1...31, id: \.self) { n in numeral(n, today: false, color: Theme.fg2).tag(n) }
             ForEach(101...131, id: \.self) { code in numeral(code - 100, today: false, color: Theme.fg3).tag(code) }
-            numeral(todayNumber, today: true, color: Theme.onAct).tag(200 + todayNumber)
+            ForEach(301...331, id: \.self) { code in numeral(code - 300, today: false, color: Theme.fg).tag(code) }
+            numeral(todayNumber, today: true, color: Theme.fg).tag(200 + todayNumber)
         }
         .allowsHitTesting(false)
     }
 
     private func numeral(_ n: Int, today: Bool, color: Color) -> some View {
-        Text(verbatim: String(n)).font((today ? .smallTabSemibold : .smallTab)).foregroundStyle(color).frame(width: 22, height: 22)
+        Text(verbatim: String(n)).font((today ? .smallTabSemibold : .smallTab)).tracking(TypeTrack.small).foregroundStyle(color)
+            .frame(width: 26, height: MiniMonth.cell)
     }
 }
 
-/// ISO week number left of a mini-month row (week numbers on): opens that week.
+/// ISO week number left of a mini-month row (week numbers on, `.mm .wkn`): 20 pt, 11 fg3 (500 in Dark); opens that week.
 private struct MiniWeekNumber: View, Equatable {
     let week: Date
     let number: Int
     let hovered: Bool
+    let dark: Bool
     let action: () -> Void
     let onHover: (Bool) -> Void
 
-    static func == (a: Self, b: Self) -> Bool { a.week == b.week && a.number == b.number && a.hovered == b.hovered }
+    static func == (a: Self, b: Self) -> Bool { a.week == b.week && a.number == b.number && a.hovered == b.hovered && a.dark == b.dark }
 
     var body: some View {
         Button(action: action) {
-            Text(verbatim: String(number)).font(.smallTab)
+            Text(verbatim: String(number)).font(.smallLabelTab(dark: dark)).tracking(TypeTrack.small)
                 .foregroundStyle(hovered ? Theme.fg : Theme.fg3)
-                .frame(width: 24, height: MiniMonth.cell)
+                .frame(width: MiniMonth.weekColumn, height: MiniMonth.cell)
                 .background(RoundedRectangle(cornerRadius: Radius.row).fill(hovered ? Theme.hoverRail : .clear))
                 .contentShape(Rectangle())
         }
@@ -261,7 +322,7 @@ private struct MiniWeekNumber: View, Equatable {
     }
 }
 
-/// Every calendar, hidden ones included, under its account's short name; the address shows on hover.
+/// Every calendar, hidden ones included, under its account's group header.
 struct CalendarList: View {
     @Environment(AppModel.self) private var model
 
@@ -269,107 +330,123 @@ struct CalendarList: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(model.store.accounts) { acc in AccountSection(account: acc) }
         }
-        .frame(width: ChromeDim.sidebarWidth - 1, alignment: .leading)
+        .frame(width: MiniMonth.width, alignment: .leading)
     }
 }
 
-/// `.acct`: the account's name without the domain ("sam.rivera"), 11.5 / 600 fg3 on the glyph line; on hover the domain follows in fg3.
+/// Mockup-v11 `.grp` (v8 decision D): the account's short name, 12 / 500 fg3; hover turns it fg1 and shows a chevron. A click
+/// folds the group: the chevron then stays, turned right, and the count follows the name ("9 · 1 hidden"). The address is the
+/// tooltip.
 struct AccountSection: View {
     @Environment(AppModel.self) private var model
     let account: CalendarAccount
     @State private var hover = false
     var body: some View {
         let hot = hover || HoverProbe.shared.target == "acct:\(account.id)"
+        let closed = model.collapsedGroups.contains(account.id)
+        let hidden = account.calendars.filter { model.hiddenCalendars.contains($0.id) }.count
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text(AccountName.display(account.name)).font(.smallSemibold).foregroundStyle(Theme.fg3)
-                Text(account.name.split(separator: "@", maxSplits: 1).dropFirst().first.map { "@" + $0 } ?? "").font(.small).foregroundStyle(Theme.fg3)
-                    .lineLimit(1).truncationMode(.tail).opacity(hot ? 1 : 0)
-                Spacer(minLength: 0)
+            Button { model.toggleGroup(account.id) } label: {
+                HStack(spacing: Space.xs) {
+                    Text(AccountName.display(account.name)).font(.label).tracking(TypeTrack.label).foregroundStyle(hot ? Theme.fg : Theme.fg3)
+                        .lineLimit(1).truncationMode(.tail)
+                    if closed {
+                        Text("\(account.calendars.count)" + (hidden > 0 ? " \u{00B7} \(hidden) hidden" : "")).font(.textTab).tracking(TypeTrack.text)
+                            .foregroundStyle(Theme.fg3).lineLimit(1).fixedSize().padding(.leading, 4)
+                    }
+                    ChromeIcon(name: .down, size: 12, color: Theme.fg3)
+                        .rotationEffect(.degrees(closed ? -90 : 0))
+                        .frame(width: 16, height: 16)
+                        .opacity(hot || closed ? 1 : 0).padding(.leading, 2)
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, SidebarDim.rowLeading).padding(.trailing, SidebarDim.rowTrailing)
+                .frame(height: SidebarDim.groupRow)
+                .contentShape(Rectangle())
             }
-            .lineLimit(1)
-            .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset).frame(height: 22)
-            .padding(.top, Space.l).padding(.bottom, Space.xs)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
             .onHover { hover = $0 }
-            .help(account.name)
-            ForEach(account.calendars) { CalendarRow(cal: $0) }
+            .help("\(closed ? "Expand" : "Collapse") \(AccountName.display(account.name)) \u{00B7} \(account.name)")
+            .padding(.horizontal, -SidebarDim.rowOutset)
+            .padding(.top, SidebarDim.groupTop).padding(.bottom, closed ? 0 : SidebarDim.groupBottom)   // margins collapse after a folded group
+            if !closed {
+                ForEach(account.calendars) { CalendarRow(cal: $0) }
+            }
         }
         .animation(Motion.base, value: hot)
+        .animation(Motion.base, value: closed)
     }
 }
 
-/// Sidebar columns (DECISIONS round 2): leading glyphs at 16, text at 40, trailing buttons end at 220.
-enum SidebarDim {
-    static let glyph: CGFloat = 16
-    static let text: CGFloat = 40
-    static let trailingInset: CGFloat = ChromeDim.sidebarWidth - 220
-}
-
-/// 14 pt rounded checkbox in the calendar colour: filled with a dark check when shown, an fg3 outline when hidden.
-struct CalendarCheckbox: View {
-    let color: Color
-    let on: Bool
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: Radius.check).fill(on ? color : Color.clear)
-            RoundedRectangle(cornerRadius: Radius.check).strokeBorder(on ? Color.clear : Theme.fg3, lineWidth: 1.5)
-            Image(systemName: "checkmark").font(.system(size: 7.5, weight: .bold)).foregroundStyle(Theme.tick).opacity(on ? 1 : 0)
-        }
-        .frame(width: 14, height: 14)
-        .animation(Motion.base, value: on)
-    }
-}
-
+/// Mockup-v11 `.cal` (v8 decision E): a 12 pt square in the calendar's mark colour, the name (12 / 400 fg1), and an eye at the
+/// right on hover. The square and the eye hide the calendar; a hidden one stays in the list with a 35 % square, an fg3 name and
+/// an eye-slash that is always shown (click = show). The name does nothing. 26 pt, the hover box 4 pt past the pane padding.
 struct CalendarRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
     let cal: CalendarInfo
     @State private var hover = false
+    @State private var hoverEye = false
     var body: some View {
+        let dark = scheme == .dark
         let off = model.hiddenCalendars.contains(cal.id)
         let hot = hover || HoverProbe.shared.target == "cal:\(cal.id)"
-        Button { model.toggleCalendar(cal.id) } label: {
-            HStack(spacing: SidebarDim.text - SidebarDim.glyph - 14) {
-                CalendarCheckbox(color: Palettes.cc(cal.colorHex, dark: scheme == .dark).color, on: !off)
-                Text(cal.title).font(.text).foregroundStyle(off ? Theme.fg3 : Theme.fg).lineLimit(1).truncationMode(.tail)
-                Spacer(minLength: 0)
-                if cal.icon == .feed { SFIcon(name: "dot.radiowaves.up.forward", size: 9.5, color: Theme.fg3).opacity(hot ? 1 : 0) }
-                if cal.isDefault { Text("default").font(.small).foregroundStyle(Theme.fg3).opacity(hot ? 1 : 0) }
+        let eyeHot = hoverEye || HoverProbe.shared.target == "eye:\(cal.id)"
+        let mark = Palettes.cc(cal.colorHex, dark: dark)
+        let help = "\(off ? "Show" : "Hide") \(cal.title)"
+        HStack(spacing: SidebarDim.squareGap) {
+            Button { model.toggleCalendar(cal.id) } label: {
+                RoundedRectangle(cornerRadius: Radius.swatch)
+                    .fill((off ? mark.mixed(with: InkRGB.of(dark).rail, 0.65) : mark).color)
+                    .frame(width: SidebarDim.square, height: SidebarDim.square)
+                    .contentShape(Rectangle())
             }
-            .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset)
-            .frame(height: Dim.row)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hoverRail : Color.clear).padding(.horizontal, Space.s))
-            .contentShape(Rectangle())
+            .buttonStyle(.plain).help(help)
+            Text(cal.title).font(.text).tracking(TypeTrack.text).foregroundStyle(off ? Theme.fg3 : Theme.fg).lineLimit(1).truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(cal.title + (off ? " \u{00B7} hidden" : "") + (cal.icon == .feed ? " \u{00B7} read-only feed" : "") + (cal.isDefault ? " \u{00B7} default" : ""))
+            Button { model.toggleCalendar(cal.id) } label: {
+                ChromeIcon(name: off ? .eyeOff : .eye, size: 15, color: eyeHot ? Theme.fg : Theme.fg3)
+                    .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
+                    .background(RoundedRectangle(cornerRadius: Radius.row).fill(eyeHot ? Theme.eyeHover : .clear))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { hoverEye = $0 }
+            .opacity(hot || off ? 1 : 0)
+            .help(help)
         }
-        .buttonStyle(.plain)
+        .padding(.leading, SidebarDim.rowLeading).padding(.trailing, SidebarDim.rowTrailing)
+        .frame(height: SidebarDim.row)
+        .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hoverRail : Color.clear))
+        .contentShape(Rectangle())
         .onHover { hover = $0 }
+        .padding(.horizontal, -SidebarDim.rowOutset)
         .animation(Motion.fast, value: hot)
-        .help("\(off ? "Show" : "Hide") \(cal.title)\(cal.icon == .feed ? " (read-only feed)" : "")")
+        .animation(Motion.fast, value: eyeHot)
     }
 }
 
-/// `.side .foot`: 28 pt, gear on the glyph line, "Settings" on the text line, the ⌘ , hint in grey at the trailing edge.
+/// `.side .foot`: 28 pt, "Settings" 12 fg2 on the content edge, the ⌘ , hint in fg3 at the trailing edge; hover fg1 on the rail
+/// hover. No icon.
 struct SidebarFoot: View {
     @Environment(AppModel.self) private var model
     @State private var hover = false
     var body: some View {
         let hot = hover || HoverProbe.shared.target == "settings"
         Button { model.overlay = .settings } label: {
-            HStack(spacing: 0) {
-                SFIcon(name: "gearshape", size: 10.5, color: hot ? Theme.fg : Theme.fg3).frame(width: 14)
-                Text("Settings").font(.text).foregroundStyle(hot ? Theme.fg : Theme.fg2).padding(.leading, SidebarDim.text - SidebarDim.glyph - 14)
+            HStack(spacing: Space.m) {
+                Text("Settings").font(.text).tracking(TypeTrack.text).foregroundStyle(hot ? Theme.fg : Theme.fg2)
                 Spacer(minLength: 0)
                 Keycaps(keys: ["\u{2318}", ","])
             }
-            .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset).frame(height: Dim.row)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hoverRail : Color.clear).padding(.horizontal, Space.s))
+            .padding(.horizontal, SidebarDim.rowOutset).frame(height: Dim.row)
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hoverRail : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
         .animation(Motion.fast, value: hot)
-        .padding(.vertical, 6)
         .help("Settings  \u{2318},")
     }
 }
