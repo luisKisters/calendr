@@ -20,7 +20,7 @@ struct TimeGridView: View {
                 let dark = scheme == .dark
                 ScrollView(.vertical, showsIndicators: false) {
                     ZStack(alignment: .topLeading) {
-                        GridLines(g: g, dark: dark).offset(x: gutter)
+                        GridLines(g: g, dark: dark, today: model.todayIndex).offset(x: gutter)
                         ZStack(alignment: .topLeading) {
                             EventsLayer(g: g, dark: dark)
                             TeammateLayer(g: g)
@@ -61,14 +61,19 @@ struct TimeGridView: View {
     }
 }
 
-/// Hour lines across the columns and the hairline left of every column.
+/// Today's column tint (`.day.today { background: var(--today-tint) }`, 3.5 percent toward fg1), the hour lines across the columns
+/// (10 percent; the locked look has no half-hour line) and the day divider left of every column (7 percent).
 private struct GridLines: View {
     let g: GridGeometry
     let dark: Bool
+    let today: Int?
     var body: some View {
         Canvas { ctx, size in
             let ink = EventPainter.Ink.of(dark)
             ctx.withCGContext { cg in
+                if let t = today {
+                    cg.setFillColor(ink.todayTint); cg.fill(CGRect(x: Double(t) * g.dayWidth, y: 0, width: g.dayWidth, height: Double(size.height)))
+                }
                 cg.setFillColor(ink.hourLine)
                 for h in 0...24 { cg.fill(CGRect(x: 0, y: g.yPos(h * 60), width: size.width, height: 1)) }
                 cg.setFillColor(ink.dayDivider)
@@ -80,8 +85,9 @@ private struct GridLines: View {
     }
 }
 
-/// Hour labels, the live time pill and the hover pill. A label that would collide with the one above it is skipped; the label
-/// nearest the now pill gives way, and all labels fade back while the hover pill shows.
+/// Hour labels (11 / 400 fg2, 8 pt from the gutter's right edge, centred on their line; none at 00:00), the live time pill and the
+/// hover pill. A label that would collide with the one above it is skipped; a label within 20 minutes of now gives way to the now pill
+/// (mockup `timeGrid`), and all labels fade back while the hover pill shows.
 private struct HourGutter: View {
     @Environment(AppModel.self) private var model
     let g: GridGeometry
@@ -89,7 +95,8 @@ private struct HourGutter: View {
 
     var body: some View {
         let fmt = model.fmt
-        let nowY: Double? = model.todayIndex.map { _ in g.yPos(model.math.minutesSinceMidnight(model.now)) }
+        let nowMinute: Int? = model.todayIndex.map { _ in model.math.minutesSinceMidnight(model.now) }
+        let nowY: Double? = nowMinute.map { g.yPos($0) }
         let nowText = fmt.time(model.now)
         let hover = model.gridState.pointer.minute
         Canvas { ctx, size in
@@ -99,47 +106,59 @@ private struct HourGutter: View {
                 cg.saveGState()
                 if hover != nil { cg.setAlpha(0.25) }
                 var lastY = -99.0
-                for h in 0..<24 {
+                for h in 1..<24 {
                     let y = g.yPos(h * 60)
                     if y - lastY < 20 { continue }
                     lastY = y
-                    if let ny = nowY, abs(y - ny) < 13 { continue }
+                    if let nm = nowMinute, abs(h * 60 - nm) <= 20 { continue }
                     let s = TextCache.time(fmt, minutes: h * 60)
                     let w = TextCache.line(s, .hour).width
-                    EventPainter.text(cg, s, .hour, x: right - 10 - w, top: y - 7, box: 14, color: ink.hourLabel)
+                    EventPainter.text(cg, s, .hour, x: right - 8 - w, top: y - 7, box: 14, color: ink.hourLabel)
                 }
                 cg.restoreGState()
-                if let ny = nowY { pill(cg, nowText, .hourBold, y: ny, right: right - 5, fill: ink.live, color: ink.onLive) }
-                if let m = hover { pill(cg, TextCache.time(fmt, minutes: m), .hour, y: g.yPos(m), right: right - 5, fill: ink.bg3, color: ink.fg) }
+                if let ny = nowY { pill(cg, nowText, .hourBold, y: ny, right: right - 4, fill: ink.live, color: ink.onLive) }
+                if let m = hover { pill(cg, TextCache.time(fmt, minutes: m), .hour, y: g.yPos(m), right: right - 4, fill: ink.bg3, color: ink.fg) }
             }
         }
         .allowsHitTesting(false)
     }
 
     @MainActor
+    /// `.gut .now`: 16 pt tall, 5 pt either side, radius 4, centred on the line.
     private func pill(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, y: Double, right: Double, fill: CGColor, color: CGColor) {
         let w = TextCache.line(s, kind).width + 10
-        let r = CGRect(x: right - w, y: y - 8.5, width: w, height: 17)
-        cg.addPath(EventPainter.roundedPath(r, 4)); cg.setFillColor(fill); cg.fillPath()
-        EventPainter.text(cg, s, kind, x: r.minX + 5, top: r.minY, box: 17, color: color)
+        let r = CGRect(x: right - w, y: y - 8, width: w, height: 16)
+        cg.addPath(EventPainter.roundedPath(r, Radius.nowPill)); cg.setFillColor(fill); cg.fillPath()
+        EventPainter.text(cg, s, kind, x: r.minX + 5, top: r.minY, box: 16, color: color)
     }
 }
 
-/// `live` red, and only this: 1 pt at 30 percent across the week, 2 pt with an 8 pt dot in today's column.
+/// The now line, above the events (`.nowl`, z 60), in `live` red only: on the other days of the week 1 pt at 38 percent, on today
+/// 2 pt with a 0.5 pt window-coloured edge and an 8 pt dot ringed 1.5 pt in the window colour at the column's left edge.
 private struct NowLines: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
     let g: GridGeometry
     let gutter: CGFloat
     var body: some View {
-        if let i = model.todayIndex {
-            let y = CGFloat(g.yPos(model.math.minutesSinceMidnight(model.now)))
-            let x0 = gutter + CGFloat(i) * CGFloat(g.dayWidth)
-            let w = CGFloat(g.dayWidth) * CGFloat(g.dayCount)
-            ZStack(alignment: .topLeading) {
-                Rectangle().fill(Theme.live.opacity(0.3)).frame(width: w, height: 1).offset(x: gutter, y: y)
-                RoundedRectangle(cornerRadius: Radius.rule).fill(Theme.live).frame(width: CGFloat(g.dayWidth), height: 2).offset(x: x0, y: y - 1)
-                Circle().fill(Theme.live).frame(width: 8, height: 8).offset(x: x0 - 4, y: y - 4)
+        if let today = model.todayIndex {
+            let y = g.yPos(model.math.minutesSinceMidnight(model.now))
+            let dark = scheme == .dark
+            Canvas { ctx, _ in
+                let ink = EventPainter.Ink.of(dark)
+                ctx.withCGContext { cg in
+                    let dw = g.dayWidth, gx = Double(gutter)
+                    cg.setFillColor(ink.live.copy(alpha: 0.38) ?? ink.live)
+                    for d in 0..<g.dayCount where d != today { cg.fill(CGRect(x: gx + Double(d) * dw + 1, y: y, width: dw - 1, height: 1)) }
+                    let x0 = gx + Double(today) * dw
+                    cg.setFillColor(ink.bg.copy(alpha: 0.6) ?? ink.bg); cg.fill(CGRect(x: x0 + 0.5, y: y - 1.5, width: dw, height: 3))
+                    cg.setFillColor(ink.live); cg.fill(CGRect(x: x0 + 1, y: y - 1, width: dw - 1, height: 2))
+                    let dot = CGRect(x: x0 - 4, y: y - 4, width: 8, height: 8)
+                    cg.setFillColor(ink.bg); cg.fillEllipse(in: dot.insetBy(dx: -1.5, dy: -1.5))
+                    cg.setFillColor(ink.live); cg.fillEllipse(in: dot)
+                }
             }
+            .frame(width: gutter + CGFloat(g.dayWidth) * CGFloat(g.dayCount), height: CGFloat(g.totalHeight))
             .allowsHitTesting(false)
         }
     }

@@ -46,7 +46,7 @@ struct TokenTests {
     }
 
     @Test func metricsAreTheDesignSystemScale() {
-        #expect(Dim.row == 28 && Dim.field == 32 && Dim.iconButton == 26 && Dim.iconButtonSmall == 22 && Dim.hourGutter == 58)
+        #expect(Dim.row == 28 && Dim.field == 32 && Dim.iconButton == 26 && Dim.iconButtonSmall == 22 && Dim.hourGutter == 56)
         #expect(Radius.row == 6 && Radius.control == 8 && Radius.surface == 12)
         #expect([Space.xs, Space.s, Space.m, Space.l, Space.xl] == [4, 8, 12, 16, 24])
         // The locked "three" scale: 15 / 12 / 11.

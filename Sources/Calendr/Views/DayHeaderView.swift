@@ -27,6 +27,8 @@ struct DayHeaderView: View {
                     cg.setFillColor(ink.hair); cg.fill(CGRect(x: 0, y: size.height - 1, width: size.width, height: 1))
                     for (i, d) in days.enumerated() {
                         let x0 = gw + CGFloat(i) * colW
+                        // `.dh .c.today`: the today column's tint continues into its header.
+                        if math.isSameDay(d, todayStart) { cg.setFillColor(ink.todayTint); cg.fill(CGRect(x: x0, y: 0, width: colW, height: size.height - 1)) }
                         if hovered == i {
                             cg.addPath(EventPainter.roundedPath(CGRect(x: x0, y: 0, width: colW, height: size.height), Radius.row)); cg.setFillColor(ink.hover); cg.fillPath()
                         }
@@ -71,14 +73,14 @@ struct DayHeaderView: View {
     }
 }
 
-/// All-day section, the mockup-v4 "mix" (`allDay()` :1215): 18 pt chips in 21 pt lanes. Collapsed it shows two lanes and, per day,
+/// All-day section (mockup-v11 `allDayLane`): 19 pt chips in 22 pt lanes (`G().adRow + 3`), 3 pt above the first lane. Collapsed it shows two lanes and, per day,
 /// "+N more" in the third; the gutter's expand button (or "+N more") shows every lane, scrolling past 4.5 lanes, and collapse goes back.
 struct AllDayView: View {
-    /// Chip height and lane pitch (`--adh` 18 + 3 pt gap).
-    static let chip: CGFloat = 18
-    static let row: CGFloat = 21
-    static let topPad: CGFloat = 4
-    static let bottomPad: CGFloat = 5
+    /// Chip height and lane pitch (`--ad-row` 19 + 3 pt gap).
+    static let chip: CGFloat = 19
+    static let row: CGFloat = 22
+    static let topPad: CGFloat = 3
+    static let bottomPad: CGFloat = 8
     /// Lanes before "+N more": two lanes and the "+N more" row.
     static let shownLanes = 2
     static let maxRows = shownLanes + 1
@@ -188,12 +190,12 @@ struct AllDayView: View {
 
     /// `.ad .more`: the day's slot in the third row.
     static func moreRect(_ d: Int, _ fold: Int, _ dw: CGFloat) -> CGRect {
-        CGRect(x: CGFloat(d) * dw + 2, y: topPad + CGFloat(fold) * row, width: dw - 5, height: chip)
+        CGRect(x: CGFloat(d) * dw + 2, y: topPad + CGFloat(fold) * row, width: dw - 6, height: chip)
     }
 
-    /// `.adi`: margin 0 3 0 2 inside its grid columns.
+    /// `.adi`: margin 0 4 0 2 inside its grid columns (a chip sits 1 pt left of the blocks below it, which start after the divider).
     static func chipRect(_ p: AllDayPlacement, _ dw: CGFloat) -> CGRect {
-        CGRect(x: CGFloat(p.firstDay) * dw + 2, y: topPad + CGFloat(p.lane) * row, width: max(4, CGFloat(p.span) * dw - 5), height: chip)
+        CGRect(x: CGFloat(p.firstDay) * dw + 2, y: topPad + CGFloat(p.lane) * row, width: max(4, CGFloat(p.span) * dw - 6), height: chip)
     }
 }
 
@@ -216,13 +218,14 @@ struct AllDayToggleIcon: Shape {
 }
 
 enum AllDayPainter {
-    /// An all-day chip (mockup-v4 `.adi`): 18 pt, radius 6, fill and bar, the title in 11.5 / 500; square ends where it continues past
+    /// An all-day chip (mockup-v11 `.adi`): 19 pt, radius 4.5, fill and the flush bar of a block, the title 12 / 500 on the same left
+    /// edge as event text below it (bar + 6 + 1 pt: the chip starts 1 pt further left); square ends where it continues past
     /// the visible range. Replies (round 2 `.adi.st-*`): not answered is hollow with a 1.5 pt dashed `dash` outline, declined is fill
     /// 32 percent over the window colour with struck fg3 text, maybe looks accepted. Selected: the bg and fg rings of a block.
     @MainActor
     static func chip(_ cg: CGContext, title raw: String, reply: EventReply, rect r: CGRect, style: EventStyle, openLeft: Bool, openRight: Bool) {
         let ink = EventPainter.Ink.of(style.isDark)
-        let path = { (inset: CGFloat) in EventPainter.chipPath(r.insetBy(dx: inset, dy: inset), Radius.row - inset, squareLeft: openLeft, squareRight: openRight) }
+        let path = { (inset: CGFloat) in EventPainter.chipPath(r.insetBy(dx: inset, dy: inset), Radius.event - inset, squareLeft: openLeft, squareRight: openRight) }
         let shape = path(0)
         var c = style.palette.colors(reply: reply == .maybe ? .accepted : reply, past: style.past)
         var dashed = false
@@ -247,12 +250,13 @@ enum AllDayPainter {
         }
         cg.addPath(shape); cg.clip()
         if !style.draft && !openLeft {
-            let bar = CGRect(x: r.minX + 3, y: r.minY + 3, width: 3, height: r.height - 6)
-            cg.addPath(EventPainter.roundedPath(bar, Radius.bar)); cg.setFillColor(c.bar.cg.copy(alpha: c.barAlpha) ?? c.bar.cg); cg.fillPath()
+            cg.setFillColor(c.bar.cg.copy(alpha: c.barAlpha) ?? c.bar.cg)
+            cg.fill(CGRect(x: r.minX, y: r.minY, width: EventShape.bar(dark: style.isDark), height: r.height))
         }
         let title = raw.isEmpty ? (style.draft ? "New event" : "(No title)") : raw
         let color: CGColor = style.draft || dashed ? ink.fg : c.title.cg
-        let x = r.minX + 10
-        EventPainter.truncated(cg, title, .title, x: x, top: r.minY, box: r.height, color: color, maxWidth: max(1, r.maxX - 7 - x), strike: c.strike && !style.draft)
+        // `.adi { padding: 0 8px 0 calc(6px + bar + 1px) }`; a chip continued from the left (`.adi.cont`) has no bar and 8 pt.
+        let x = r.minX + (openLeft ? 8 : EventPainter.textInset(dark: style.isDark) + 1)
+        EventPainter.truncated(cg, title, .title, x: x, top: r.minY, box: r.height, color: color, maxWidth: max(1, r.maxX - 8 - x), strike: c.strike && !style.draft)
     }
 }

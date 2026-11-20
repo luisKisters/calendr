@@ -140,7 +140,7 @@ enum Theme {
 enum Dim {
     static let sidebarWidth: CGFloat = 236
     static let panelWidth: CGFloat = 320
-    static let hourGutter: CGFloat = 58
+    static let hourGutter: CGFloat = 56
     static let toolbarHeight: CGFloat = 60
     static let dayHeaderHeight: CGFloat = 38
     static let inset: CGFloat = 16
@@ -158,6 +158,15 @@ enum Dim {
     static let segment: CGFloat = 22
 }
 
+/// Event block shape (v11 locked: bar + tint). The bar is flush with the block's left edge, full height, and the block's
+/// corners clip it. 3.5 pt in Dark and in Paper: DECISIONS.md names a 4 px Paper bar, but the locked link sets `bw3.5`, which
+/// overrides the Paper default (readability.js `!has(K, 'bw')`), so the mockup draws 3.5 in both; the mockup wins.
+enum EventShape {
+    static func bar(dark: Bool) -> CGFloat { 3.5 }
+    /// The hatch of a maybe block: 135 degree bands, 5 pt of the hover fill, 5 pt of the fill.
+    static let hatch: CGFloat = 5
+}
+
 /// Spacing scale: 4 · 8 · 12 · 16 · 24.
 enum Space {
     static let xs: CGFloat = 4
@@ -167,16 +176,19 @@ enum Space {
     static let xl: CGFloat = 24
 }
 
-/// Corners: 6 rows, events, icon buttons, segments · 8 buttons, fields, segmented controls · 12 menus, dialogs, cards.
+/// Corners: 4.5 events and all-day chips · 6 rows, icon buttons, segments · 8 buttons, fields, segmented controls · 12 menus, dialogs, cards.
 /// The small fixed shapes (calendar bars, checkboxes, swatches) have their own names so no view writes a number.
 enum Radius {
     static let row: CGFloat = 6
-    static let event: CGFloat = 6
+    /// Event blocks, all-day chips (and task markers): 4.5.
+    static let event: CGFloat = 4.5
     static let control: CGFloat = 8
     static let card: CGFloat = 12
     static let surface: CGFloat = 12
     /// The 3 pt calendar colour bar.
     static let bar: CGFloat = 1.5
+    /// The now pill in the hour gutter.
+    static let nowPill: CGFloat = 4
     /// Rules and the now line.
     static let rule: CGFloat = 1
     /// Calendar checkboxes.
@@ -257,6 +269,8 @@ struct EventPalette: Equatable {
     /// The calendar dot: sidebar checkboxes, swatches.
     var markRGB: RGB
     var bgRGB: RGB
+    /// fg1 / fg2 of the appearance: the title and time of an invitation without an answer (`.ev.st-none`).
+    var fgRGB: RGB = InkRGB.dark.fg, fg2RGB: RGB = InkRGB.dark.fg2
     var bar: Color { barRGB.color }
     var fill: Color { fillRGB.color }
     var title: Color { titleRGB.color }
@@ -281,7 +295,7 @@ enum Palettes {
         lock.lock(); defer { lock.unlock() }
         if let c = cache[key] { return c }
         let src = C8(hex: hex)
-        let out = dark ? EventRecipe.dark(src).palette(bg: InkRGB.dark.bg) : EventRecipe.paper(src).palette(bg: InkRGB.light.bg)
+        let out = dark ? EventRecipe.dark(src).palette(ink: InkRGB.dark) : EventRecipe.paper(src).palette(ink: InkRGB.light)
         if cache.count > 2000 { cache.removeAll() }
         cache[key] = out
         return out
@@ -292,6 +306,12 @@ enum Palettes {
 /// `r=112213000220110111`, `k=…ec.074el.29bc.25bl.7bw3.5tl1ml.89mc.062cl.15`; Paper option 0 "Clear tint").
 struct EventRecipe: Equatable {
     var fill, fillH, fillSel, bar, title, titleSel, meta, metaSel, fillPast, titlePast, metaPast, barPast, fillDec, titleDec, edge, mark: C8
+
+    func palette(ink: InkRGB) -> EventPalette {
+        var p = palette(bg: ink.bg)
+        p.fgRGB = ink.fg; p.fg2RGB = ink.fg2
+        return p
+    }
 
     func palette(bg: RGB) -> EventPalette {
         EventPalette(barRGB: bar.rgb, fillRGB: fill.rgb, hoverFillRGB: fillH.rgb, selFillRGB: fillSel.rgb, titleRGB: title.rgb, timeRGB: meta.rgb,

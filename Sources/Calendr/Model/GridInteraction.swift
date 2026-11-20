@@ -18,13 +18,19 @@ struct GridGeometry: Equatable {
     func minute(atY y: Double) -> Double { min(1440, max(0, (y - Self.pad) / hourHeight * 60)) }
     func snapped(_ m: Double) -> Int { min(1440, max(0, Int((m / Double(Self.snap)).rounded()) * Self.snap)) }
 
-    /// A block inside its day column (mockup-v4 `.ev`): `left` and `width` are fractions of the column inside its hairline, `indent`
-    /// points of cascade; 2 pt in from the left and 5 pt narrower than its share (`calc(left + 2px + px)`, `calc(width - 5px - px)`),
-    /// at least 19 pt tall, 1 pt gap below.
+    /// The gaps around a block (mockup-v11 `PK().gap`, gap slider 2): 2 pt from the left, 4 pt narrower than its share, 2 pt below.
+    static let gapLeft = 2.0, gapRight = 4.0, gapBelow = 2.0
+    /// Every block is at least this tall (`Math.max(..., 16)`).
+    static let minBlock = 16.0
+
+    /// A block inside its day column (mockup-v11 `evBlock`): `left` and `width` are fractions of the column inside its 1 pt day
+    /// divider, `indent` points of cascade. `top: s/60·H + 1`, `height: max(span/60·H - 2, 16)`, `left: calc(left + 2px + px)`,
+    /// `width: calc(width - 4px - px)`.
     func rect(day: Int, start: Int, end: Int, left: Double = 0, width: Double = 1, indent: Double = 0) -> CGRect {
         let inner = dayWidth - 1
-        let y0 = yPos(start), y1 = max(yPos(end), y0 + OverlapLayout.minHeight)
-        return CGRect(x: Double(day) * dayWidth + 2 + left * inner + indent, y: y0, width: max(4, width * inner - 5 - indent), height: y1 - y0 - 1)
+        let y0 = yPos(start), h = max(yPos(end) - y0 - Self.gapBelow, Self.minBlock)
+        return CGRect(x: Double(day) * dayWidth + 1 + Self.gapLeft + left * inner + indent, y: y0 + 1,
+                      width: max(4, width * inner - Self.gapRight - indent), height: h)
     }
 
     func rect(for p: PlacedEvent) -> CGRect {

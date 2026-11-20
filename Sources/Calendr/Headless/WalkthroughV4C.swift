@@ -37,7 +37,7 @@ extension WalkthroughV4 {
     /// The text plan of a block as it is drawn.
     static func plan(_ m: AppModel, _ p: PlacedEvent) -> BlockTextPlan {
         let r = m.gridGeometry.rect(for: p)
-        return BlockText.plan(height: Double(r.height), width: Double(r.width), isShort: style(m, p).isShort)
+        return EventPainter.plan(p, rect: r, style: style(m, p))
     }
 
     // MARK: v4-c-1: event styles
@@ -109,28 +109,29 @@ extension WalkthroughV4 {
         d.section("Text rules")
         if let founder = Walkthrough.placed(m, "Founder meetup", day: 2) {
             d.moveCursor(to: d.windowPoint(fromGrid: Walkthrough.centerOf(d, founder)), duration: 0.45)
-            d.say("Narrow blocks: one title line with an ellipsis, start time only")
+            d.say("A covered block keeps one line; under 120 pt it drops the time")
             _ = hoverBlock(d, m, founder)
             let pl = plan(m, founder)
-            d.check(pl.narrow && pl.maxTitleLines == 1 && pl.time == .start, "Founder meetup is narrow: one line, start time")
+            d.check(pl.lines == .one && pl.maxTitleLines == 1 && pl.time == .none, "Founder meetup is covered: one line, no time (under 120 pt)")
             d.hold(1.6)
         } else { d.check(false, "Founder meetup is on Wednesday") }
         if let task = Walkthrough.placed(m, "Wish Nina a happy birthday", day: 2) {
             d.moveCursor(to: d.windowPoint(fromGrid: Walkthrough.centerOf(d, task, yFraction: 0.5)), duration: 0.45)
-            d.say("Short items: a 22 minute block, one row")
+            d.say("Short items: a 22 minute block, one centred line")
             _ = hoverBlock(d, m, task, yFraction: 0.5)
             let pl = plan(m, task)
-            d.check(style(m, task).isShort && pl.lines == .one && pl.time == .start && task.placement.drawEndMinute == 9 * 60 + 22, "the 09:00 task is one row with its start")
+            d.check(style(m, task).isShort && pl.lines == .one && pl.centered && pl.time == .none && task.placement.drawEndMinute == 9 * 60 + 22,
+                    "the 09:00 task is one centred line")
             d.hold(1.4)
         } else { d.check(false, "the birthday task is on Wednesday") }
         if let research = Walkthrough.placed(m, "Research interviews", day: 1) {
             d.moveCursor(to: d.windowPoint(fromGrid: Walkthrough.centerOf(d, research)), duration: 0.45)
-            d.say("Two-line titles break at syllables")
+            d.say("Two-line titles break at a space first")
             _ = hoverBlock(d, m, research)
             let pl = plan(m, research)
-            let w = m.gridGeometry.rect(for: research).width - 17
+            let w = m.gridGeometry.rect(for: research).width - EventPainter.textInset(dark: true) - CGFloat(BlockText.padX)
             let lines = TextCache.wrapTexts("Research interviews", .title, width: w, maxLines: pl.maxTitleLines, hyphenate: pl.hyphenate)
-            d.check(pl.hyphenate && lines.first?.hasSuffix("-") == true, "Research interviews hyphenates (\(lines.joined(separator: " | ")))")
+            d.check(pl.hyphenate && lines == ["Research", "interviews"], "Research interviews breaks at the space (\(lines.joined(separator: " | ")))")
             d.hold(1.6)
         } else { d.check(false, "Research interviews is on Tuesday") }
         unhover(m)
@@ -138,7 +139,7 @@ extension WalkthroughV4 {
         d.endCaption()
     }
 
-    // MARK: v4-c-2: "+N" and the stack
+    // MARK: v4-c-2: the cascade (v5 H; was "+N" and the stack)
 
     static func moreWindowPoint(_ d: Driver, _ m: AppModel, day: Int, group: Int) -> (grid: CGPoint, window: CGPoint)? {
         let groups = m.layout.groups(day: day)
@@ -154,74 +155,40 @@ extension WalkthroughV4 {
         return CGPoint(x: f.midX, y: f.minY + 4 + CGFloat(i) * (Dim.row + 3) + Dim.row / 2)
     }
 
-    /// Wednesday evening: hover "+1", open the stack, hover its rows, pick one, Esc; open again and click outside.
+    /// v5 H: the v11 cascade. Wednesday evening shows every block (nothing is folded into "+N"): a block that starts later
+    /// indents one step and is drawn on top with a 1 pt window-coloured ring, one that starts within a title line takes the right
+    /// half, and a block covered within 40 minutes keeps one line of text. Each block is hit where it shows.
     static func c2(_ d: Driver, _ m: AppModel) {
-        d.section("+N")
+        d.section("Cascade")
         scrollGrid(d, m, to: SnapshotV4.eveningScroll)
-        d.check(m.layout.groups(day: 2) == [OverflowGroup(startMinute: 18 * 60 + 15, ids: ["v4.c5"])], "Wednesday has one +1 at 18:15")
-        d.say("Wednesday evening: at most two events side by side")
+        d.check(m.layout.overflow.allSatisfy { $0.isEmpty } && m.layout.timed.joined().allSatisfy { !$0.placement.hidden },
+                "nothing is folded into +N")
+        d.say("Wednesday evening: overlapping events cascade")
         d.moveCursor(to: CGPoint(x: 590, y: 380), duration: 0.6)
         d.hold(1.0)
-        guard let chip = moreWindowPoint(d, m, day: 2, group: 0) else { d.check(false, "the +1 is laid out"); return }
-        d.say("The rest goes into +1")
-        let before = luma(d, at: chip.window)
-        d.moveCursor(to: chip.window, duration: 0.5)
-        d.play(0.25) {
-            if case .more(let day, let i)? = m.hitTest(chip.grid) { m.gridState.pointer.hoveredMore = GridMoreRef(day: day, group: i) }
+        let titles = ["Founder meetup", "Idea session", "Flat cleaning", "[P1] Take vitamins", "Dinner break", "Club board meeting", "Project sync", "Practice quiz"]
+        for t in titles {
+            guard let p = Walkthrough.placed(m, t, day: 2) else { d.check(false, "\(t) is on Wednesday"); continue }
+            let r = m.gridGeometry.rect(for: p)
+            // The visible part of a block: its top title line, right of anything drawn above it.
+            let g = CGPoint(x: r.maxX - 6, y: r.minY + 4)
+            d.moveCursor(to: d.windowPoint(fromGrid: g), duration: 0.3)
+            var hit: String?
+            d.play(0.2) {
+                if case .event(let id, _, _, _, _)? = m.hitTest(g) { hit = id; m.gridState.pointer.hoveredEventID = id }
+            }
+            d.check(hit == p.event.id, "\(t) shows and is hit at its title")
+            d.hold(0.3)
         }
-        d.check(m.gridState.pointer.hoveredMore == GridMoreRef(day: 2, group: 0), "hovering +1")
-        d.check(luma(d, at: CGPoint(x: chip.window.x - 7, y: chip.window.y)) > before, "+1 inverts on hover")
-        d.hold(1.0)
-
-        d.section("Stack")
-        d.say("Click: the busy time as a stack")
-        d.recordClick()
-        d.play(0.4) { m.gridMouseDown(chip.grid); m.gridMouseUp(chip.grid) }
-        d.settle(4)
-        let rows = m.stackRows
-        d.check(m.visibleStack != nil && rows.map(\.event.title) == ["Founder meetup", "Idea session", "Flat cleaning", "[P1] Take vitamins"],
-                "the stack lists the busy time in order (\(rows.map(\.event.title).joined(separator: ", ")))")
-        d.check(m.gridState.stackFrame.width > 200, "the stack spans two columns (\(Int(m.gridState.stackFrame.width)) pt)")
-        d.hold(0.8)
-        d.say("Rows in their reply style: maybe, declined")
-        for i in rows.indices {
-            let p = stackRow(m, i)
-            d.moveCursor(to: p, duration: 0.35)
-            d.play(0.2) { m.gridState.pointer.hoveredStackRow = rows[i].event.id }
-            d.hold(0.45)
+        if let idea = Walkthrough.placed(m, "Idea session", day: 2), let flat = Walkthrough.placed(m, "Flat cleaning", day: 2),
+           let founder = Walkthrough.placed(m, "Founder meetup", day: 2) {
+            d.say("Within a title line: the right half. Later: one indent step")
+            d.check(idea.placement.left == 0.5 && flat.placement.indent == 2 * OverlapV11.indentStep && flat.placement.over,
+                    "Idea session takes the right half; Flat cleaning cascades two steps")
+            d.check(founder.placement.covered && plan(m, founder).lines == .one, "Founder meetup is covered within 40 minutes: one line")
+            d.hold(1.2)
         }
-        d.check(m.gridState.pointer.hoveredStackRow == rows.last?.event.id, "hovering the rows")
-        d.say("Click a row to open the event")
-        let pick = rows[1].event
-        d.clickPoint(stackRow(m, 1), seconds: 0.6)
-        d.check(m.selectedEventID == pick.id && m.gridState.stack == nil, "the row selects \(pick.title) and closes the stack")
-        d.hold(1.2)
-
-        d.section("Close")
-        d.say("Open again; Esc closes it", keys: ["esc"])
-        d.moveCursor(to: chip.window, duration: 0.4)
-        d.recordClick()
-        d.play(0.4) { m.gridMouseDown(chip.grid); m.gridMouseUp(chip.grid) }
-        d.check(m.visibleStack != nil, "+1 opens the stack again")
-        d.hold(0.8)
-        d.play(0.4) { d.special("esc") }
-        d.check(m.gridState.stack == nil, "Esc closes the stack")
-        d.hold(0.6)
-        d.say("Open it once more")
-        d.moveCursor(to: chip.window, duration: 0.3)
-        d.recordClick()
-        d.play(0.4) { m.gridMouseDown(chip.grid); m.gridMouseUp(chip.grid) }
-        d.check(m.visibleStack != nil, "open")
-        d.hold(0.8)
-        d.say("A click outside closes it")
-        let outside = CGPoint(x: 120, y: 700)
-        d.click(at: outside) {
-            let size = d.size
-            if PanelClickAway.closesStack(at: CGPoint(x: outside.x, y: size.height - outside.y), in: size, model: m) { m.closeStack() }
-        }
-        d.check(m.gridState.stack == nil, "a click in the sidebar closes the stack")
         unhover(m)
-        d.hold(1.2)
         d.endCaption()
     }
 
