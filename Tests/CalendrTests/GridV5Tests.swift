@@ -14,10 +14,8 @@ struct GridV5Tests {
     }
 
     /// v5 H: the v11 cascade folds nothing into "+N" (mockup-v11 `cascade`): every block of the busy Wednesday evening shows.
-    @Test func wednesdayEveningCascadesAndNothingIsFolded() {
+    @Test func wednesdayEveningCascades() {
         let m = model()
-        #expect(m.layout.overflow.allSatisfy { $0.isEmpty })
-        #expect(m.layout.timed.joined().allSatisfy { !$0.placement.hidden })
         let wed = m.layout.timed[2]
         func p(_ t: String) -> Placement { wed.first { $0.event.title == t }!.placement }
         // Founder meetup 17:00 is the base; Idea session 17:15 starts within one title line, so it takes the right half.
@@ -25,8 +23,9 @@ struct GridV5Tests {
         #expect(p("Idea session").left == 0.5 && p("Idea session").over)
         // Flat cleaning 18:00 runs over both: one more cascade step.
         #expect(p("Flat cleaning").indent == 2 * OverlapV11.indentStep && p("Flat cleaning").over)
-        // Founder meetup is covered by Idea session within 40 minutes: its text keeps to one line.
-        #expect(p("Founder meetup").covered && !p("Idea session").covered)
+        // Idea session sits beside Founder meetup, so it does not cover it (mockup-v14); Flat cleaning at 18:00 does, an hour in,
+        // so Founder meetup plans its text on that hour.
+        #expect(!p("Founder meetup").covered && p("Founder meetup").visibleMinutes == 60)
     }
 
     @Test func allDayHidesAllButTwoLanesPerDay() {
@@ -57,7 +56,7 @@ struct GridV5Tests {
         m.createEvent(start: s, end: s.addingTimeInterval(3600))
         let id = m.draftEventID!
         let p = m.layout.timed[2].first { $0.event.id == id }!
-        #expect(!p.placement.hidden && p.placement.over)
+        #expect(p.placement.over)
         let r = m.gridGeometry.rect(for: p)
         if case .event(let hit, _, _, _, _)? = m.hitTest(CGPoint(x: r.midX, y: r.midY)) { #expect(hit == id) } else { Issue.record("the draft is not hit") }
     }

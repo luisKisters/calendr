@@ -69,7 +69,7 @@ struct FixtureV4Tests {
         for a in all { #expect(ok(a), "\(a) is not a reserved example domain") }
     }
 
-    @Test func wednesdayEveningGivesOnePlusOneAt1815WithTheV5Layout() {
+    @Test func wednesdayEveningShowsEveryEvent() {
         let math = DemoDataV4.math
         let wed = math.addDays(DemoDataV4.weekStart, 2)
         let items = DemoDataV4.buildEvents().filter { !$0.isAllDay && math.isSameDay($0.start, wed) }.map {
@@ -77,7 +77,6 @@ struct FixtureV4Tests {
         }
         let unaccepted = Set(items.filter(\.isUnaccepted).map(\.id))
         #expect(unaccepted == ["v4.w3", "v4.w5"])
-        let r = OverlapV5.layout(items)
-        #expect(r.groups == [OverflowGroup(startMinute: 18 * 60 + 15, ids: ["v4.c5"])])
+        #expect(Set(OverlapV11.layout(items).map(\.id)) == Set(items.map(\.id)))
     }
 }

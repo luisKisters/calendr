@@ -42,12 +42,6 @@
     "v4-delete": {
       "mockup": "delete"
     },
-    "v4-b-layout": {},
-    "v4-overlap-stack": {
-      "mockup": "overlap",
-      "shot": "overlap-stack",
-      "js": "document.querySelector('[data-pop=evmore]').click()"
-    },
     "v4-allday-expanded": {
       "mockup": "week",
       "shot": "allday-expanded",

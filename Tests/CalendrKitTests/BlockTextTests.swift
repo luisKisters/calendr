@@ -5,10 +5,12 @@ import Testing
 @Suite("Block text plan (v11)")
 struct BlockTextTests {
     /// A block as the week grid draws it at the locked 44 pt hour: `max(minutes / 60 × 44 - 2, 16)` tall (a short item spans 22 min).
-    static func block(_ minutes: Int, width: Double = 113.28, hour: Double = 44, short: Bool = false, cut: Bool = false) -> (BlockTextPlan, Double) {
+    /// `coveredAfter`: a later block is drawn over it this many minutes in.
+    static func block(_ minutes: Int, width: Double = 113.28, hour: Double = 44, short: Bool = false, coveredAfter: Int? = nil) -> (BlockTextPlan, Double) {
         let span = short ? 22 : minutes
         let h = max(Double(span) / 60 * hour - 2, 16)
-        return (BlockText.plan(height: h, width: width, minutes: span, isShort: short, cut: cut), h)
+        let shown = coveredAfter.map { Double($0) / 60 * hour }
+        return (BlockText.plan(height: h, width: width, minutes: span, isShort: short, visibleHeight: shown), min(h, shown ?? h))
     }
 
     /// The text never needs more height than the block has (no clipped glyph): padding + the lines it draws, or a centred
@@ -73,16 +75,34 @@ struct BlockTextTests {
         #expect(BlockText.plan(height: 60, width: 200, minutes: 60, isShort: true).time == .start)   // a short item says only when
     }
 
-    @Test func narrowAndSqueezedBlocksKeepOneClippedTitleLine() {
-        let p = Self.block(90, width: 65.9).0
-        #expect(p.narrow && p.time == .none && !p.hyphenate)
-        #expect(!Self.block(90, width: 66).0.narrow)
+    @Test func aNarrowOneLineBlockKeepsOneClippedTitleLine() {
+        let p = Self.block(30, width: 65.9).0
+        #expect(p.narrow && p.lines == .one && p.time == .none)
+        #expect(!Self.block(30, width: 66).0.narrow)
         #expect(Self.block(90, width: 29.9).0.thin && !Self.block(90, width: 30).0.thin)
     }
 
-    @Test func aCoveredBlockKeepsOneLine() {
-        let p = Self.block(135, cut: true).0                   // Design review under Hiring sync
+    /// mockup-v14 "titles wrap" and "the time could still be shown": a narrow block with room wraps its title over up to
+    /// three lines and keeps its start time below.
+    @Test func aNarrowTallBlockWrapsItsTitleAndShowsItsStart() {
+        let (p, h) = Self.block(120, width: 50)                 // 86 pt tall, 50 pt wide (a crowded spot side by side)
+        #expect(!p.narrow && p.lines == .stacked && p.maxTitleLines == 3 && p.time == .start && p.hyphenate)
+        #expect(Self.fits(p, h))
+        #expect(Self.block(90, width: 50).0.maxTitleLines == 2)  // 64 pt: two title lines and the time
+        #expect(Self.block(120, width: 43.9).0.narrow)           // under 44 pt a wrapped title would be a letter a line
+    }
+
+    @Test func aBlockCoveredSoonKeepsOneLine() {
+        let (p, h) = Self.block(135, coveredAfter: 30)          // Design review under Hiring sync, 30 minutes in
         #expect(p.lines == .one && !p.centered && p.time == .none)       // `one tall1 notime cut`
+        #expect(Self.fits(p, h))
+    }
+
+    /// The text is planned on the part that shows: covered 90 minutes in, the title and the time fit above the later block.
+    @Test func aBlockCoveredLateStillShowsItsTime() {
+        let (p, h) = Self.block(150, coveredAfter: 90)
+        #expect(p.lines == .stacked && p.time == .range && p.maxTitleLines == 2)
+        #expect(Self.fits(p, h))
     }
 
     @Test func aContinuedEventShowsItsEnd() {

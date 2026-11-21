@@ -84,8 +84,8 @@ struct ToastView: View {
                         Keycaps(keys: ["\u{2318}", "Z"])
                     }
                     .padding(.leading, 9).padding(.trailing, 5).frame(height: 26)
-                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(hoverUndo ? Theme.hoverPop : .clear))
-                    .contentShape(RoundedRectangle(cornerRadius: Radius.control))
+                    .background(RoundedRectangle(cornerRadius: Radius.inner).fill(hoverUndo ? Theme.hoverPop : .clear))
+                    .contentShape(RoundedRectangle(cornerRadius: Radius.inner))
                 }
                 .buttonStyle(PressStyle(scale: 0.97))
                 .onHover { hoverUndo = $0 }
@@ -231,7 +231,7 @@ struct PaletteRowView: View {
                 if !row.keys.isEmpty { Keycaps(keys: row.keys) }
             }
             .padding(.horizontal, Space.m).frame(height: PaletteRowView.height)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(current ? Theme.hoverPop : .clear))
+            .background(RoundedRectangle(cornerRadius: Radius.inner).fill(current ? Theme.hoverPop : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

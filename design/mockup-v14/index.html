@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendr Busy Hours</title>
+<!-- Calendr v14 round 1: the time grid without "+N", in realistic weeks, with knobs. -->
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+/* ================= the app: week / day grid ================= */
+@font-face { font-family: "Inter"; src: url("../mockup-v11/fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; }
+.desk { --bg: #0B0B0C; --rail: #070708; --bg3: #2A2A2C; --hover: #161617; --selected: #1E1E1F; --hair: #1C1C1D; --grid: #1A1A1B; --grid2: #141415;
+  --fg: #EBEBED; --fg2: #CCCCCE; --fg3: #A8A8AA; --act: #EBEBED; --onact: #0B0B0C; --now: #E5484D;
+  --blue: #0E1A2C; --blueBar: #4A78D8; --blueT: #DCE4F2; --orange: #26150B; --orangeBar: #C8671F; --orangeT: #F1DCCB;
+  --green: #0C2016; --greenBar: #2E9E5B; --greenT: #D3EEDD; --violet: #1B1430; --violetBar: #8A63D2; --violetT: #E4DCF5;
+  --font: "Inter", -apple-system, system-ui, sans-serif; --fs: 13px; --fs-ev: 12px; --fs-s: 11px; }
+.desk.paper { --bg: #FBFBFB; --rail: #F4F4F5; --bg3: #DCDCDC; --hover: #F1F1F1; --selected: #EAEAEB; --hair: #E8E8E8; --grid: #E6E6E7; --grid2: #F0F0F1;
+  --fg: #1D1D20; --fg2: #4A4A50; --fg3: #606067; --act: #1D1D20; --onact: #FBFBFB;
+  --blue: #E3ECFB; --blueBar: #3E6FD8; --blueT: #1C2E52; --orange: #FBE9DC; --orangeBar: #D0651B; --orangeT: #57290A;
+  --green: #DDF3E6; --greenBar: #23894C; --greenT: #0F3A22; --violet: #ECE5FA; --violetBar: #7A4FD0; --violetT: #2E1A57; }
+.desk { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: var(--bg); color: var(--fg); font: var(--fs)/1.4 var(--font); display: flex; -webkit-font-smoothing: antialiased; }
+.side { width: 220px; flex: none; background: var(--rail); border-right: 1px solid var(--hair); padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; }
+.side .t { font-weight: 600; margin: 0 8px 10px; }
+.side button { height: 28px; padding: 0 8px; border-radius: 8px; color: var(--fg2); text-align: left; }
+.side button:hover { background: var(--hover); } .side button.on { background: var(--selected); color: var(--fg); }
+.side .sp { flex: 1; }
+.side .hint { color: var(--fg3); font-size: var(--fs-s); padding: 8px; line-height: 1.45; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.top { height: 48px; flex: none; display: flex; align-items: center; padding: 0 16px; font-size: 18px; font-weight: 600; gap: 8px; }
+.top span { color: var(--fg3); font-weight: 400; }
+.dh { display: flex; height: 36px; flex: none; border-bottom: 1px solid var(--hair); }
+.dh .g { width: 56px; flex: none; }
+.dh .c { flex: 1; min-width: 0; display: flex; align-items: center; padding-left: 8px; gap: 6px; font-size: var(--fs-s); color: var(--fg3); }
+.dh .c .n { font-size: var(--fs); color: var(--fg); }
+.dh .c.today { color: var(--fg); } .dh .c.today .n { background: var(--act); color: var(--onact); border-radius: 6px; padding: 0 5px; line-height: 18px; font-weight: 600; }
+.gridwrap { flex: 1; overflow: hidden; position: relative; }
+.grid { position: relative; display: flex; }
+.gut { width: 56px; flex: none; position: relative; }
+.gut span { position: absolute; right: 8px; font-size: var(--fs-s); color: var(--fg3); transform: translateY(-50%); }
+.col { flex: 1; min-width: 0; position: relative; border-left: 1px solid var(--grid); }
+.hl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid); }
+.ev { position: absolute; border-radius: 4px; padding: 3px 6px 3px 11px; overflow: hidden; background: var(--fill); color: var(--tc); font-size: var(--fs-ev); line-height: 15px; text-align: left; display: flex; flex-direction: column; cursor: default; }
+.ev::before { content: ""; position: absolute; left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; background: var(--bar); }
+.ev .t { font-weight: 500; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.ev .m { opacity: .72; font-size: var(--fs-s); line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev.one { flex-direction: row; gap: 6px; align-items: center; padding-top: 0; padding-bottom: 0; white-space: nowrap; }
+.ev.one .t { display: block; text-overflow: ellipsis; white-space: nowrap; }
+.ev.narrow .t { display: block; white-space: nowrap; text-overflow: clip; } .ev.narrow .m { display: none; }
+.ev.thin { padding-left: 8px; padding-right: 2px; } .ev.thin .t { font-size: var(--fs-s); }
+.ev.cut { box-shadow: -1px 0 0 var(--bg); }
+.ev.un { background: var(--bg); box-shadow: inset 0 0 0 1px var(--bar), -1px 0 0 var(--bg); color: var(--fg2); }
+.ev.un::before { opacity: .55; }
+.ev.sel { box-shadow: inset 0 0 0 1.5px var(--fg); z-index: 60 !important; }
+.ev:hover { filter: brightness(1.12); } .paper .ev:hover { filter: brightness(.97); }
+.c-blue { --fill: var(--blue); --bar: var(--blueBar); --tc: var(--blueT); } .c-orange { --fill: var(--orange); --bar: var(--orangeBar); --tc: var(--orangeT); }
+.c-green { --fill: var(--green); --bar: var(--greenBar); --tc: var(--greenT); } .c-violet { --fill: var(--violet); --bar: var(--violetBar); --tc: var(--violetT); }
+.pn { position: absolute; height: 16px; padding: 0 5px; min-width: 22px; text-align: center; font: 600 10.5px/16px var(--font); background: var(--bg3); color: var(--fg); border-radius: 4px; box-shadow: 0 0 0 1.5px var(--bg); z-index: 70; }
+.nowl { position: absolute; left: 0; right: 0; height: 0; border-top: 1.5px solid var(--now); z-index: 80; }
+.tag { position: absolute; left: 6px; font-size: 10px; color: var(--fg3); z-index: 1; }
+
+.ev.wrap { padding: 2px 3px 2px 8px; } .ev.wrap::before { left: 2px; top: 2px; bottom: 2px; width: 2.5px; }
+.ev.wrap .t { font-size: var(--fs-s); line-height: 13px; -webkit-line-clamp: 5; word-break: break-word; overflow-wrap: anywhere; hyphens: auto; }
+.ev.wrap .m { display: none; }
+.lbl { position: absolute; height: 17px; padding: 0 5px 0 9px; font-size: var(--fs-s); font-weight: 500; line-height: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--fill); color: var(--tc); border-radius: 4px 4px 4px 0; box-shadow: 0 0 0 1px var(--bg); }
+.lbl::before { content: ""; position: absolute; left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; background: var(--bar); }
+.lbl.un { background: var(--bg); color: var(--fg2); box-shadow: inset 0 0 0 1px var(--bar); }
+.lane { position: absolute; width: 4px; border-radius: 2px; background: var(--bar); z-index: 12; }
+.lane.un { background: none; box-shadow: inset 0 0 0 1px var(--bar); }
+.lanebox { position: absolute; border-radius: 4px; background: var(--grid2); z-index: 10; }
+.row { position: absolute; height: 16px; display: flex; gap: 5px; align-items: center; padding: 0 4px 0 9px; border-radius: 4px; background: var(--fill); color: var(--tc); font-size: var(--fs-s); line-height: 16px; white-space: nowrap; overflow: hidden; z-index: 14; }
+.row::before { content: ""; position: absolute; left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; background: var(--bar); }
+.row .t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; } .row .m { opacity: .7; flex: none; }
+.row.un { background: var(--bg); color: var(--fg2); box-shadow: inset 0 0 0 1px var(--bar); } .row.sel { box-shadow: inset 0 0 0 1.5px var(--fg); }
+
+.ev.nar { padding: 2px 3px 2px 9px; } .ev.nar::before { left: 3px; top: 2px; bottom: 2px; width: 3px; }
+.ev.nar .t { font-size: var(--fs-s); line-height: 13px; -webkit-line-clamp: var(--lc); overflow-wrap: anywhere; hyphens: auto; }
+.ev.nar.one .t { -webkit-line-clamp: 1; }
+.ev.thin { padding-left: 7px; padding-right: 1px; } .ev.thin::before { left: 2px; width: 2.5px; }
+.top { gap: 14px; } .look { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--fg2); max-width: 780px; line-height: 1.35; }
+.look b { color: var(--fg); font-weight: 600; } .look i { font-style: normal; color: var(--fg3); margin-left: 6px; white-space: nowrap; }
+.col.crowd { background: linear-gradient(transparent, transparent); }
+.pk-knob { margin: 0 0 10px; } .pk-knob .kh { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #a6a6ae; }
+.pk-knob .kh b { color: #e6e6ea; font-weight: 500; } .pk-knob .kh span:not(.hq) { margin-left: auto; color: #f4f4f6; font-variant-numeric: tabular-nums; }
+.pk-knob .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-knob .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 260px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; z-index: 10; }
+.pk-knob input { width: 100%; accent-color: #ececf0; }
+.pk-arg { color: #c4c4cb !important; border-left: 2px solid #3a3a42; padding-left: 8px; }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Calendr', VERSION = 'v14', ROUND = 1;
+const DESK = { w: 1440, h: 900 };
+const SCENES = [
+  ['typical', 'A normal week'], ['double', 'Double-booked'], ['holds', 'Invites not answered'], ['manager', 'Manager’s Wednesday'],
+  ['team', 'Team calendars on'], ['conf', 'Conference Thursday'], ['recruit', 'Interview day'], ['pings', 'Short reminders'],
+  ['confday', 'Day view: conference'], ['teamday', 'Day view: team calendars']];
+const HOWTO = ['Left: the scenarios, from a normal week to the worst case. Each one says what to look at in the top bar.',
+  'Two decisions: how 2 or 3 overlaps look, and how a crowded spot (4 or more at once) looks.',
+  'Knobs below the decisions change the numbers live: when a spot counts as crowded, minimum column width, how much a busy day may widen, title lines.',
+  'Click an event to select it (it comes to the front). Ink / Paper at the bottom left.'];
+const READ = 'Quiet tool UI: every event visible without a click, titles readable first, nothing new to learn for a normal week. Dials: variance 2, motion 2, density 7.';
+const LOCKED = {};
+const BEFORE = {};
+const P = (v, l, h) => [v, l, h];
+const FB = 'remove the n+ more in the day view like the actual events … see where it looks best and most infomration still can be viewed at a glance';
+const DECISIONS = [
+  { id: 'normal', name: '2 or 3 events at the same time', fb: 'actually realisitc scnerarios', scene: 'double', hl: '.ev',
+    note: 'My pick: keep the locked smart layout. It is what a normal week looks like (see "A normal week", "Double-booked"); the "+N" problem only starts at 3+ covering events, and the smart layout already shows 3. Changing it would redesign the common case to fix the rare one.',
+    opts: [
+    P('smart', 'Smart, as locked (cascade; side by side when they start together)', 'Why: the long meeting stays full width and readable; the later one sits on top, shifted 14 pt, so you see both titles. Cost: the covered part of the long event is hidden behind the short one.'),
+    P('columns', 'Side by side, always', 'Why: nothing is ever covered. Cost: in a week column (~165 pt) two events get ~80 pt each, so long titles cut after a word or two, even for one small clash.')] },
+  { id: 'crowd', name: 'A crowded spot (from "Crowded from" events at once)', fb: FB, scene: 'team', hl: '.col.crowd .ev, .col.crowd .row, .col.crowd .lane',
+    note: 'My pick: side by side, and let the crowded day borrow width from quiet days. Every event keeps its real time and height, so you read the day as a schedule, not a list. Lanes are the fallback only when columns would still be under the minimum width (turn "Min column width" up to see them take over).',
+    opts: [
+    P('columns', 'Side by side; a busy day gets wider; lanes below the minimum', 'Why: each event stays a block at its real time; the day with the clash widens (up to "Widen busy day"), quiet days give up a little. Below "Min column width" the spot turns into lanes + titles. Cost: day columns are not all equal width that week.'),
+    P('lanes', 'Colour lanes + a title list', 'Why: every title and start time is readable in one line, even 8 at once in a 165 pt column. Cost: the titles no longer sit at their exact time or show their length; the lanes on the left carry that.'),
+    P('wrap', 'Side by side, equal days, titles wrap', 'Why: simplest rule, the week grid stays even. Cost: at 4+ events, columns drop to ~35 pt and titles break mid-word.'),
+    P('cascade', 'Keep cascading, titles always on top', 'Why: closest to the locked look. Cost: bodies cover each other, so it is hard to see where each event ends.'),
+    P('now', 'As now: "+N" chip (to compare)', 'The app today: the 3rd covering event and later hide behind "+N".')] },
+];
+const KNOBS = [
+  ['crowdAt', 'Crowded from', 3, 6, 1, 4, v => `${v} at once`, 'A spot with this many events at the same moment uses the "crowded" option; fewer uses the first decision.'],
+  ['minCol', 'Min column width', 40, 120, 5, 55, v => `${v} pt`, 'Side by side never goes narrower than this. Below it, the spot becomes lanes + titles. 55 pt fits about 8 characters a line.'],
+  ['widen', 'Widen busy day up to', 1, 3, 0.25, 2.5, v => v === 1 ? 'off' : `${v}×`, 'Week view: a day whose columns would be under the minimum takes up to this much of a normal day’s width; other days shrink to match.'],
+  ['lines', 'Title lines in a narrow event', 1, 4, 1, 3, v => `${v}`, 'How many lines a title may wrap to when an event is under 90 pt wide.'],
+  ['ntime', 'Time in narrow events', 0, 1, 1, 0, v => v ? 'shown' : 'hidden', 'Show "9:30" under the title when an event is under 90 pt wide.'],
+  ['hour', 'Hour height', 44, 96, 4, 60, v => `${v} pt`, 'The app fits this to the window; try small values to see what crowds first.'],
+  ['days', 'Days in week view', 5, 7, 2, 7, v => `${v} days`, '5 days gives each day 40% more width.'],
+];
+const SCENE_OF = {};
+
+// ================= demo data =================
+// Week of Mon 16 Nov 2026, today Sat 21. Calendars: work (blue), personal (green), team (orange), recruiting (violet).
+const H = (h, m = 0) => h * 60 + m;
+const T = s => { const [a, b] = s.split('-').map(x => { const [h, m] = x.split(':'); return H(+h, +(m || 0)); }); return [a, b]; };
+// day, "9:00-10:30", title, colour, flags ('u' = not answered)
+const E = (day, span, title, c = 'blue', f = '') => { const [s, e] = T(span); return { id: `${day}-${s}-${title}`, day, s, e, title, c, un: f.includes('u') }; };
+const BASE = [
+  E(0, '9:30-9:45', 'Standup'), E(1, '9:30-9:45', 'Standup'), E(2, '9:30-9:45', 'Standup'), E(3, '9:30-9:45', 'Standup'), E(4, '9:30-9:45', 'Standup'),
+  E(0, '12:30-13:15', 'Lunch', 'green'), E(4, '17:00-18:00', 'Climbing', 'green'), E(5, '10:00-11:30', 'Farmers market', 'green'),
+];
+const DATA = {
+  typical: { look: 'A normal week. Tue 11:00 and Thu 14:00 have small clashes. Nothing crowded: this should look exactly as today.', ev: [...BASE,
+    E(0, '10:00-11:00', 'Sprint planning'), E(0, '14:00-15:30', 'Focus: billing spec', 'blue'), E(1, '11:00-12:00', 'Customer call: Northwind'), E(1, '11:30-12:00', '1:1 with Priya', 'orange'),
+    E(1, '15:00-16:00', 'Design crit', 'orange'), E(2, '13:00-14:00', 'Roadmap review'), E(2, '16:00-17:00', 'Write release notes'), E(3, '14:00-15:30', 'Workshop: pricing'),
+    E(3, '14:30-15:00', 'Call with legal', 'orange'), E(4, '11:00-12:00', 'Demo prep'), E(4, '14:00-15:00', 'Retro', 'orange')] },
+  double: { look: 'Mon 10:00 two meetings start together. Wed 14:00 a 30-min call inside a 90-min block. Fri 15:00 three meetings overlap.', ev: [...BASE,
+    E(0, '10:00-11:00', 'Sprint planning'), E(0, '10:00-10:45', 'Vendor intro: Acme Print', 'orange'), E(1, '13:00-14:00', 'Hiring sync', 'violet'),
+    E(2, '14:00-15:30', 'Architecture review'), E(2, '14:30-15:00', 'Quick call: Sam', 'orange'), E(3, '11:00-12:00', 'Customer call: Northwind'),
+    E(4, '15:00-16:00', 'Quarterly numbers'), E(4, '15:15-16:15', 'Board deck review', 'orange'), E(4, '15:30-16:00', 'Expense approvals')] },
+  holds: { look: 'Tentative invites (outlined) on top of accepted meetings: Tue 10:00 has two unanswered over one accepted; Thu 13:00 three unanswered.', ev: [...BASE,
+    E(1, '10:00-11:00', 'Product sync'), E(1, '10:00-11:00', 'Offsite planning', 'orange', 'u'), E(1, '10:30-11:30', 'Partner webinar', 'green', 'u'),
+    E(3, '13:00-14:00', 'Team lunch', 'orange'), E(3, '13:00-13:30', 'Office hours', 'blue', 'u'), E(3, '13:15-14:00', 'Mentoring', 'violet', 'u'), E(3, '13:30-14:30', 'Town hall', 'orange', 'u'),
+    E(2, '15:00-16:00', 'Design crit', 'orange'), E(4, '11:00-12:00', 'Demo day prep', 'green', 'u')] },
+  manager: { look: 'Wednesday afternoon: 1:1s back to back, a skip-level dropped on top, and a hiring debrief at 15:00. Up to 4 at once.', ev: [...BASE,
+    E(0, '10:00-11:00', 'Staff meeting'), E(1, '14:00-15:00', 'Budget review'),
+    E(2, '13:00-13:30', '1:1 with Priya', 'orange'), E(2, '13:30-14:00', '1:1 with Tomás', 'orange'), E(2, '14:00-14:30', '1:1 with Lena', 'orange'), E(2, '14:30-15:00', '1:1 with Wei', 'orange'),
+    E(2, '13:00-14:30', 'Skip-level: platform team'), E(2, '13:45-14:45', 'Headcount planning', 'violet'), E(2, '14:15-15:15', 'Incident review', 'blue'),
+    E(2, '15:00-15:45', 'Hiring debrief', 'violet'), E(3, '10:00-11:30', 'Leadership offsite prep'), E(4, '13:00-14:00', 'All-hands')] },
+  team: { look: 'Your calendar plus three teammates’ (orange, violet, green). Mon and Wed mornings have 4–5 at once. This is where "+N" shows most today.', ev: [...BASE,
+    E(0, '10:00-11:00', 'Sprint planning'), E(0, '10:00-11:00', 'Ana: Sprint planning', 'orange'), E(0, '10:00-10:30', 'Ben: Dentist', 'violet'), E(0, '10:15-11:15', 'Chloe: Vendor call', 'green'), E(0, '10:30-11:30', 'Ben: Onboarding Lea', 'violet'),
+    E(1, '14:00-15:00', 'Design crit', 'orange'), E(1, '14:00-15:00', 'Ana: Design crit', 'orange'), E(1, '14:30-15:30', 'Chloe: Customer call', 'green'),
+    E(2, '9:00-10:30', 'Architecture review'), E(2, '9:00-10:00', 'Ana: Interview', 'orange'), E(2, '9:15-10:15', 'Ben: Pairing', 'violet'), E(2, '9:30-10:30', 'Chloe: Roadmap prep', 'green'), E(2, '10:00-11:00', 'Ana: Ops review', 'orange'),
+    E(3, '13:00-14:00', 'Chloe: Lunch & learn', 'green'), E(3, '13:30-14:30', 'Ben: Planning poker', 'violet'), E(4, '11:00-12:00', 'Ana: 1:1 with Sam', 'orange'), E(4, '11:00-12:00', 'Demo prep')] },
+  conf: { look: 'Thursday: a conference you added as one calendar. 4 parallel talks 10–12, 3 workshops 13:30–15, plus your own call.', ev: [...BASE,
+    E(0, '10:00-11:00', 'Sprint planning'), E(2, '14:00-15:00', 'Travel: train to Berlin', 'green'),
+    E(3, '9:00-9:45', 'Keynote: The next ten years', 'violet'), E(3, '10:00-10:45', 'Talk: Edge caching', 'violet'), E(3, '10:00-10:45', 'Talk: Design tokens', 'violet'), E(3, '10:00-11:00', 'Talk: Hiring at scale', 'violet'),
+    E(3, '10:00-10:30', 'Customer call: Northwind'), E(3, '11:00-11:45', 'Talk: Postgres tips', 'violet'), E(3, '11:00-11:45', 'Talk: Accessible charts', 'violet'), E(3, '11:15-12:00', 'Panel: Remote teams', 'violet'),
+    E(3, '13:30-15:00', 'Workshop: SwiftUI', 'violet'), E(3, '13:30-15:00', 'Workshop: Rust for web', 'violet'), E(3, '13:30-14:30', 'Workshop: Figma to code', 'violet'), E(3, '14:00-14:30', 'Call: Mum', 'green')] },
+  recruit: { look: 'Tuesday: a candidate loop 10–15 on the recruiting calendar, your interviews in it, and two holds that overlap.', ev: [...BASE,
+    E(1, '10:00-15:00', 'Onsite: frontend candidate', 'violet'), E(1, '10:00-10:45', 'Interview: system design'), E(1, '11:00-11:45', 'Interview: coding', 'blue'),
+    E(1, '11:00-12:00', 'Hold: panel prep', 'violet', 'u'), E(1, '12:00-13:00', 'Lunch with candidate', 'green'), E(1, '13:00-13:45', 'Interview: values', 'blue'),
+    E(1, '13:15-14:00', 'Hold: backup interviewer', 'violet', 'u'), E(1, '14:00-15:00', 'Customer call: Northwind'), E(1, '14:30-15:00', 'Debrief slot', 'violet'),
+    E(3, '11:00-12:00', 'Hiring sync', 'violet')] },
+  pings: { look: '10- and 15-minute items (reminders, quick calls) during meetings. Wed 11:00 has three in one hour.', ev: [...BASE,
+    E(1, '14:00-15:00', 'Design crit', 'orange'), E(1, '14:30-14:40', 'Pay invoice', 'green'),
+    E(2, '11:00-12:00', 'Roadmap review'), E(2, '11:00-11:10', 'Send agenda', 'green'), E(2, '11:20-11:30', 'Quick call: Sam', 'orange'), E(2, '11:30-11:45', 'Approve PR', 'blue'), E(2, '11:40-11:50', 'Book flights', 'green'),
+    E(3, '10:00-11:00', 'Workshop'), E(3, '10:00-11:00', 'Vendor call', 'orange'), E(3, '10:15-10:25', 'Reply to legal', 'green')] },
+};
+DATA.confday = { look: 'Thursday in day view: the same conference. Here every option has room; check it still reads well wide.', day: 3, ev: DATA.conf.ev };
+DATA.teamday = { look: 'Wednesday in day view with team calendars on.', day: 2, ev: DATA.team.ev };
+function fresh() { return { sel: null }; }
+
+// ================= layout =================
+const SHORT = 15, SPAN = 22, JOIN = 30, STEP = 14, UNL = 0.5, HEAD = 0.66;
+const drawnEnd = it => it.e - it.s <= SHORT ? it.s + SPAN : it.e;
+// A port of CalendrKit/OverlapV5.swift. mode 'now' sends what does not fit to "+N"; 'cascade' keeps cascading.
+function v5(items, mode) {
+  const w = items.map((it, i) => ({ it, id: it.id, o: i, s: it.s, en: drawnEnd(it), short: it.e - it.s <= SHORT, un: it.un, left: 0, width: 1, px: 0, level: 0, cut: false, grp: -1 }));
+  w.sort((a, b) => a.s - b.s || (b.en - b.s) - (a.en - a.s) || a.o - b.o);
+  const out = [], over = [], groups = [];
+  const ov = (a, b) => a.s < b.en && a.en > b.s, cov = (o, i) => o.s <= i.s && o.en > i.s;
+  for (const i of w.filter(x => !x.short && !x.un)) {
+    const under = out.filter(o => ov(o, i));
+    if (under.filter(o => cov(o, i)).length >= 2 && mode === 'now') { over.push(i); continue; }
+    const host = under.filter(o => i.s - groups[o.grp].s < JOIN).pop();
+    if (host) {
+      const g = groups[host.grp]; g.items.push(i);
+      Object.assign(i, { grp: host.grp, level: host.level, px: host.px, cut: host.cut });
+      g.items.forEach((o, k) => { o.left = g.left + g.width * k / g.items.length; o.width = g.width / g.items.length; if (k > 0) o.cut = true; });
+      out.push(i); continue;
+    }
+    let top = null;
+    for (const o of under) if (!top || o.level > top.level || (o.level === top.level && o.s > top.s)) top = o;
+    if (top) Object.assign(i, { level: top.level + 1, left: groups[top.grp].left, px: top.px + STEP, cut: true });
+    i.width = 1 - i.left; i.grp = groups.length; groups.push({ s: i.s, left: i.left, width: i.width, items: [i] }); out.push(i);
+  }
+  const right = [];
+  for (const i of w.filter(x => !x.short && x.un)) {
+    const hit = out.filter(o => ov(o, i));
+    if (!hit.length) { Object.assign(i, { left: 0, width: 1 }); out.push(i); continue; }
+    const r = right.filter(o => ov(o, i));
+    if (r.length && mode === 'now') { over.push(i); continue; }
+    for (const o of hit) if (Math.abs(i.s - o.s) < JOIN && o.left < UNL) o.width = Math.min(o.width, UNL - o.left);
+    Object.assign(i, { left: UNL, width: 1 - UNL, level: 8 + r.length, px: r.length ? Math.max(...r.map(o => o.px)) + STEP : 0, cut: true });
+    right.push(i); out.push(i);
+  }
+  const blocks = out.slice();
+  for (const i of w.filter(x => x.short)) {
+    if (blocks.filter(o => cov(o, i)).length >= 2 && mode === 'now') { over.push(i); continue; }
+    const hit = blocks.some(o => ov(o, i)) || out.some(o => o.short && ov(o, i));
+    let head = false;
+    if (hit) for (const o of blocks) { const into = i.s - o.s; if (into >= -10 && into < JOIN && ov(o, i) && o.left + o.width > HEAD) { o.width = Math.max(HEAD - o.left, 0.3); head = true; } }
+    Object.assign(i, { left: hit ? (head ? HEAD : 0.5) : 0, level: 20 }); i.width = 1 - i.left; out.push(i);
+  }
+  const og = [];
+  for (const i of over.sort((a, b) => a.s - b.s)) { const g = og.filter(g => i.s - g.s < JOIN).pop(); if (g) g.n++; else og.push({ s: i.s, n: 1 }); }
+  return { out, og };
+}
+// Side by side: greedy columns; an event widens into free columns on its right. Returns the column count too.
+function columns(items) {
+  const w = items.map((it, i) => ({ it, id: it.id, o: i, s: it.s, en: drawnEnd(it), px: 0 })).sort((a, b) => a.s - b.s || (b.en - b.s) - (a.en - a.s) || a.o - b.o);
+  const cols = [];
+  for (const e of w) { let k = cols.findIndex(c => c[c.length - 1].en <= e.s); if (k < 0) { k = cols.length; cols.push([]); } cols[k].push(e); e.col = k; }
+  for (const e of w) {
+    let span = 1; while (e.col + span < cols.length && !cols[e.col + span].some(o => o.s < e.en && o.en > e.s)) span++;
+    Object.assign(e, { left: e.col / cols.length, width: span / cols.length, cut: e.col > 0, level: e.col, n: cols.length });
+  }
+  return { out: w, og: [], n: cols.length };
+}
+function clusters(items) {
+  const w = items.slice().sort((a, b) => a.s - b.s), cls = []; let end = -1;
+  for (const e of w) { if (e.s >= end || !cls.length) cls.push([]); cls[cls.length - 1].push(e); end = Math.max(end, drawnEnd(e)); }
+  return cls;
+}
+function concurrency(c) {
+  const pts = c.flatMap(e => [[e.s, 1], [drawnEnd(e), -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let n = 0, m = 0; for (const [, d] of pts) { n += d; m = Math.max(m, n); } return m;
+}
+// Plan a day: which clusters are crowded, and how many columns they need.
+function planDay(items) {
+  return clusters(items).map(c => {
+    const crowd = concurrency(c) >= K('crowdAt');
+    const mode = crowd ? C('crowd') : C('normal');
+    return { c, crowd, mode, n: mode === 'smart' || mode === 'cascade' || mode === 'now' ? 1 : columns(c).n };
+  });
+}
+
+// ================= the app =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const hhmm = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], TODAY = 5, H0 = 8, H1 = 19;
+function deskClass() { return S.paper ? 'paper' : ''; }
+function app() {
+  const sc = DATA[S.scene] || DATA.typical;
+  const dayView = sc.day != null;
+  const days = dayView ? [sc.day] : [0, 1, 2, 3, 4, 5, 6].slice(0, K('days'));
+  const hh = K('hour'), minCol = K('minCol');
+  const total = 1440 - 220 - 56, base = total / days.length;
+  const plans = days.map(d => planDay(sc.ev.filter(e => e.day === d)));
+  // Widen: a day whose side-by-side spot would be under the minimum asks for n × min width (capped at widen × a normal day);
+  // the other days share what is left equally.
+  const ask = plans.map(pl => {
+    if (dayView || K('widen') <= 1 || C('crowd') !== 'columns') return 0;
+    const need = Math.max(0, ...pl.filter(p => p.mode === 'columns' && p.crowd).map(p => p.n * minCol + 2));
+    return need > base ? Math.min(K('widen') * base, need) : 0;
+  });
+  const asked = ask.reduce((a, b) => a + b, 0), rest = ask.filter(x => !x).length;
+  const DW = rest && total - asked > rest * base * 0.6 ? ask.map(x => x || (total - asked) / rest) : days.map(() => base);
+  const head = days.map((d, k) => `<div class="c ${d === TODAY ? 'today' : ''}" style="flex:none;width:${DW[k]}px">${DAYS[d]} <span class="n">${16 + d}</span></div>`).join('');
+  let gut = ''; for (let h = H0 + 1; h < H1; h++) gut += `<span style="top:${(h - H0) * hh}px">${h}:00</span>`;
+  const lines = Array.from({ length: H1 - H0 }, (_, k) => `<div class="hl" style="top:${k * hh}px"></div>`).join('');
+  const y = m => (m / 60 - H0) * hh;
+  const evBtn = (e, x, wd, top, ht, z, cut) => {
+    const narrow = wd < 90, lc = narrow ? K('lines') : 2, showT = !narrow || K('ntime');
+    const one = ht < 30;
+    const cls = [`c-${e.c}`, cut ? 'cut' : '', e.un ? 'un' : '', one ? 'one' : '', narrow ? 'nar' : '', wd < 44 ? 'thin' : '', A.sel === e.id ? 'sel' : ''].join(' ');
+    return `<button class="ev ${cls}" data-ev="${esc(e.id)}" style="left:${x}px;width:${wd}px;top:${top}px;height:${ht}px;z-index:${z};--lc:${lc}"><span class="t">${esc(e.title)}</span>${showT ? `<span class="m">${hhmm(e.s)}${narrow ? '' : '–' + hhmm(e.e)}</span>` : ''}</button>`;
+  };
+  let crowdN = 0;
+  const cols = days.map((d, k) => {
+    const W = DW[k] - 1; let h = '', crowdHere = false;
+    for (const p of plans[k]) {
+      if (p.crowd) { crowdN++; crowdHere = true; }
+      let L, lanes = false;
+      if (p.mode === 'smart') L = v5(p.c, 'cascade');
+      else if (p.mode === 'cascade' || p.mode === 'now') L = v5(p.c, p.mode);
+      else { L = columns(p.c); lanes = p.mode === 'lanes' ? true : p.mode === 'columns' && p.crowd && W / L.n < minCol; }
+      if (lanes) {
+        const LW = 6, lw = L.n * LW + 3; let bottom = -1;
+        L.out.forEach(q => { h += `<div class="lane c-${q.it.c} ${q.it.un ? 'un' : ''}" style="left:${1 + q.col * LW}px;top:${y(q.s)}px;height:${Math.max(y(q.en) - y(q.s) - 1, 6)}px"></div>`; });
+        const top0 = y(Math.min(...L.out.map(q => q.s))), bot = y(Math.max(...L.out.map(q => q.en)));
+        h += `<div class="lanebox" style="left:${lw}px;top:${top0}px;width:${W - lw - 1}px;height:${bot - top0 - 1}px"></div>`;
+        L.out.slice().sort((a, b) => a.s - b.s).forEach(q => {
+          const t = Math.max(y(q.s), bottom + 1); bottom = t + 17;
+          h += `<button class="row c-${q.it.c} ${q.it.un ? 'un' : ''} ${A.sel === q.it.id ? 'sel' : ''}" data-ev="${esc(q.it.id)}" style="left:${lw}px;top:${t}px;width:${W - lw - 1}px"><span class="t">${esc(q.it.title)}</span><span class="m">${hhmm(q.it.s)}</span></button>`;
+        });
+        continue;
+      }
+      h += L.out.map(q => {
+        const x = q.left * W + q.px, wd = Math.max(q.width * W - q.px - 1, 12), top = y(q.s), ht = Math.max(y(q.en) - top - 1, 14);
+        return evBtn(q.it, x, wd, top, ht, 10 + q.level, q.cut);
+      }).join('');
+      if (p.mode === 'cascade') h += L.out.slice().sort((a, b) => a.level - b.level).map(q => {
+        const x = q.left * W + q.px, wd = Math.max(q.width * W - q.px - 1, 14);
+        return `<button class="lbl c-${q.it.c} ${q.it.un ? 'un' : ''}" data-ev="${esc(q.it.id)}" style="left:${x}px;max-width:${wd}px;top:${y(q.s)}px;z-index:${100 + q.level}">${esc(q.it.title)}</button>`;
+      }).join('');
+      h += L.og.map(g => `<button class="pn" style="right:4px;top:${y(g.s) + 2}px">+${g.n}</button>`).join('');
+    }
+    return `<div class="col ${crowdHere ? 'crowd' : ''}" style="flex:none;width:${DW[k]}px;height:${(H1 - H0) * hh}px">${lines}${h}</div>`;
+  }).join('');
+  const nav = SCENES.map(([id, n]) => `<button class="${S.scene === id ? 'on' : ''}" data-go="${id}">${n}</button>`).join('');
+  return `<div class="side" data-area="sidebar"><div class="t">Scenarios</div>${nav}<div class="sp"></div><button data-theme="1">${S.paper ? 'Paper → Ink' : 'Ink → Paper'}</button></div>
+  <div class="main" data-area="main"><div class="top">November <span>2026</span><div class="look"><b>Look at:</b> ${esc(sc.look)} <i>${crowdN ? `${crowdN} crowded spot${crowdN > 1 ? 's' : ''}` : 'no crowded spot'}</i></div></div><div class="dh" data-area="header"><div class="g"></div>${head}</div>
+  <div class="gridwrap"><div class="grid"><div class="gut">${gut}</div>${cols}</div></div></div>`;
+}
+function appClick(t) {
+  if (t.dataset.go) { S.scene = t.dataset.go; A.sel = null; }
+  else if (t.dataset.theme) S.paper = !S.paper;
+  else if (t.dataset.ev) A.sel = A.sel === t.dataset.ev ? null : t.dataset.ev;
+  else return false;
+  return true;
+}
+// Knobs: live numbers in the picker.
+const K = id => { const k = KNOBS.find(x => x[0] === id); return S.k && id in S.k ? S.k[id] : k[5]; };
+function knobsHtml() {
+  return `<h2>Knobs</h2>` + KNOBS.map(([id, name, lo, hi, step, def, fmt, help]) =>
+    `<div class="pk-knob"><div class="kh"><b>${esc(name)}</b><span id="kv-${id}">${esc(fmt(K(id)))}</span><span class="hq" data-help="${esc(help)}">?</span></div><input type="range" data-k="${id}" min="${lo}" max="${hi}" step="${step}" value="${K(id)}"></div>`).join('')
+    + `<button class="pk-btn" data-a="knobs" style="margin-top:4px">Knobs back to my defaults</button>`;
+}
+function knobsText() {
+  const ch = KNOBS.filter(k => K(k[0]) !== k[5]);
+  return ch.length ? `\n## Knobs\n${ch.map(k => `- ${k[1]}: ${k[6](K(k[0]))} (default ${k[6](k[5])})`).join('\n')}` : '';
+}
+
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+// #scene&shot&fit=columns&paper sets picks for screenshot scripts.
+location.hash.split('&').slice(1).forEach(kv => { const [k, v] = kv.split('='); if (k === 'paper') S.paper = true; else if (v && DECISIONS.some(d => d.id === k)) S.c[k] = v; else if (v && KNOBS.some(x => x[0] === k)) { S.k = S.k || {}; S.k[k] = +v; } });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  const st = document.getElementById('stage').getBoundingClientRect();
+  // Scale so the real window fits, then grow the app to fill the stage: no empty space.
+  // Shots (#scene&shot) keep the exact DESK size.
+  const k = shot ? 1 : Math.min(st.width / DESK.w, st.height / DESK.h, 1);
+  desk.style.width = (shot ? DESK.w : st.width / k) + 'px'; desk.style.height = (shot ? DESK.h : st.height / k) + 'px';
+  desk.style.transform = `scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p class="pk-arg">${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += knobsHtml();
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${knobsText()}${notes ? `\n## Notes on elements\n${notes}` : ''}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') A = fresh();
+  else if (a === 'knobs') S.k = {};
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('input', ev => {
+  const id = ev.target.dataset?.k; if (!id) return;
+  S.k = S.k || {}; S.k[id] = +ev.target.value;
+  const k = KNOBS.find(x => x[0] === id); document.getElementById('kv-' + id).textContent = k[6](S.k[id]);
+  save(); document.getElementById('picks').value = picksText(); render();
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+desk.addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-k', 'data-d', 'data-v', 'data-go', 'data-open'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>

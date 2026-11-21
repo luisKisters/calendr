@@ -104,7 +104,6 @@ enum WalkthroughV4 {
 
     /// PR B, the data model and OverlapV5. What the current UI already shows: an unanswered invitation has no Going? answer,
     /// the call row and Join come from `CallLink`, the organizer counts as accepted, the menu bar's Join comes from the same link.
-    /// The v5 layout is not in the grid until PR C: the tour ends on its debug picture (`--snapshot v4-b-layout`).
     static func b(_ d: Driver, _ m: AppModel) {
         d.section("No reply")
         d.check(m.viewMode == .week && m.math.day(m.now) == 4, "v4 fixture: the week of Sun 4 Oct")
@@ -178,17 +177,6 @@ enum WalkthroughV4 {
         d.check(m.toast?.text == "Opens Google Meet in your browser", "the menu's Join call opens Google Meet (\(m.toast?.text ?? "no toast"))")
         d.hold(1.6)
 
-        d.section("OverlapV5")
-        let shot = OffscreenWindow(SnapshotV4Layout.view(m), size: CGSize(width: 1440, height: 900), dark: true, chrome: false)
-        shot.settle(6)
-        d.source = shot
-        let r = SnapshotV4Layout.wednesday(m).result
-        d.check(r.groups == [OverflowGroup(startMinute: 18 * 60 + 15, ids: ["v4.c5"])], "OverlapV5: Wednesday has one +1 at 18:15")
-        d.say("OverlapV5 (in the grid with PR C): Wednesday's +1 at 18:15")
-        d.cursor = CGPoint(x: 680, y: 316)
-        d.frame(hold: 1.0)
-        d.moveCursor(to: CGPoint(x: 950, y: 340), duration: 0.6)
-        d.hold(2.6)
         d.endCaption()
     }
 }

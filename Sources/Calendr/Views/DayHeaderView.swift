@@ -46,10 +46,10 @@ struct DayHeaderView: View {
                                                    color: today || hot ? ink.fg : ink.fg3)
                         let nx = x + w1 + Self.gap
                         if today {
-                            // `.dh .c.today .n`: line-height 18, padding 0 5, radius 999 (a 20 × 18 pill for one digit).
+                            // `.dh .c.today .n`: line-height 18, padding 0 5, Radius.inner (6 pt, locked round 1).
                             let nw = TextCache.line(num, .headerNumToday).width
                             let pill = Self.todayPill(x: nx, numeralWidth: nw, height: size.height)
-                            cg.addPath(EventPainter.roundedPath(pill, pill.height / 2)); cg.setFillColor(ink.act); cg.fillPath()
+                            cg.addPath(EventPainter.roundedPath(pill, Radius.inner)); cg.setFillColor(ink.act); cg.fillPath()
                             EventPainter.text(cg, num, .headerNumToday, x: pill.minX + (pill.width - nw) / 2, top: pill.minY, box: pill.height, color: ink.onAct)
                         } else {
                             EventPainter.text(cg, num, .headerNum, x: nx, top: 0, box: size.height, color: past && !hot ? ink.fg2 : ink.fg)
@@ -157,7 +157,7 @@ struct AllDayView: View {
                         for (d, count) in hidden.enumerated() where count > 0 {
                             let r = Self.moreRect(d, fold!, dw)
                             let hot = hovered == d
-                            if hot { cg.addPath(EventPainter.roundedPath(r, Radius.row)); cg.setFillColor(ink.hover); cg.fillPath() }
+                            if hot { cg.addPath(EventPainter.roundedPath(r, Radius.small)); cg.setFillColor(ink.hover); cg.fillPath() }
                             EventPainter.text(cg, "+\(count) more", .more, x: r.minX + 10, top: r.minY, box: r.height, color: hot ? ink.fg : ink.fg2)
                         }
                     }
