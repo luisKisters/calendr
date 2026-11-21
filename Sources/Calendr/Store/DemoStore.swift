@@ -1,13 +1,17 @@
 import Foundation
 import CalendrKit
 
+/// Which demo data a `DemoStore` holds: the v3 showcase year (`DemoData`) or the design/mockup-v4 week (`DemoDataV4`, `--fixture v4`).
+enum DemoFixture: String, Sendable { case v3, v4 }
+
 /// In-memory store used for `--demo`, tests, snapshots, the walkthrough and perf runs.
 @MainActor
 final class DemoStore: CalendarStore {
-    private(set) var accounts: [CalendarAccount] = DemoData.accounts
-    let teammates: [Teammate] = DemoData.teammates
+    private(set) var accounts: [CalendarAccount]
+    let teammates: [Teammate]
     var authorization: StoreAuthorization = .authorized
-    let defaultCalendarID: String? = DemoData.personal
+    let defaultCalendarID: String?
+    let fixture: DemoFixture
     let canEditParticipants = true
     /// Tests flip this to exercise the debounced write path that EventKit uses.
     var coalescesTextEdits = false
@@ -19,14 +23,19 @@ final class DemoStore: CalendarStore {
     private let math = DemoData.math
     private(set) var refreshCount = 0
 
-    init(dense: Bool = false, authorization: StoreAuthorization = .authorized) {
+    init(dense: Bool = false, authorization: StoreAuthorization = .authorized, fixture: DemoFixture = .v3) {
         self.authorization = authorization
+        self.fixture = fixture
+        let v4 = fixture == .v4
+        accounts = v4 ? DemoDataV4.accounts : DemoData.accounts
+        teammates = v4 ? DemoDataV4.teammates : DemoData.teammates
+        defaultCalendarID = v4 ? DemoDataV4.personal : DemoData.personal
         let t0 = CFAbsoluteTimeGetCurrent()
-        events = DemoData.buildEvents(dense: dense)
+        events = v4 ? DemoDataV4.buildEvents() : DemoData.buildEvents(dense: dense)
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "buildEvents %.0f ms (%d events)", (CFAbsoluteTimeGetCurrent() - t0) * 1000, events.count)) }
         let t1 = CFAbsoluteTimeGetCurrent()
         var byMail: [String: [CalendarEvent]] = [:]
-        for e in DemoData.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
+        for e in v4 ? [] : DemoData.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
         teamEvents = byMail
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "teammates %.0f ms", (CFAbsoluteTimeGetCurrent() - t1) * 1000)) }
         recomputeMax()

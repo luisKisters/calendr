@@ -41,20 +41,20 @@ struct PanelDetailView: View {
     private func top(writable: Bool, draft: Bool) -> some View {
         let bar = Palettes.cc(model.calendarColorHex(of: e), dark: scheme == .dark).color
         return HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 1.5).fill(bar).frame(width: 3, height: 20).padding(.trailing, 7)
+            RoundedRectangle(cornerRadius: Radius.bar).fill(bar).frame(width: 3, height: 20).padding(.trailing, 7)
             Group {
                 if writable {
                     TextField("", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { v in model.updateSelected { $0.title = v } }),
                               prompt: nil)
                         .textFieldStyle(.plain)
-                        .panelPlaceholder("Title", when: e.title.isEmpty, font: .ui(17))
+                        .panelPlaceholder("Title", when: e.title.isEmpty, font: .title18)
                         .focused($focus, equals: .title)
                         .onSubmit { draft ? model.saveDraft() : (focus = nil) }
                 } else {
                     Text(e.title).lineLimit(1).truncationMode(.tail)
                 }
             }
-            .font(.ui(17, .semibold)).tracking(-0.37).foregroundStyle(Theme.fg)
+            .font(.title18).tracking(-0.37).foregroundStyle(Theme.fg)
             .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
             if writable && !draft { PanelIconButton(icon: .trash) { model.requestDeleteSelected() } }
             PanelIconButton(icon: .x) { model.closePanel() }
@@ -74,13 +74,13 @@ struct PanelDetailView: View {
                 }
             }
             if let r = PanelText.repeats(e, fmt) {
-                row(.repeats) { Text(r).font(.ui(12.5)).foregroundStyle(Theme.fg).lineLimit(1) }
+                row(.repeats) { Text(r).font(.text).foregroundStyle(Theme.fg).lineLimit(1) }
             }
             if model.panelShows(.place, e) {
                 row(.pin) {
                     TextField("", text: Binding(get: { model.selectedEvent?.location ?? "" }, set: { v in model.updateSelected { $0.location = v } }),
                               axis: .vertical)
-                        .textFieldStyle(.plain).font(.ui(12.5)).foregroundStyle(Theme.fg).lineLimit(1...3)
+                        .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineLimit(1...3)
                         .panelPlaceholder("Add a place", when: e.location.isEmpty)
                         .focused($focus, equals: .place).disabled(!writable)
                         .onSubmit(submit)
@@ -99,7 +99,7 @@ struct PanelDetailView: View {
                         }
                         if canGuests {
                             TextField("", text: $guest)
-                                .textFieldStyle(.plain).font(.ui(12.5)).foregroundStyle(Theme.fg)
+                                .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg)
                                 .panelPlaceholder("Add a guest", when: guest.isEmpty)
                                 .focused($focus, equals: .guest)
                                 .onSubmit { model.addGuest(guest); guest = ""; focus = .guest }
@@ -121,7 +121,7 @@ struct PanelDetailView: View {
                     } else {
                         HStack(spacing: 10) {
                             Button { model.joinCall(e) } label: {
-                                Text(e.conferencing).font(.ui(12)).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
+                                Text(e.conferencing).font(.text).foregroundStyle(Theme.fg).lineLimit(1).truncationMode(.tail)
                                     .underline(color: Theme.fg.opacity(0.4))
                             }
                             .buttonStyle(.plain)
@@ -133,12 +133,14 @@ struct PanelDetailView: View {
             if !e.participants.isEmpty || e.status != .confirmed {
                 row(.help) {
                     if model.canChangeResponse {
-                        PanelRSVP(status: e.status, editable: writable) { s in model.updateSelected { $0.status = s } }
+                        Segmented(options: [(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], selection: e.status, enabled: writable) { s in
+                            model.updateSelected { $0.status = s }
+                        }
                     } else {
                         // The store cannot write the answer: show it.
                         HStack(spacing: 6) {
-                            Text("Going?").font(.ui(12.5)).foregroundStyle(Theme.fg3)
-                            Text(PanelText.response(e.status)).font(.ui(12.5)).foregroundStyle(Theme.fg)
+                            Text("Going?").font(.text).foregroundStyle(Theme.fg3)
+                            Text(PanelText.response(e.status)).font(.text).foregroundStyle(Theme.fg)
                         }
                     }
                 }
@@ -148,7 +150,7 @@ struct PanelDetailView: View {
                 row(.notes) {
                     TextField("", text: Binding(get: { model.selectedEvent?.notes ?? "" }, set: { v in model.updateSelected { $0.notes = v } }),
                               axis: .vertical)
-                        .textFieldStyle(.plain).font(.ui(12.5)).foregroundStyle(Theme.fg).lineSpacing(3).lineLimit(2...14)
+                        .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineSpacing(3).lineLimit(2...14)
                         .panelPlaceholder("Add notes", when: e.notes.isEmpty)
                         .focused($focus, equals: .notes).disabled(!writable)
                         .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
@@ -184,7 +186,7 @@ struct PanelDetailView: View {
                                  commit: { t in TimeParser.parse(t).map { model.setSelectedEnd($0) } ?? false }, onReturn: submit)
             }
             Text(e.isAllDay ? (days > 1 ? "\(days) days" : "all day") : PanelText.duration(e.durationMinutes))
-                .font(.calMono(11.5)).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize().padding(.leading, 8)
+                .font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize().padding(.leading, 8)
         }
         .fixedSize()
     }
@@ -211,7 +213,7 @@ struct PanelDetailView: View {
             } label: {
                 HStack(spacing: 7) {
                     dot
-                    Text(cal?.title ?? "Calendar").font(.ui(12.5)).foregroundStyle(Theme.fg).lineLimit(1)
+                    Text(cal?.title ?? "Calendar").font(.text).foregroundStyle(Theme.fg).lineLimit(1)
                     PanelIcon(name: .down)
                 }
                 .padding(.trailing, -2)
@@ -222,10 +224,10 @@ struct PanelDetailView: View {
         } else {
             HStack(spacing: 7) {
                 dot
-                Text(cal?.title ?? "Calendar").font(.ui(12.5)).foregroundStyle(Theme.fg).lineLimit(1)
+                Text(cal?.title ?? "Calendar").font(.text).foregroundStyle(Theme.fg).lineLimit(1)
                 HStack(spacing: 4) {
                     PanelIcon(name: .lock)
-                    Text("read-only").font(.ui(11)).foregroundStyle(Theme.fg3)
+                    Text("read-only").font(.small).foregroundStyle(Theme.fg3)
                 }
                 .padding(.leading, 6)
             }
@@ -239,7 +241,7 @@ struct PanelDetailView: View {
         HStack(spacing: 12) {
             HStack(spacing: 6) {
                 PanelKbd(text: "esc")
-                Text("Discard").font(.ui(11.5)).foregroundStyle(Theme.fg3)
+                Text("Discard").font(.small).foregroundStyle(Theme.fg3)
             }
             .contentShape(Rectangle())
             .onTapGesture { model.discardDraft() }

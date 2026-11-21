@@ -100,18 +100,58 @@ enum Typeface {
     }
 }
 
+// MARK: Type tokens (DECISIONS.md design system: 18 titles · 12.5 text · 11.5 small · events 11.5 / 500; no other sizes)
+
+/// SF Pro (the system font) for text and events; tabular variants use `monospacedDigitSystemFont`. Instrument Sans 600 only for 18 pt titles.
+enum SF {
+    private struct Key: Hashable { var size: CGFloat; var weight: Int; var tabular: Bool }
+    nonisolated(unsafe) private static var cache: [Key: CTFont] = [:]
+    private static let lock = NSLock()
+
+    static func nsWeight(_ w: Int) -> NSFont.Weight { w >= 700 ? .bold : w >= 600 ? .semibold : w >= 500 ? .medium : .regular }
+
+    /// SF at `size` and CSS `weight`; `tabular` uses monospaced digits.
+    static func ctFont(_ size: CGFloat, weight: Int = 400, tabular: Bool = false) -> CTFont {
+        let key = Key(size: size, weight: weight, tabular: tabular)
+        lock.lock(); defer { lock.unlock() }
+        if let f = cache[key] { return f }
+        let f: NSFont = tabular ? .monospacedDigitSystemFont(ofSize: size, weight: nsWeight(weight)) : .systemFont(ofSize: size, weight: nsWeight(weight))
+        cache[key] = f
+        return f
+    }
+}
+
+enum TypeSize {
+    static let title: CGFloat = 18
+    static let text: CGFloat = 12.5
+    static let small: CGFloat = 11.5
+    static let event: CGFloat = 11.5
+}
+
 extension Font {
-    /// The UI face: Instrument Sans. Use this instead of `.system(size:)` for text (SF Symbols keep the system font).
-    static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        Font(Typeface.ctFont(size, weight: Typeface.cssWeight(weight)))
-    }
-    /// Times, durations, dates and keycaps: Instrument Sans with tabular figures (the v2 mono-is-machine rule is retired).
-    static func calMono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        Font(Typeface.ctFont(size, weight: Typeface.cssWeight(weight), tabular: true))
-    }
-    static let calTitle = Font.ui(22, .semibold)
-    static let calLead = Font.ui(16, .semibold)
-    static let calBody = Font.ui(13)
-    static let calMeta = Font.ui(11.5)
-    static let calMicro = Font.ui(10.5, .semibold)
+    private static func sf(_ size: CGFloat, _ weight: Int = 400, tabular: Bool = false) -> Font { Font(SF.ctFont(size, weight: weight, tabular: tabular)) }
+
+    /// Month title, event title, Today, dialog titles: Instrument Sans 18 / 600.
+    static let title18 = Font(Typeface.ctFont(TypeSize.title, weight: 600))
+    /// The year after the month title: Instrument Sans 18 / 400 tabular, drawn fg3.
+    static let title18Light = Font(Typeface.ctFont(TypeSize.title, weight: 400, tabular: true))
+
+    /// Body text: SF 12.5 / 400.
+    static let text = sf(TypeSize.text)
+    static let textMedium = sf(TypeSize.text, 500)
+    static let textSemibold = sf(TypeSize.text, 600)
+    static let textTab = sf(TypeSize.text, tabular: true)
+
+    /// Secondary text, labels, hints: SF 11.5 / 400.
+    static let small = sf(TypeSize.small)
+    static let smallMedium = sf(TypeSize.small, 500)
+    static let smallSemibold = sf(TypeSize.small, 600)
+    static let smallTab = sf(TypeSize.small, tabular: true)
+    static let smallTabMedium = sf(TypeSize.small, 500, tabular: true)
+    static let smallTabSemibold = sf(TypeSize.small, 600, tabular: true)
+
+    /// Event titles: SF 11.5 / 500.
+    static let event = sf(TypeSize.event, 500)
+    /// Event times: SF 11.5 tabular. DECISIONS.md allows only 18 / 12.5 / 11.5, so the mockup CSS's 10.5 `--fs-evt` is not used.
+    static let eventTab = sf(TypeSize.small, tabular: true)
 }

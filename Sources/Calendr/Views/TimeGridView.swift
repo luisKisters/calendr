@@ -135,7 +135,7 @@ private struct NowLines: View {
             let w = CGFloat(g.dayWidth) * CGFloat(g.dayCount)
             ZStack(alignment: .topLeading) {
                 Rectangle().fill(Theme.live.opacity(0.3)).frame(width: w, height: 1).offset(x: gutter, y: y)
-                RoundedRectangle(cornerRadius: 1).fill(Theme.live).frame(width: CGFloat(g.dayWidth), height: 2).offset(x: x0, y: y - 1)
+                RoundedRectangle(cornerRadius: Radius.rule).fill(Theme.live).frame(width: CGFloat(g.dayWidth), height: 2).offset(x: x0, y: y - 1)
                 Circle().fill(Theme.live).frame(width: 8, height: 8).offset(x: x0 - 4, y: y - 4)
             }
             .allowsHitTesting(false)
@@ -268,13 +268,13 @@ private struct GridEmptyState: View {
         if model.layout.timedCount == 0 && model.layout.allDay.placements.isEmpty && model.dragPreview == nil {
             GeometryReader { geo in
                 VStack(spacing: 6) {
-                    Text(model.visibleDays.count == 1 ? "Nothing on this day" : "Nothing this week").font(.ui(16, .semibold)).tracking(-0.35).foregroundStyle(Theme.fg)
+                    Text(model.visibleDays.count == 1 ? "Nothing on this day" : "Nothing this week").font(.title18).tracking(-0.35).foregroundStyle(Theme.fg)
                     HStack(spacing: 5) {
                         Text("Drag on the grid, or press")
                         Keycap(text: "C")
                         Text("for a new event.")
                     }
-                    .font(.ui(12.5)).foregroundStyle(Theme.fg3)
+                    .font(.text).foregroundStyle(Theme.fg3)
                 }
                 .padding(.leading, Theme.gutterWidth)
                 .frame(width: geo.size.width)

@@ -16,7 +16,11 @@ enum Walkthrough {
         let d = Driver(model: model, size: o.size, recorder: rec)
         let started = Date()
         if rec != nil { Motion.timeScale = Driver.recordingTimeScale }
-        tour(d, model)
+        switch o.tour {
+        case nil: tour(d, model)
+        case "v4-a": WalkthroughV4.a(d, model)
+        case let t?: print("unknown tour \(t) (tours: v4-a)"); return 2
+        }
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }
         let secs = rec.map { String(format: "%.1f", $0.seconds) } ?? "-"

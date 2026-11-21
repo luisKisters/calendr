@@ -325,6 +325,24 @@ final class Driver {
         play(0.3, action)
     }
 
+    /// Clicks a window point (top-left origin) with real mouse-down / mouse-up events sent to the window, so SwiftUI hit-tests them
+    /// and runs whatever control is there. Returns after the press animates for `seconds`.
+    func clickPoint(_ p: CGPoint, seconds: Double = 0.4) {
+        moveCursor(to: p)
+        recordClick()
+        let loc = NSPoint(x: p.x, y: size.height - p.y)
+        let t = ProcessInfo.processInfo.systemUptime
+        play(seconds) {
+            for (type, dt) in [(NSEvent.EventType.leftMouseDown, 0.0), (.leftMouseUp, 0.05)] {
+                if let e = NSEvent.mouseEvent(with: type, location: loc, modifierFlags: [], timestamp: t + dt, windowNumber: win.window.windowNumber,
+                                              context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0) {
+                    win.window.sendEvent(e)
+                }
+                win.settle(1)
+            }
+        }
+    }
+
     /// A click on the grid whose consequences animate (selection ring, the panel swapping): recorded in real time.
     func clickGrid(_ g: CGPoint, clickCount: Int = 1, seconds: Double = 0.55) {
         moveCursor(to: windowPoint(fromGrid: g))

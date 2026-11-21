@@ -109,7 +109,7 @@ struct MonthView: View {
                 // The columns of the grid itself, so the headers follow the model's first weekday.
                 let firstWeek = model.monthGrid.first ?? []
                 ForEach(firstWeek.indices, id: \.self) { i in
-                    Text(model.fmt.weekdayShort(firstWeek[i])).font(.ui(12)).foregroundStyle(Theme.fg2)
+                    Text(model.fmt.weekdayShort(firstWeek[i])).font(.text).foregroundStyle(Theme.fg2)
                         .padding(.leading, 12).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }

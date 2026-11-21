@@ -49,4 +49,41 @@ struct AuditTests {
         m.createAtNextFreeSlot()
         #expect(m.draft!.start >= shift.end)
     }
+
+    // MARK: Snapshot and mockup bookkeeping
+
+    static func statesJSON() throws -> (root: URL, json: [String: Any], states: [String: [String: Any]]) {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let json = try JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent("design/states.json"))) as! [String: Any]
+        return (root, json, json["states"] as! [String: [String: Any]])
+    }
+
+    @Test func everyStatesEntryExistsInASnapshotHook() throws {
+        let (_, _, states) = try Self.statesJSON()
+        #expect(!states.isEmpty)
+        for (name, s) in states {
+            let state = s["state"] as? String ?? name
+            let fixture = (s["fixture"] as? String).flatMap(DemoFixture.init(rawValue:)) ?? .v3
+            #expect(SnapshotStates.all.contains(state) || SnapshotMenuBar.screens.contains(state), "\(name): \(state) is not in SnapshotStates.all")
+            if SnapshotMenuBar.screens.contains(state) { continue }
+            var o = LaunchOptions.parse(["Calendr", "--fixture", fixture.rawValue, "--freeze-clock"])
+            if fixture == .v3 { o.now = DemoData.defaultNow }
+            let m = AppModel(store: DemoStore(fixture: fixture), options: o, persist: false)
+            #expect(SnapshotStates.apply(state, to: m), "\(name): no snapshot hook applies \(state)")
+        }
+    }
+
+    @Test func everyMockupEntryHasAShotFile() throws {
+        let (root, json, states) = try Self.statesJSON()
+        let dir = try #require(json["mockupDir"] as? String)
+        #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent(dir).appendingPathComponent("index.html").path))
+        let withMockup = states.filter { $0.value["mockup"] != nil }
+        #expect(withMockup.count >= 8)
+        for (name, s) in withMockup {
+            let m = s["mockup"] as! String
+            let shot = s["shot"] as? String ?? m.replacingOccurrences(of: "&", with: "-").replacingOccurrences(of: "=", with: "-")
+            let path = root.appendingPathComponent(dir).appendingPathComponent("shots/\(shot).png").path
+            #expect(FileManager.default.fileExists(atPath: path), "\(name): missing \(dir)/shots/\(shot).png (run swift scripts/render-mockup.swift)")
+        }
+    }
 }

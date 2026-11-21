@@ -1,8 +1,8 @@
 # Calendr — spec
 
-A native macOS SwiftUI app that copies Notion Calendar 1:1 (dark appearance first). Reference screenshots are in `design/reference/` and are the visual truth. When this spec and a screenshot disagree, the screenshot wins.
+A native macOS SwiftUI calendar (dark appearance first). `design/mockup-v4/` and `design/mockup-v4/DECISIONS.md` are the visual truth (v4; the "copy Notion Calendar 1:1" rule ended with v3). When this spec and the mockup disagree, the mockup wins. Type: SF Pro for text, Instrument Sans 600 only for 18 pt titles. Light theme: Paper, with the v4 token roles.
 
-Owner: the maintainer. Priorities, in order: 1) it works, 2) it is fast, 3) it looks exactly like Notion Calendar, 4) UX is thought through (keyboard-first, every action reachable from mouse and keyboard). **Motion (v2)**: one curve, four durations, everything instant under Reduce Motion (see `design/DESIGN.md`; v1 of this spec forbade animation, v2 replaces that rule).
+Owner: the maintainer. Priorities, in order: 1) it works, 2) it is fast, 3) it looks exactly like the v4 mockup, 4) UX is thought through (keyboard-first, every action reachable from mouse and keyboard). **Motion (v2)**: one curve, four durations, everything instant under Reduce Motion (see `design/DESIGN.md`; v1 of this spec forbade animation, v2 replaces that rule).
 
 ## Stack
 

@@ -31,13 +31,13 @@ struct OverlayHost: View {
     }
 }
 
-/// Floating surface: bg1, radius 14, hair2 edge, the big shadow.
+/// Floating surface (menus, dialogs): pop, radius 12, hair2 edge, the big shadow.
 private struct SurfaceStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(RoundedRectangle(cornerRadius: Radius.surface + 2).fill(Theme.bg1))
-            .clipShape(RoundedRectangle(cornerRadius: Radius.surface + 2))
-            .overlay(RoundedRectangle(cornerRadius: Radius.surface + 2).strokeBorder(Theme.hair2, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.pop))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.surface))
+            .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
             .popShadow()
     }
 }
@@ -67,11 +67,11 @@ struct ToastView: View {
     @State private var hoverUndo = false
     var body: some View {
         HStack(spacing: 10) {
-            Text(toast.text).font(.ui(12.5)).foregroundStyle(Theme.fg).lineLimit(1)
+            Text(toast.text).font(.text).foregroundStyle(Theme.fg).lineLimit(1)
             if toast.undo {
                 Button { model.dismissToast(); model.undo() } label: {
                     HStack(spacing: 7) {
-                        Text("Undo").font(.ui(12.5, .semibold)).foregroundStyle(Theme.fg)
+                        Text("Undo").font(.textSemibold).foregroundStyle(Theme.fg)
                         Keycaps(keys: ["\u{2318}", "Z"], spacing: 10)
                     }
                     .padding(.leading, 9).padding(.trailing, 5).frame(height: 26)
@@ -82,7 +82,7 @@ struct ToastView: View {
                 .onHover { hoverUndo = $0 }
                 .animation(Motion.fast, value: hoverUndo)
             }
-            IconButton(name: "xmark", size: 9.5, box: 24, color: Theme.fg3) { model.dismissToast() }.clipShape(Circle())
+            IconButton(name: "xmark", small: true, color: Theme.fg3) { model.dismissToast() }.clipShape(Circle())
         }
         .padding(.leading, 14).padding(.trailing, 5).frame(height: 38)
         .background(Capsule().fill(Theme.bg2))
@@ -94,7 +94,7 @@ struct ToastView: View {
 
 // MARK: Command menu
 
-/// One field for commands, dates, events and people. 620 pt, 50 pt input row, 34 pt rows with leading icons, footer hints.
+/// One field for commands, dates, events and people. 620 pt, 50 pt input row, 32 pt rows with leading icons, footer hints.
 struct CommandMenu: View {
     @Environment(AppModel.self) private var model
     @FocusState private var focused: Bool
@@ -104,16 +104,16 @@ struct CommandMenu: View {
         let rows = model.paletteRows
         let idx = min(model.chromeState.paletteIndex, max(0, rows.count - 1))
         VStack(spacing: 0) {
-            HStack(spacing: 11) {
+            HStack(spacing: Space.m) {
                 ChromeIcon(name: .search)
                 if let crumb = Self.crumb(mode) {
-                    Text(crumb).font(.ui(12, .medium)).foregroundStyle(Theme.fg)
+                    Text(crumb).font(.textMedium).foregroundStyle(Theme.fg)
                         .padding(.horizontal, 8).frame(height: 22)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Theme.bg3))
+                        .background(RoundedRectangle(cornerRadius: Radius.row).fill(Theme.bg3))
                 }
                 TextField("", text: Binding(get: { model.chromeState.paletteQuery }, set: { model.setPaletteQuery($0) }),
                           prompt: Text(Self.placeholder(mode)).foregroundStyle(Theme.fg3))
-                    .textFieldStyle(.plain).font(.ui(15)).foregroundStyle(Theme.fg).tint(Theme.fg)
+                    .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).tint(Theme.fg)
                     .focused($focused)
                     .onSubmit { model.runPaletteSelection() }
             }
@@ -181,12 +181,12 @@ struct CommandMenu: View {
         }
     }
 
-    /// Rows are 34 pt, section labels 13 pt of text with their padding; the list stops growing at 392.
+    /// Rows are 32 pt, section labels 13 pt of text with their padding; the list stops growing at 392.
     static func listHeight(_ rows: [PaletteRow]) -> CGFloat {
         var h: CGFloat = 12
         for (i, r) in rows.enumerated() {
             if i == 0 || rows[i - 1].section != r.section { h += (i == 0 ? 5 : 10) + 13 + 5 }
-            h += 34
+            h += PaletteRowView.height
         }
         return min(392, h)
     }
@@ -198,28 +198,30 @@ struct Hint: View {
     var body: some View {
         HStack(spacing: 6) {
             Keycaps(keys: keys, spacing: 9)
-            Text(text).font(.ui(11.5)).foregroundStyle(Theme.fg3)
+            Text(text).font(.small).foregroundStyle(Theme.fg3)
         }
     }
 }
 
 struct PaletteRowView: View {
+    /// `.ds .cmd .it`: 32 pt.
+    static let height: CGFloat = 32
     let row: PaletteRow
     let current: Bool
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: Space.m) {
                 ChromeIcon(name: row.icon, color: row.colorHex.map { Color(hex: $0) } ?? Theme.fg3).frame(width: 16)
-                Text(row.title + (row.more ? "\u{2026}" : "")).font(.ui(13)).foregroundStyle(row.past ? Theme.fg2 : Theme.fg)
+                Text(row.title + (row.more ? "\u{2026}" : "")).font(.text).foregroundStyle(row.past ? Theme.fg2 : Theme.fg)
                     .lineLimit(1).truncationMode(.tail)
-                if let sub = row.sub { Text(sub).font(.calMono(11.5)).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize() }
-                if row.shown { Text("shown").font(.ui(11.5)).foregroundStyle(Theme.fg3) }
+                if let sub = row.sub { Text(sub).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize() }
+                if row.shown { Text("shown").font(.small).foregroundStyle(Theme.fg3) }
                 Spacer(minLength: 0)
                 if !row.keys.isEmpty { Keycaps(keys: row.keys) }
             }
-            .padding(.leading, 10).padding(.trailing, 9).frame(height: 34)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(current ? Theme.actWash : .clear))
+            .padding(.horizontal, Space.m).frame(height: PaletteRowView.height)
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(current ? Theme.hover : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -238,8 +240,8 @@ struct PaletteEmpty: View {
         case .all: ("Nothing matches", "Try a command, an event title, or a date like \u{201C}12 oct\u{201D}.")
         }
         VStack(spacing: 5) {
-            Text(title).font(.ui(13.5, .semibold)).foregroundStyle(Theme.fg)
-            Text(line).font(.ui(12.5)).foregroundStyle(Theme.fg3).multilineTextAlignment(.center).frame(maxWidth: 340)
+            Text(title).font(.textSemibold).foregroundStyle(Theme.fg)
+            Text(line).font(.text).foregroundStyle(Theme.fg3).multilineTextAlignment(.center).frame(maxWidth: 340)
         }
         .padding(.horizontal, 20).padding(.top, 30).padding(.bottom, 34)
         .frame(maxWidth: .infinity)
@@ -259,11 +261,11 @@ struct SheetFrame<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(title).font(.ui(17, .semibold)).tracking(-0.37).foregroundStyle(Theme.fg)
+                Text(title).font(.title18).tracking(-0.37).foregroundStyle(Theme.fg)
                 Spacer()
-                if closable { IconButton(name: "xmark", size: 10, box: 24) { model.closeOverlay() } }
+                if closable { IconButton(name: "xmark") { model.closeOverlay() } }
             }
-            .frame(height: 24)
+            .frame(height: Dim.iconButton)
             content
         }
         .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, bottom)
@@ -302,7 +304,7 @@ struct ShortcutsSheet: View {
                         ForEach(g.1, id: \.1) { k, t in
                             // `.sh__r`: the label takes the room, the caps (8 pt gap plus kbd's 3) keep their size
                             HStack(spacing: 12) {
-                                Text(t).font(.ui(12.5)).foregroundStyle(Theme.fg).lineLimit(1)
+                                Text(t).font(.text).foregroundStyle(Theme.fg).lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading).layoutPriority(1)
                                 HStack(spacing: 11) {
                                     ForEach(Array(k.split(separator: " ").enumerated()), id: \.offset) { Keycap(text: String($0.element)) }
@@ -318,7 +320,7 @@ struct ShortcutsSheet: View {
             }
             .padding(.top, 14)
             // `.win p` resets `.sh__n`'s margin: the note sits right under the rows
-            Text("Single keys work whenever the caret is not in a field.").font(.ui(11.5)).foregroundStyle(Theme.fg3)
+            Text("Single keys work whenever the caret is not in a field.").font(.small).foregroundStyle(Theme.fg3)
         }
     }
 }
@@ -333,8 +335,8 @@ struct SettingsRow<Content: View>: View {
         // `.st__r`: the text column takes all the room the control leaves
         HStack(spacing: 24) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.ui(13, .medium)).foregroundStyle(Theme.fg)
-                if let detail { Text(detail).font(.ui(11.5)).foregroundStyle(Theme.fg3).fixedSize(horizontal: false, vertical: true) }
+                Text(title).font(.textMedium).foregroundStyle(Theme.fg)
+                if let detail { Text(detail).font(.small).foregroundStyle(Theme.fg3).fixedSize(horizontal: false, vertical: true) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             content.fixedSize()
@@ -351,12 +353,11 @@ struct SettingsSheet: View {
         SheetFrame(title: "Settings", width: 600, bottom: 20) {
             SheetLabel(text: "General").padding(.top, 16).padding(.bottom, 2)
             SettingsRow(title: "Appearance", first: true) {
-                Segmented(options: [(false, "Ink"), (true, "Paper")], selection: model.isPaper) { model.settings.appearance = $0 ? .light : .dark }
+                Segmented(options: [(false, "Black"), (true, "Paper")], selection: model.isPaper) { model.settings.appearance = $0 ? .light : .dark }
             }
             SheetLabel(text: "Calendar").padding(.top, 16).padding(.bottom, 2)
             SettingsRow(title: "Show week numbers", detail: "A column in the mini month. Click a number to open that week.", first: true) {
-                Toggle("", isOn: Binding(get: { model.settings.showWeekNumbers }, set: { model.settings.showWeekNumbers = $0 }))
-                    .toggleStyle(ActToggleStyle()).labelsHidden()
+                Segmented(options: [(false, "Off"), (true, "On")], selection: model.settings.showWeekNumbers) { model.settings.showWeekNumbers = $0 }
             }
             SettingsRow(title: "New events last", detail: "For C and double-click. A drag sets its own length.") {
                 Segmented(options: AppSettings.durationChoices.map { ($0, $0 == 60 ? "1 hour" : "\($0) min") }, selection: s.defaultDurationMinutes) {
@@ -373,7 +374,7 @@ struct SettingsSheet: View {
                           selection: s.menuBarDisplay) { model.settings.menuBarDisplay = $0 }
             }
             Text("Accounts and calendar access live in System Settings. Calendr reads what macOS knows.")
-                .font(.ui(11.5)).foregroundStyle(Theme.fg3)
+                .font(.small).foregroundStyle(Theme.fg3)
         }
     }
 }
@@ -383,7 +384,7 @@ struct DeleteRecurringDialog: View {
     let eventID: String
     var body: some View {
         SheetFrame(title: "Delete recurring event", width: 400, closable: false, bottom: 20) {
-            Text("This event repeats. Which events should be deleted?").font(.ui(13)).foregroundStyle(Theme.fg2).padding(.top, 12)
+            Text("This event repeats. Which events should be deleted?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
             HStack(spacing: 8) {
                 Spacer()
                 SecondaryButton(title: "Cancel") { model.closeOverlay() }

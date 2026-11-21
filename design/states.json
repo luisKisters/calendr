@@ -1,53 +1,24 @@
 {
-  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH`. 'mockup' names the shot in design/mockup-v2/shots. An entry may override 'state' (the app state to render) and 'size'.",
+  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH` (scripts/snapshots.sh). An entry may override 'state' (the app state to render), 'size' and 'fixture' (the demo data: 'v4' is design/mockup-v4's week). 'mockup' is the mockupDir scene it is compared with (index.html#<mockup>, '&key=value' adds picks); scripts/render-mockup.swift writes it to <mockupDir>/shots/<mockup>.png after running the optional 'js' step, and scripts/compare-all.sh diffs it against the snapshot.",
+  "mockupDir": "design/mockup-v4",
   "size": "1440x900",
   "states": {
-    "week": {
-      "mockup": "week"
-    },
-    "week-selected-event": {
-      "mockup": "inspector"
-    },
-    "command-menu": {
-      "mockup": "command"
-    },
-    "teammate-picker": {
-      "mockup": "teammate"
-    },
-    "teammate-overlay": {
-      "mockup": "teammate-overlay"
-    },
-    "go-to-date": {
-      "mockup": "goto"
-    },
-    "search-results": {
-      "mockup": "search"
-    },
-    "month": {
-      "mockup": "month"
-    },
-    "day": {
-      "mockup": "day"
-    },
-    "menubar-popover": {
-      "mockup": "menubar"
-    },
-    "sidebar-hidden": {
-      "mockup": "sidebar-hidden"
-    },
-    "all-day-collapsed": {
-      "mockup": "allday-collapsed"
-    },
+    "week": {},
+    "week-selected-event": {},
+    "command-menu": {},
+    "teammate-picker": {},
+    "teammate-overlay": {},
+    "go-to-date": {},
+    "search-results": {},
+    "month": {},
+    "day": {},
+    "menubar-popover": {},
+    "sidebar-hidden": {},
+    "all-day-collapsed": {},
     "create-drag": {},
-    "shortcuts-sheet": {
-      "mockup": "shortcuts"
-    },
-    "settings": {
-      "mockup": "settings"
-    },
-    "light-week": {
-      "mockup": "light"
-    },
+    "shortcuts-sheet": {},
+    "settings": {},
+    "light-week": {},
     "delete-recurring": {},
     "meet-with": {},
     "week-reference-size": {
@@ -56,21 +27,45 @@
     },
     "readonly-event": {},
     "month-light": {},
-    "empty-access": {
-      "mockup": "empty-access"
-    },
-    "toast": {
-      "mockup": "toast"
-    },
-    "search-empty": {
-      "mockup": "search-empty"
-    },
-    "menubar-empty": {
-      "mockup": "menubar-empty"
-    },
+    "empty-access": {},
+    "toast": {},
+    "search-empty": {},
+    "menubar-empty": {},
     "create-event": {},
     "week-zoomed": {},
     "week-numbers": {},
-    "detail-guests": {}
+    "detail-guests": {},
+    "v4-week": {
+      "mockup": "week",
+      "fixture": "v4"
+    },
+    "v4-overlap": {
+      "mockup": "overlap",
+      "fixture": "v4"
+    },
+    "v4-status": {
+      "mockup": "status",
+      "fixture": "v4"
+    },
+    "v4-event": {
+      "mockup": "event",
+      "fixture": "v4"
+    },
+    "v4-cmd": {
+      "mockup": "cmd",
+      "fixture": "v4"
+    },
+    "v4-settings": {
+      "mockup": "settings",
+      "fixture": "v4"
+    },
+    "v4-menubar": {
+      "mockup": "menubar",
+      "fixture": "v4"
+    },
+    "v4-delete": {
+      "mockup": "delete",
+      "fixture": "v4"
+    }
   }
 }

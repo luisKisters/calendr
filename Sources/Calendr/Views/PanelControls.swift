@@ -11,9 +11,6 @@ enum PanelMetrics {
 
 enum PanelFocus: Hashable { case title, date, start, end, place, guest, video, notes }
 
-/// Segmented thumb (`--thumb`): lifted ink on ink, white on paper.
-private let panelThumb = Color.dyn("#33333C", "#FFFFFF")
-
 /// `.in`: a field that looks like text until hovered (wash) or focused (window colour, 1.5 pt ring).
 /// Its text stays on the column line: the 7 pt padding hangs out to the left.
 struct PanelInputChrome: ViewModifier {
@@ -27,8 +24,8 @@ struct PanelInputChrome: ViewModifier {
         content
             .padding(.horizontal, 7)
             .frame(height: height)
-            .background(RoundedRectangle(cornerRadius: 6).fill(focused ? Theme.bg : (hover && editable ? Theme.hover : Color.clear)))
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(bad ? Theme.live : (focused ? Theme.focus : Color.clear), lineWidth: 1.5))
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(focused ? Theme.bg : (hover && editable ? Theme.hover : Color.clear)))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(bad ? Theme.live : (focused ? Theme.focus : Color.clear), lineWidth: 1.5))
             .padding(.vertical, 1)
             .padding(.leading, hang ? -7 : 0)
             .onHover { hover = $0 }
@@ -45,7 +42,7 @@ extension View {
 
 extension View {
     /// Placeholder in fg3 at regular weight (a TextField prompt takes the field's font and the system colour).
-    func panelPlaceholder(_ text: String, when empty: Bool, font: Font = .ui(12.5)) -> some View {
+    func panelPlaceholder(_ text: String, when empty: Bool, font: Font = .text) -> some View {
         overlay(alignment: .topLeading) {
             if empty { Text(text).font(font).foregroundStyle(Theme.fg3).lineLimit(1).allowsHitTesting(false) }
         }
@@ -87,7 +84,7 @@ struct PanelCommitField: View {
 
     var body: some View {
         let focused = focus.wrappedValue == focusKey
-        let font: Font = tabular ? .calMono(12.5) : .ui(12.5)
+        let font: Font = tabular ? .textTab : .text
         // the field is as wide as its text (`field-sizing: content`), or fixed
         Text(editable ? (text.isEmpty ? " " : text) : value).font(font).foregroundStyle(Theme.fg).lineLimit(1).fixedSize()
             .opacity(editable ? 0 : 1)
@@ -137,7 +134,7 @@ struct PanelSwitch: View {
                     Capsule().fill(isOn ? Theme.act : Theme.bg3).frame(width: 26, height: 15)
                     Circle().fill(isOn ? Theme.onAct : Theme.fg2).frame(width: 11, height: 11).offset(x: isOn ? 13 : 2)
                 }
-                Text(label).font(.ui(12)).foregroundStyle(Theme.fg2)
+                Text(label).font(.text).foregroundStyle(Theme.fg2)
             }
             .frame(height: 26).contentShape(Rectangle())
             .animation(Motion.base, value: isOn)
@@ -146,41 +143,8 @@ struct PanelSwitch: View {
     }
 }
 
-/// `.rsvp`: Yes / Maybe / No.
-struct PanelRSVP: View {
-    let status: ResponseStatus
-    let editable: Bool
-    let pick: (ResponseStatus) -> Void
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach([(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], id: \.0) { s, t in
-                Button { if editable { pick(s) } } label: {
-                    Text(t).font(.ui(12, .medium)).foregroundStyle(status == s ? Theme.fg : Theme.fg2)
-                        .padding(.horizontal, 11).frame(height: 22)
-                        .background(RoundedRectangle(cornerRadius: Radius.control - 1).fill(status == s ? panelThumb : Color.clear)
-                            .shadow(color: status == s ? .black.opacity(0.2) : .clear, radius: 1, y: 1))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(2)
-        .background(RoundedRectangle(cornerRadius: Radius.control + 1).fill(Theme.bg2))
-        .animation(Motion.fast, value: status)
-    }
-}
-
-/// `kbd`: 18 pt keycap.
-struct PanelKbd: View {
-    let text: String
-    var onAct = false
-    var body: some View {
-        Text(text).font(.calMono(10.5, .medium)).foregroundStyle(onAct ? Theme.onAct : Theme.fg2)
-            .padding(.horizontal, 4).frame(minWidth: 18, minHeight: 18)
-            .background(RoundedRectangle(cornerRadius: 4).fill(onAct ? Theme.onAct.opacity(0.16) : Theme.bg2))
-            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(onAct ? Color.clear : Theme.hair2, lineWidth: 1))
-    }
-}
+/// `kbd`: a shortcut hint (now plain grey text, see `Keycap`).
+typealias PanelKbd = Keycap
 
 /// `.btn--fill`: ink on the window, 28 pt (24 pt small).
 struct PanelFillButton: View {
@@ -193,11 +157,11 @@ struct PanelFillButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Text(title).font(.ui(small ? 12 : 12.5, .semibold))
+                Text(title).font(.textSemibold)
                 if let key { PanelKbd(text: key, onAct: true) }
             }
             .foregroundStyle(Theme.onAct)
-            .padding(.horizontal, small ? 8 : 10).frame(maxWidth: fullWidth ? .infinity : nil).frame(height: small ? 24 : 28)
+            .padding(.horizontal, small ? 8 : 10).frame(maxWidth: fullWidth ? .infinity : nil).frame(height: small ? Dim.row : Dim.field)
             .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.actHover : Theme.act))
             .contentShape(Rectangle())
         }
@@ -214,8 +178,8 @@ struct PanelLineButton: View {
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            Text(title).font(.ui(12, .medium)).foregroundStyle(Theme.fg)
-                .padding(.horizontal, 8).frame(height: 24)
+            Text(title).font(.textMedium).foregroundStyle(Theme.fg)
+                .padding(.horizontal, 10).frame(height: Dim.row)
                 .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.hover : Color.clear))
                 .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.hair2, lineWidth: 1))
                 .contentShape(Rectangle())
@@ -226,16 +190,16 @@ struct PanelLineButton: View {
     }
 }
 
-/// `.btn--icon.btn--s`: 24 pt square, fg2, wash on hover.
+/// `.ibtn`: 26 pt square, radius 6, fg2, wash on hover.
 struct PanelIconButton: View {
     let icon: PanelIcon.Name
     let action: () -> Void
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            PanelIcon(name: icon, color: hover ? Theme.fg : Theme.fg2)
-                .frame(width: 24, height: 24)
-                .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.hover : Color.clear))
+            PanelIcon(name: icon, size: Dim.iconGlyph, color: hover ? Theme.fg : Theme.fg2)
+                .frame(width: Dim.iconButton, height: Dim.iconButton)
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hover : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -253,10 +217,10 @@ struct PanelAddChip: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 PanelIcon(name: .plus, color: hover ? Theme.fg : Theme.fg3)
-                Text(title).font(.ui(12)).foregroundStyle(hover ? Theme.fg : Theme.fg3)
+                Text(title).font(.text).foregroundStyle(hover ? Theme.fg : Theme.fg3)
             }
             .padding(.leading, 6).padding(.trailing, 8).frame(height: 24)
-            .background(RoundedRectangle(cornerRadius: 6).fill(hover ? Theme.hover : Color.clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hover : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -273,9 +237,9 @@ struct PanelGuestChip: View {
     @State private var hover = false
     var body: some View {
         HStack(spacing: 6) {
-            Text(PanelText.initials(name)).font(.ui(8.5, .semibold)).tracking(0.17).foregroundStyle(Theme.fg2)
+            Text(PanelText.initials(name)).font(.smallSemibold).tracking(0.17).foregroundStyle(Theme.fg2)
                 .frame(width: 18, height: 18).background(Circle().fill(Theme.bg3))
-            Text(name).font(.ui(12)).foregroundStyle(Theme.fg).lineLimit(1)
+            Text(name).font(.text).foregroundStyle(Theme.fg).lineLimit(1)
             if removable {
                 Button(action: remove) {
                     PanelIcon(name: .x, size: 9, color: hover ? Theme.fg : Theme.fg3)

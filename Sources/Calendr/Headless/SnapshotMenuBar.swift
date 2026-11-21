@@ -10,7 +10,7 @@ enum SnapshotMenuBar {
 
     /// The menu bar screens of design/mockup-v3/menubar.html (moment m12, an open row menu, run, none).
     /// "menubar-popover" and "menubar-empty" are the older names design/states.json still lists for "menubar" and "menubar-none".
-    static let screens = ["menubar-popover", "menubar", "menubar-submenu", "menubar-running", "menubar-none", "menubar-empty"]
+    static let screens = ["menubar-popover", "menubar", "menubar-submenu", "menubar-running", "menubar-none", "menubar-empty", "v4-menubar"]
 
     /// Renders a menu bar screen (`MenuBarScreenPreview`) instead of the window. Nil for every other state.
     static func run(_ state: String, _ m: AppModel, _ o: LaunchOptions, out: String) -> Int32? {
@@ -20,7 +20,7 @@ enum SnapshotMenuBar {
         let backdrop = behind.image(scale: o.scale).map { NSImage(cgImage: $0, size: NSSize(width: 1440, height: 900)) }
         behind.close()
 
-        let day = DemoData.day(9, 29)
+        let day = m.math.startOfDay(m.now)
         switch state {
         case "menubar-running": m.setNow(m.math.date(on: day, minutes: 12 * 60 + 20))
         case "menubar-none", "menubar-empty": m.setNow(m.math.date(on: day, minutes: 23 * 60 + 30))
