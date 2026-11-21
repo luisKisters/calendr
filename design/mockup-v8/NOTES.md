@@ -1,4 +1,4 @@
-# Calendr v8 · designer notes
+# Horion v8 · designer notes
 
 Status: built and checked. Tailnet: https://<tailnet-host>:8800/ (Dark; neutral demo data only).
 Serve: `node design/mockup-v8/serve.mjs 8800`. Contrast: `node design/mockup-v8/contrast.mjs` (`--all`, `--fails`).

@@ -1,4 +1,4 @@
-# Calendr v12 keycaps decisions
+# Horion v12 keycaps decisions
 Mockup: `design/mockup-v12-keycaps/index.html` (opens from disk). Built on the locked v11 tokens (`design/design-system/foundations.md`); only keycaps are open.
 
 ## Locked in round 1 (2026-11-21)
@@ -7,7 +7,7 @@ Mockup: `design/mockup-v12-keycaps/index.html` (opens from disk). Built on the l
 | Keycap look | **Outline + raised fill** (not the recommendation): raised fill, 1 px `capEdge`, 16 high, radius 4 |
 | Keycap on a filled button | **Outline in the button ink** |
 | Shortcuts with a modifier | **One cap per shortcut** (not the recommendation): ⌘Z, ⌥↑ |
-Built: `Keycap` / `Keycaps` in `Sources/Calendr/Views/Components.swift`, `Theme.capEdge`. Spec: `design/design-system/components.md` → Keycap.
+Built: `Keycap` / `Keycaps` in `Sources/Horion/Views/Components.swift`, `Theme.capEdge`. Spec: `design/design-system/components.md` → Keycap.
 
 ## Options of round 1 (2026-11-21)
 You said: "i think having like an outline thing around it perhaps would be nice lets generally better define how we have kbds"

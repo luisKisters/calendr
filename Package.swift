@@ -2,21 +2,21 @@
 import PackageDescription
 
 let package = Package(
-    name: "Calendr",
+    name: "Horion",
     platforms: [.macOS(.v15)],
     products: [
-        .executable(name: "Calendr", targets: ["Calendr"]),
-        .library(name: "CalendrKit", targets: ["CalendrKit"]),
+        .executable(name: "Horion", targets: ["Horion"]),
+        .library(name: "HorionKit", targets: ["HorionKit"]),
     ],
     targets: [
-        .target(name: "CalendrKit"),
+        .target(name: "HorionKit"),
         .executableTarget(
-            name: "Calendr",
-            dependencies: ["CalendrKit"],
+            name: "Horion",
+            dependencies: ["HorionKit"],
             resources: [.copy("Resources/Fonts")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
-        .testTarget(name: "CalendrKitTests", dependencies: ["CalendrKit"], resources: [.copy("Fixtures")]),
-        .testTarget(name: "CalendrTests", dependencies: ["Calendr", "CalendrKit"], swiftSettings: [.swiftLanguageMode(.v5)]),
+        .testTarget(name: "HorionKitTests", dependencies: ["HorionKit"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "HorionTests", dependencies: ["Horion", "HorionKit"], swiftSettings: [.swiftLanguageMode(.v5)]),
     ]
 )

@@ -1,4 +1,4 @@
-// Calendr v9 · looks. One source for the page (app.js reads the chosen look through PK() for CSS variables, event colours
+// Horion v9 · looks. One source for the page (app.js reads the chosen look through PK() for CSS variables, event colours
 // and geometry) and for the contrast check (node design/mockup-v9/contrast.mjs).
 // Round 2026-11-20: "readability looks good now but it looks overall bad and not nice to look at". Readability stays (same floors);
 // the skin is now a choice of looks, picked in the rail (hash key look, default L1):

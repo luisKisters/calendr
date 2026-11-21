@@ -1,4 +1,4 @@
-// Calendr v10 · the Designer (rounds 2026-11-20 b and c). One control per style dimension; a design is the list of chosen option indexes,
+// Horion v10 · the Designer (rounds 2026-11-20 b and c). One control per style dimension; a design is the list of chosen option indexes,
 // kept in the URL hash as one base-36 character per control (look=D&d=…). Old links (round b: 24 digits in the old control order) still work:
 // DESIGNER.decode maps them (every option kept its index; new options were added at the end).
 // DESIGNER.look(code) builds a look with the interface of THEME.look(id) (vars, ev, evVars, calDot, check, gap, H) plus adVars (all-day chips),

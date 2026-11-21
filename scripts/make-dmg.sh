@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds dist/Calendr.dmg (app + Applications symlink) and verifies it.
+# Builds dist/Horion.dmg (app + Applications symlink) and verifies it.
 # Set SIGNING_IDENTITY and NOTARY_PROFILE for a signed, notarized release.
 # Usage: scripts/make-dmg.sh [--no-verify]
 set -euo pipefail
@@ -14,25 +14,25 @@ scripts/build-app.sh
 
 mkdir -p dist
 if [ -n "${NOTARY_PROFILE:-}" ]; then
-  ZIP=dist/Calendr-notarization.zip
+  ZIP=dist/Horion-notarization.zip
   rm -f "$ZIP"
-  ditto -c -k --keepParent build/Calendr.app "$ZIP"
+  ditto -c -k --keepParent build/Horion.app "$ZIP"
   xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json > dist/app-notarization.json
   python3 -c 'import json; d=json.load(open("dist/app-notarization.json")); print(d); assert d["status"] == "Accepted", "App notarization failed"'
-  xcrun stapler staple build/Calendr.app
-  xcrun stapler validate build/Calendr.app
-  spctl --assess --type execute --verbose=2 build/Calendr.app
+  xcrun stapler staple build/Horion.app
+  xcrun stapler validate build/Horion.app
+  spctl --assess --type execute --verbose=2 build/Horion.app
   rm -f "$ZIP"
 fi
 
 STAGE=dist/staging
-DMG=dist/Calendr.dmg
+DMG=dist/Horion.dmg
 rm -rf "$STAGE" "$DMG"
 mkdir -p "$STAGE"
-cp -R build/Calendr.app "$STAGE/Calendr.app"
+cp -R build/Horion.app "$STAGE/Horion.app"
 ln -s /Applications "$STAGE/Applications"
 
-hdiutil create -volname Calendr -srcfolder "$STAGE" -format UDZO -ov "$DMG"
+hdiutil create -volname Horion -srcfolder "$STAGE" -format UDZO -ov "$DMG"
 if [ -n "${SIGNING_IDENTITY:-}" ]; then
   codesign --force --sign "$SIGNING_IDENTITY" --timestamp "$DMG"
 fi
@@ -59,16 +59,16 @@ trap cleanup EXIT
 hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$DMG" >/dev/null
 ATTACHED=1
 
-[ -d "$MNT/Calendr.app" ] || { echo "FAIL: Calendr.app missing in DMG"; exit 1; }
+[ -d "$MNT/Horion.app" ] || { echo "FAIL: Horion.app missing in DMG"; exit 1; }
 [ -L "$MNT/Applications" ] || { echo "FAIL: Applications symlink missing"; exit 1; }
-echo "ok: Calendr.app and Applications symlink present"
+echo "ok: Horion.app and Applications symlink present"
 
-codesign --verify --deep --strict "$MNT/Calendr.app"
+codesign --verify --deep --strict "$MNT/Horion.app"
 echo "ok: codesign --verify --deep --strict passed"
 
 # Launch the mounted binary; it prints a line and exits by itself.
 OUTFILE="$(mktemp)"
-"$MNT/Calendr.app/Contents/MacOS/Calendr" --demo --print-launch >"$OUTFILE" 2>&1 &
+"$MNT/Horion.app/Contents/MacOS/Horion" --demo --print-launch >"$OUTFILE" 2>&1 &
 PID=$!
 for _ in $(seq 1 30); do
   kill -0 "$PID" 2>/dev/null || break

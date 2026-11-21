@@ -1,4 +1,4 @@
-/* Calendr v9 · looks L1–L4 (round 2026-11-20). Loaded last. Colours arrive from tokens.js (THEME.look(id).vars / evVars);
+/* Horion v9 · looks L1–L4 (round 2026-11-20). Loaded last. Colours arrive from tokens.js (THEME.look(id).vars / evVars);
    this file only shapes them. Everything is scoped: .v9 = any new look (L1–L4), .pk-L1 … .pk-L4 = one look. L0 (v8) has no rule here.
    Structure is untouched: pane sizes, 44 px hours, cascade, task markers, now line, sidebar groups, eyes, location, conferencing.
    Shared polish: gaps between blocks (geometry in tokens.js `gap`), title clearly stronger than time, all-day chips with the same

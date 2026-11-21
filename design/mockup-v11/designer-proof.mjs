@@ -1,4 +1,4 @@
-// Calendr v10 · the Designer proof (a worker of contrast.mjs; one canvas per worker). Streams pairs, returns counts.
+// Horion v10 · the Designer proof (a worker of contrast.mjs; one canvas per worker). Streams pairs, returns counts.
 // The colour controls split into groups that never share a pair; each group is crossed fully for this canvas, both modes and every
 // calendar colour under every event palette:
 //   chrome  = sidebar shade × right column × header × hover strength          → the text greys on every surface, live red, Join, hour labels

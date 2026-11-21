@@ -89,11 +89,11 @@ Face: Geist, bundled under SIL OFL (mockup `fonts/geist-latin*.woff2`). Use tabu
 
 ## Font: Geist (locked 2026-11-20)
 You said: "use geist fr". Geist is the only face for the whole UI. SF Pro and Instrument Sans are no longer used.
-- Files the Swift build must bundle, in `Sources/Calendr/Resources/Fonts/`, copied by `scripts/build-app.sh` to `Contents/Resources/Fonts/`:
+- Files the Swift build must bundle, in `Sources/Horion/Resources/Fonts/`, copied by `scripts/build-app.sh` to `Contents/Resources/Fonts/`:
   - `Geist-Regular.otf` (400), `Geist-Medium.otf` (500) and `Geist-SemiBold.otf` (600), or one variable `Geist[wght].ttf` (100–900). Get them from the official release at https://github.com/vercel/geist-font (`packages/next/dist/fonts/geist-sans/` or the release zip). The mockup only has web subsets (`design/mockup-v11/fonts/geist-latin.woff2`, `geist-latin-ext.woff2`); do not convert those, use the full OTF/TTF.
   - Tabular figures come from the `tnum` feature (`kNumberSpacingType` / `kMonospacedNumbersSelector` in CoreText). Do not use `monospacedDigitSystemFont`, which is SF.
   - Licence: SIL Open Font License 1.1, "Copyright 2024 The Geist Project Authors". The text is `design/mockup-v11/fonts/Geist-OFL.txt`; ship it as `Fonts/Geist-OFL.txt` next to the font, the way `OFL.txt` ships for Instrument Sans today.
-- Where the build replaces the current faces (`Sources/Calendr/Views/Typeface.swift`):
+- Where the build replaces the current faces (`Sources/Horion/Views/Typeface.swift`):
   - `enum Typeface` (`fileName = "InstrumentSans.ttf"`, `family = "Instrument Sans"`, `register()`, `ctFont`): register Geist instead. `main.swift:3` calls `Typeface.register()`.
   - `enum SF` (`ctFont` with `.systemFont` / `.monospacedDigitSystemFont`): this is SF Pro for all text and events. It becomes Geist through `Typeface.ctFont`.
   - `enum TypeSize`: `title` 18 → 15, `text` 12.5 → 12, `small` 11.5 → 11, `event` 11.5 → 12.

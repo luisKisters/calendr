@@ -1,4 +1,4 @@
-# Calendr v11 · designer notes
+# Horion v11 · designer notes
 
 Status: LOCKED (2026-11-20, round h): R10 · Mine, three sizes 15 / 12 / 11, weights 400 / 500 / 600, Dark + derived Paper. Tailnet: https://<tailnet-host>:8803/ (neutral demo data only).
 Serve: `node design/mockup-v11/serve.mjs 8803`. Contrast: `node design/mockup-v11/contrast.mjs --rd` (Readability sweep only, ~50 s);

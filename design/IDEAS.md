@@ -2,7 +2,7 @@
 
 Feature ideas that are not specced or scheduled yet. Each one lists what was said, the design so far, and what is still open.
 
-Inspiration screenshots (Fantastical, Morgen, Apple Calendar, Notion Calendar, Google Calendar, Analog) live outside the repo in `~/Documents/calendr-inspo/`, because they contain private calendar data. Its `README.md` lists every file and the features liked in each app. A text-only summary of those features goes in `design/INSPIRATION.md`.
+Inspiration screenshots (Fantastical, Morgen, Apple Calendar, Notion Calendar, Google Calendar, Analog) live outside the repo in `~/Documents/horion-inspo/`, because they contain private calendar data. Its `README.md` lists every file and the features liked in each app. A text-only summary of those features goes in `design/INSPIRATION.md`.
 
 ---
 
@@ -14,14 +14,14 @@ Type a sentence, get an event. Seen in Fantastical ("Test 12–16" fills date, s
 
 ### Starting points in the code
 
-- `GoToDateParser` in `Sources/CalendrKit/GoToDate.swift` already parses dates from text ("in 4 weeks", "dec 25 2028").
+- `GoToDateParser` in `Sources/HorionKit/GoToDate.swift` already parses dates from text ("in 4 weeks", "dec 25 2028").
 - `CalendarStore.create` saves events.
 - `MenuBarHotKey` already registers a global hotkey.
-- Google sync (`Sources/CalendrKit/Google/`) and `Attendee` exist, so guests can be written through the Google API, which EventKit can't do.
+- Google sync (`Sources/HorionKit/Google/`) and `Attendee` exist, so guests can be written through the Google API, which EventKit can't do.
 
 ### Parser
 
-A pure `QuickEntryParser` in CalendrKit. Input `(text, now, context)`, output:
+A pure `QuickEntryParser` in HorionKit. Input `(text, now, context)`, output:
 
 ```swift
 struct ParsedEntry {
@@ -102,7 +102,7 @@ Each sub-item is a real Google or iCloud calendar. Simple, and it syncs to the p
    ☐ Errands
 ```
 
-Events stay in one calendar. Calendr adds categories on top, each with a colour and a checkbox under the calendar. Assigned in the right panel, or by rules ("title contains Lunch/Dinner/Essen → Eating"). A set can then be "Personal, only Sport and Family".
+Events stay in one calendar. Horion adds categories on top, each with a colour and a checkbox under the calendar. Assigned in the right panel, or by rules ("title contains Lunch/Dinner/Essen → Eating"). A set can then be "Personal, only Sport and Family".
 
 - Upside: no calendar sprawl; time stats later ("6 h eating this week").
 - Catch: storage. EventKit can't nest calendars. Either local only (the phone won't see it), or a marker in the event (a `#eating` tag in the notes, or a Google extended property for Google events), which syncs but may show in other apps.

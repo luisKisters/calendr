@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Contrast check for Calendr v6 · B. Reads tokens.js (the same file the app uses) and prints WCAG 2.x ratio and APCA Lc
+// Contrast check for Horion v6 · B. Reads tokens.js (the same file the app uses) and prints WCAG 2.x ratio and APCA Lc
 // (APCA-W3 0.0.98G-4g; |Lc| shown) for every token pair, plus the worst case per event role over every calendar colour.
 //   node design/mockup-v6-b/contrast.mjs          summary table
 //   node design/mockup-v6-b/contrast.mjs --all    also every calendar colour

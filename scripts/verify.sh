@@ -9,15 +9,15 @@ step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
 step "grep gates (animations only through the Motion tokens, no third-party packages, colours, type and radii only through tokens)"
 # v2 animates, but every curve comes from `Motion` (one curve, four durations, Reduce Motion aware): no raw .easeIn/.linear/.default literals.
-if grep -rnE "\.animation\(\s*\.|withAnimation\(\s*\.|NSAnimationContext\.runAnimationGroup|\.transaction \{ *\$0\.animation = nil" Sources | grep -v "^Sources/Calendr/Headless"; then
+if grep -rnE "\.animation\(\s*\.|withAnimation\(\s*\.|NSAnimationContext\.runAnimationGroup|\.transaction \{ *\$0\.animation = nil" Sources | grep -v "^Sources/Horion/Headless"; then
   echo "raw animation curve found in app sources (use Motion.fast/base/slow/sheet/spring)"; exit 1
 fi
 if grep -q "\.package(" Package.swift; then echo "Package.swift has dependencies"; exit 1; fi
 # Design tokens (v5): colours only from Theme.swift (the menu bar art may keep its own), type only from Typeface.swift, radii only from Radius.
-if grep -rnE '"#[0-9A-Fa-f]{3,8}"' Sources/Calendr/Views | grep -v -e "^Sources/Calendr/Views/Theme.swift" -e "^Sources/Calendr/Views/MenuBarViews.swift"; then
+if grep -rnE '"#[0-9A-Fa-f]{3,8}"' Sources/Horion/Views | grep -v -e "^Sources/Horion/Views/Theme.swift" -e "^Sources/Horion/Views/MenuBarViews.swift"; then
   echo "hex colour literal in Views/ (add a token to Theme.swift)"; exit 1
 fi
-if grep -rnE "\.ui\([0-9]" Sources | grep -v "^Sources/Calendr/Views/Typeface.swift"; then
+if grep -rnE "\.ui\([0-9]" Sources | grep -v "^Sources/Horion/Views/Typeface.swift"; then
   echo ".ui(<size>) outside Typeface.swift (use a type token: .title15, .text, .small, .event)"; exit 1
 fi
 if grep -rnE "cornerRadius: *[0-9]" Sources; then
@@ -34,8 +34,8 @@ swift test 2>&1 | grep -q "Test run with .* passed" || { echo "tests failed"; ex
 
 step "build app bundle"
 scripts/build-app.sh 2>&1 | tail -2
-BIN=build/Calendr.app/Contents/MacOS/Calendr
-codesign --verify --deep build/Calendr.app && echo "signature ok"
+BIN=build/Horion.app/Contents/MacOS/Horion
+codesign --verify --deep build/Horion.app && echo "signature ok"
 
 step "snapshots (every state in design/states.json)"
 CONFIG=release scripts/snapshots.sh
@@ -72,7 +72,7 @@ PY
   step "performance (week and month navigation p50/p95 with animations off, week with animations on, cold launch)"
   ok=0
   for attempt in 1 2 3; do
-    if CALENDR_PERF_STRICT=1 "$BIN" --perf | tee artifacts/perf.txt | tail -9 && [ "${PIPESTATUS[0]}" -eq 0 ]; then ok=1; break; fi
+    if HORION_PERF_STRICT=1 "$BIN" --perf | tee artifacts/perf.txt | tail -9 && [ "${PIPESTATUS[0]}" -eq 0 ]; then ok=1; break; fi
     echo "perf attempt $attempt over budget, retrying"
   done
   [ $ok -eq 1 ] || { echo "performance budget missed"; exit 1; }
@@ -82,7 +82,7 @@ PY
 
   step "DMG: build, mount, check app + Applications link + codesign, launch from the volume, detach"
   scripts/make-dmg.sh 2>&1 | tail -8
-  ls -l dist/Calendr.dmg
+  ls -l dist/Horion.dmg
 fi
 
 step "verify passed"

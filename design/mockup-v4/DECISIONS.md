@@ -1,4 +1,4 @@
-# Calendr v4 decisions
+# Horion v4 decisions
 Mockup: `design/mockup-v4/index.html`. The picker shows the same state.
 ## Locked in round 1
 | Element | Pick |

@@ -1,4 +1,4 @@
-// Calendr v8: state, theme, layout, views. Every colour and font comes from the one theme, D3 Graphite timetable (tokens.js, PK()).
+// Horion v8: state, theme, layout, views. Every colour and font comes from the one theme, D3 Graphite timetable (tokens.js, PK()).
 // Editor/search/menus live in panel.js, input in input.js, the picker rail in rail.js.
 'use strict';
 

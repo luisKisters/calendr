@@ -1,4 +1,4 @@
-# Calendr v9 · designer notes
+# Horion v9 · designer notes
 
 Status: built and checked (2026-11-20). Tailnet: https://<tailnet-host>:8801/ (neutral demo data only).
 Serve: `node design/mockup-v9/serve.mjs 8801`. Contrast: `node design/mockup-v9/contrast.mjs` (`--all`, `--fails`, `--look L3`).

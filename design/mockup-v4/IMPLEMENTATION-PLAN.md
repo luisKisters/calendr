@@ -1,4 +1,4 @@
-# Calendr v4 implementation plan
+# Horion v4 implementation plan
 Target: `design/mockup-v4/DECISIONS.md` (rounds 1 to 5 and the round-4 design system). Reference: `design/mockup-v4/index.html` (`LOCKED` :913, `DECISIONS` :919, `PALETTES` :782, `layoutDay()` :1083, `.ds` block :595–686, `evVars()` :1003). This plan changes no code.
 
 ## 1. Facts checked in the code
@@ -30,7 +30,7 @@ PR stack: 5 stacked PRs. Each phase is one or more commits inside its PR. Each P
 | PR | Phases | Base | What you can see after it |
 |---|---|---|---|
 | A Foundation | 0 tooling, 1 tokens | `main` | The app has the v4 colours, type and controls. Mockup compare works. |
-| B Logic | 2 data model, 3 overlap v5 | A | No UI change. New CalendrKit tests. |
+| B Logic | 2 data model, 3 overlap v5 | A | No UI change. New HorionKit tests. |
 | C Grid | 4 event styles, 5 grid, "+N", stack panel, all-day | B | The week grid matches the mockup. |
 | D Chrome and editor | 6 chrome, 7a, 7b editor, 9 menu bar | C | Sidebar, right column, editor and menu bar match the mockup. |
 | E Contacts and Google | 8a, 8b, 8c, clean-up | D | Names from Contacts. Google RSVP and guests. Needs the OAuth client (Q1). |
@@ -60,10 +60,10 @@ Rules for every PR:
     - `scripts/compare-all.sh` reads `mockupDir` from `states.json`. Remove the mockup-v2 references.
     - `scripts/compare.py` writes a mean-difference score to `artifacts/compare/report.json`. This is a report only, not a gate.
     - `design/states.json`: add `mockupDir`, plus `mockup`, `js` and `fixture` for each state.
-    - New `Sources/Calendr/Store/DemoDataV4.swift`. Port `CALS0`, `ACCTS0`, `RAW`, `RAW_AD` and `seedEvents()` exactly (mockup :800–899). Keep the mockup values `yes/maybe/no/none` in a fixture-local enum with one mapping function. Until Phase 2, `none` maps to `.confirmed`; add a comment that says this.
+    - New `Sources/Horion/Store/DemoDataV4.swift`. Port `CALS0`, `ACCTS0`, `RAW`, `RAW_AD` and `seedEvents()` exactly (mockup :800–899). Keep the mockup values `yes/maybe/no/none` in a fixture-local enum with one mapping function. Until Phase 2, `none` maps to `.confirmed`; add a comment that says this.
     - `LaunchOptions.swift`: add `--fixture v4`, which pins 2026-10-04T15:10 and an hour height of 46.
 - Kit or app: app and scripts only.
-- Tests: `FixtureV4Tests` (CalendrTests) checks these points:
+- Tests: `FixtureV4Tests` (HorionTests) checks these points:
     - The week has the mockup counts of timed and all-day events.
     - Wednesday has "Flat cleaning" and "Club board meeting".
     - Every address uses a reserved example domain.
@@ -91,7 +91,7 @@ Rules for every PR:
         - No `.ui(<number>` outside `Typeface.swift`.
         - No `cornerRadius:` with a number literal.
 - Kit or app: app only.
-- Tests: `TokenTests` (CalendrTests):
+- Tests: `TokenTests` (HorionTests):
     - Read the 'oled' line of `PALETTES` from `index.html` (path from `#filePath`) and compare it with `InkRGB.dark`.
     - `EventPainter.Ink.of(true).bg` is equal to the Theme bg.
     - There is only one Segmented type. Use a source grep in the test, the same way as the existing audit tests.
@@ -102,8 +102,8 @@ Rules for every PR:
     - The background of the window, the sidebar and the right column is pure black.
 
 ### Phase 2: Data model (M)
-- Goal: replies, the organizer, more than one reminder and call links in `CalendrKit`.
-- Files: `CalendrKit/Models.swift`, `EventKitMapping.swift`, `MenuBarMenu.swift` (move `videoURL` out), new `CalendrKit/CallLink.swift`, new `CalendrKit/Attendee.swift`. In the app: `EventKitStore.swift` (`makeEvent`, `apply`), `DemoStore.swift`, `DemoData.swift`, `DemoDataV4.swift`.
+- Goal: replies, the organizer, more than one reminder and call links in `HorionKit`.
+- Files: `HorionKit/Models.swift`, `EventKitMapping.swift`, `MenuBarMenu.swift` (move `videoURL` out), new `HorionKit/CallLink.swift`, new `HorionKit/Attendee.swift`. In the app: `EventKitStore.swift` (`makeEvent`, `apply`), `DemoStore.swift`, `DemoData.swift`, `DemoDataV4.swift`.
 - Steps:
     1. Add `ResponseStatus.needsAction`. The compiler then shows every `switch` that must change (37 uses).
     2. Add `Attendee { email, name?, isOrganizer, isMe, isOptional, status }` and `CalendarEvent.attendees`. Make `participants` a computed `[String]` until Phase 7 removes it.
@@ -111,7 +111,7 @@ Rules for every PR:
     4. Add `reminders: [Int]` (unique, sorted). `reminderMinutes` becomes computed (the first value). EventKit reads all alarms and writes all alarms.
     5. `CallLink.parse(conferencing:notes:location:)` returns kind (meet, zoom, teams or other), URL and code. `CallLink.stripMeetBoilerplate(notes)` returns the clean notes and a `hadMeet` flag (mockup `BOILER` :857).
     6. Mapping: `pending` maps to `needsAction`, but only when I am an attendee. EventKit maps `ev.organizer`, the attendee roles and the attendee statuses.
-- Tests (`ModelV4Tests`, CalendrKitTests):
+- Tests (`ModelV4Tests`, HorionKitTests):
     - pending maps to needsAction.
     - An event where I am the organizer maps to confirmed.
     - A canceled event maps to declined.
@@ -125,7 +125,7 @@ Rules for every PR:
 
 ### Phase 3: Overlap layout v5, pure (M)
 - Goal: port `layoutDay()` with the locked picks: smart, quiet, right, stack, block.
-- Files: new `CalendrKit/OverlapV5.swift`. Do not edit `Layout.swift` in this phase. Phase 5 changes the call site.
+- Files: new `HorionKit/OverlapV5.swift`. Do not edit `Layout.swift` in this phase. Phase 5 changes the call site.
 - API: the input is `[V5Item(id, start, end, isShort, isUnaccepted)]` with Bool flags, so there is no dependency on Phase 2 types. The output is `V5Placement(id, left, width, indent, level, cut)` and `[OverflowGroup(start, ids)]`.
 - Rules (with the mockup lines):
     1. Sort by start time. When two items start together, the longer item goes first. A short item (15 min or less) spans 22 min.
@@ -143,12 +143,12 @@ Rules for every PR:
     7. Overflow groups join when they start within 30 min of each other (:1258). Add `OverflowGroup.busyRange(...)` and `stackRows(dayEvents:)`, which return every event that overlaps the busy range, sorted by start time (:1510–1516).
 - Tests (`OverlapV5Tests`): one test for each rule above. Also:
     - The v4 fixture Wednesday from 17:00 to 21:30 gives one "+1" group at 18:15.
-    - Recommended: a golden JSON file, `Tests/CalendrKitTests/Fixtures/layout-v4.json`. Produce it once with `render-mockup.swift --eval "JSON.stringify(...layoutDay...)"`. Then add `resources:` to the test target in `Package.swift`.
+    - Recommended: a golden JSON file, `Tests/HorionKitTests/Fixtures/layout-v4.json`. Produce it once with `render-mockup.swift --eval "JSON.stringify(...layoutDay...)"`. Then add `resources:` to the test target in `Package.swift`.
 - Acceptance: the tests pass. A benchmark of 60 events per day stays below 1 ms.
 
 ### Phase 4: Event rendering (M)
 - Goal: solid blocks, all reply states, and the text rules.
-- Files: `EventsCanvas.swift` (`EventPainter.draw`), `EventViews.swift` (`EventStyle.reply`), `Theme.swift` (`Palettes` only), `MonthView.swift` (`MonthPainter`), `DayHeaderView.swift` (`AllDayPainter` chip style, today accent pill), new `CalendrKit/BlockText.swift`.
+- Files: `EventsCanvas.swift` (`EventPainter.draw`), `EventViews.swift` (`EventStyle.reply`), `Theme.swift` (`Palettes` only), `MonthView.swift` (`MonthPainter`), `DayHeaderView.swift` (`AllDayPainter` chip style, today accent pill), new `HorionKit/BlockText.swift`.
 - Colours (`evVars`, solid and polish, :1008–1015; `cc` is the calendar colour):
 
 | State | Fill | Bar | Title | Time |
@@ -180,7 +180,7 @@ Rules for every PR:
 ### Phase 5: Grid integration (L)
 - Goal: the v5 layout on screen, the "+N" chip, the stack panel and the all-day mix section.
 - Files:
-    - `CalendrKit/Layout.swift`: `RangeLayoutBuilder.pack` calls OverlapV5, and `RangeLayout.overflow` holds the groups for each day. The layout is in minutes, so `repacked()` has no work to do.
+    - `HorionKit/Layout.swift`: `RangeLayoutBuilder.pack` calls OverlapV5, and `RangeLayout.overflow` holds the groups for each day. The layout is in minutes, so `repacked()` has no work to do.
     - `TimeGridView.swift`, `GridInteraction.swift`, `GridV3State.swift` (`stack: StackRef?`, `allDayExpanded`), new `Views/GridStackPanel.swift`, `DayHeaderView.swift` (`AllDayView`), `SnapshotGrid.swift`.
 - "+N" chip: 16 pt high, radius 8, bg3, fg 600 11.5. It sits at right 3 and top = start + 2. On hover or when open, the colours invert.
 - Stack panel:
@@ -200,7 +200,7 @@ Rules for every PR:
 - Acceptance: the triptychs match. The full `verify.sh` passes with `--perf` and `--walkthrough`. Update any walkthrough assertion that depends on the v3 cascade.
 
 ### Phase 6: Chrome (M)
-- Files: `SidebarView.swift`, `RightPanelView.swift`, `CenterView.swift`, `Overlays.swift` (command menu, settings sheet, surfaces), `ChromeV3State.swift`, `ChromeCommands.swift`, `CalendrKit/Shortcuts.swift`, `SnapshotChrome.swift`.
+- Files: `SidebarView.swift`, `RightPanelView.swift`, `CenterView.swift`, `Overlays.swift` (command menu, settings sheet, surfaces), `ChromeV3State.swift`, `ChromeCommands.swift`, `HorionKit/Shortcuts.swift`, `SnapshotChrome.swift`.
 - Steps:
     1. Sidebar: width 236 and bg, with a `hair` edge (the same as the right column). Glyphs start at 16, text at 40, and trailing buttons end at 220. Rows are 28 pt with 14 pt icons. The account header shows the name without the domain. The Settings footer row is 28 pt with a grey hint.
     2. Right column, 320 pt:
@@ -218,7 +218,7 @@ Rules for every PR:
 - Acceptance: the column edges match the alignment check in the mockup (press G).
 
 ### Phase 7: Event editor (L). Split into 7a (fields) and 7b (people and send)
-- Files: `PanelDetailView.swift`, `PanelControls.swift`, `PanelV3State.swift`, `SnapshotPanel.swift`, and new files: `Views/PanelParticipants.swift`, `Views/PanelCallRow.swift`, `Views/PanelLocationRow.swift`, `Views/PanelCalendarMenu.swift`, `Views/DeleteWithGuestsDialog.swift`. `Overlays.swift` gets only a one-line registration; tell the CHROME lane about it. Kit: `CalendrKit/EditorRows.swift`, `CalendrKit/MapLinks.swift`.
+- Files: `PanelDetailView.swift`, `PanelControls.swift`, `PanelV3State.swift`, `SnapshotPanel.swift`, and new files: `Views/PanelParticipants.swift`, `Views/PanelCallRow.swift`, `Views/PanelLocationRow.swift`, `Views/PanelCalendarMenu.swift`, `Views/DeleteWithGuestsDialog.swift`. `Overlays.swift` gets only a one-line registration; tell the CHROME lane about it. Kit: `HorionKit/EditorRows.swift`, `HorionKit/MapLinks.swift`.
 - 7a: grid, fields, call, location, reminders, calendar menu
     - Panel grid: the icon column is 20 to 36 pt and the text column starts at 48. The line box is 20 pt. Fields and hover boxes bleed 8 pt.
     - Row order: title (18), when, repeat, "Find a new time", participants, Going?, call, location, notes, calendar, reminders.
@@ -247,7 +247,7 @@ Rules for every PR:
 ### Phase 8: Contacts and Google (L). Three PRs
 - 8a: Apple Contacts (S/M)
     - Add `Services/ContactsResolver.swift` (`CNContactStore`, email to name, with a cache).
-    - Add `NSContactsUsageDescription` in `build-app.sh` and `com.apple.security.personal-information.addressbook` in `Calendr.entitlements`.
+    - Add `NSContactsUsageDescription` in `build-app.sh` and `com.apple.security.personal-information.addressbook` in `Horion.entitlements`.
     - Kit: a `NameResolver` chain (Apple, then Google, then the bare address).
     - Settings: a "Contacts" section.
     - Tests: the chain order, and the fallback when access is denied (with a fake).
@@ -264,7 +264,7 @@ Rules for every PR:
         - `CompositeStore`: EventKit for iCloud and local calendars, plus Google. Hide EventKit CalDAV sources that duplicate a connected Google account.
         - Poll every 60 s, when the window gets focus, and on ⌘R. Keep a disk cache in Application Support.
     - Tests:
-        - JSON fixtures in `Tests/CalendrKitTests/Fixtures/google/`.
+        - JSON fixtures in `Tests/HorionKitTests/Fixtures/google/`.
         - The PKCE test vector from RFC 7636.
         - 410 resets the sync state.
         - `GoogleStoreTests` with a fake HTTP client: the RSVP patch body and the `sendUpdates` query.
@@ -275,7 +275,7 @@ Rules for every PR:
     - Snapshot: `v4-settings-accounts`.
 
 ### Phase 9: Menu bar (S)
-- Files: `MenuBarStatusItem.swift`, `MenuBarViews.swift`, `CalendrKit/MenuBarMenu.swift`, call-logo art (vector in code or a bundled PDF).
+- Files: `MenuBarStatusItem.swift`, `MenuBarViews.swift`, `HorionKit/MenuBarMenu.swift`, call-logo art (vector in code or a bundled PDF).
 - Steps:
     - The head row of the current or next event uses an `NSMenuItem.view` (`NSHostingView`) with a Join button: 28 pt, radius 8, act, with the call logo (Q5).
     - `MenuBarMenu` uses `CallLink` from Phase 2.
@@ -320,7 +320,7 @@ More risks, with no question:
 ## 6. How this codebase maps to web concepts
 - A SwiftUI `View` struct is like a React function component. `body` is the JSX it returns, `@State` is `useState`, and `@Environment(AppModel.self)` is `useContext`.
 - `AppModel` (`@Observable @MainActor`) is the app store. Views re-render when a property they read changes, as in MobX or Zustand selectors. `GridV3State`, `PanelV3State` and `ChromeV3State` are store slices.
-- `CalendrKit` is a pure `lib/` package with no UI and no I/O, like a Python module tested with pytest. `Calendr` is the app that uses it.
+- `HorionKit` is a pure `lib/` package with no UI and no I/O, like a Python module tested with pytest. `Horion` is the app that uses it.
 - `Package.swift` is `package.json` or `pyproject.toml`, and its targets are like workspaces. It has no dependencies, so there is no `node_modules`.
 - `swift build` is like `next build` or `tsc`. `swift test` with Swift Testing (`@Test`, `#expect`) is like vitest or pytest.
 - `scripts/verify.sh` is the CI pipeline: grep "lint" gates, build, tests, app bundle, snapshots, E2E, perf.
@@ -330,8 +330,8 @@ More risks, with no question:
 - `Theme.swift` is the CSS custom-properties file. `Color.dyn` is a `prefers-color-scheme` switch. `Info.plist` and the entitlements file are the app manifest and its permissions.
 
 ## Critical files
-- `Sources/Calendr/Views/Theme.swift`
-- `Sources/Calendr/Views/EventsCanvas.swift`
-- `Sources/CalendrKit/Layout.swift` (and the new `OverlapV5.swift`)
-- `Sources/CalendrKit/Models.swift`
-- `Sources/Calendr/Views/PanelDetailView.swift`
+- `Sources/Horion/Views/Theme.swift`
+- `Sources/Horion/Views/EventsCanvas.swift`
+- `Sources/HorionKit/Layout.swift` (and the new `OverlapV5.swift`)
+- `Sources/HorionKit/Models.swift`
+- `Sources/Horion/Views/PanelDetailView.swift`

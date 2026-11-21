@@ -1,4 +1,4 @@
-// Calendr v7 · Packs: actions, pointer, keyboard (unchanged from v5 except the "+N" chip of fix (a)).
+// Horion v7 · Packs: actions, pointer, keyboard (unchanged from v5 except the "+N" chip of fix (a)).
 'use strict';
 
 function select(id, opts = {}) {
@@ -96,7 +96,7 @@ const ACT = {
     A[list] = on ? A[list].filter(x => x !== id) : [...A[list], id];
     return false;
   },
-  obSysSettings() { toast('System Settings → Internet Accounts', 'Add your Google account there; its calendars then show in Calendr', { icon: 'open' }); },
+  obSysSettings() { toast('System Settings → Internet Accounts', 'Add your Google account there; its calendars then show in Horion', { icon: 'open' }); },
   oauthOk() { A.modal = null; setV('google', '1', true); toast('Google connected', `${ME} · replies, guests and Meet links now work`, { logo: gLogo(18) }); },
   disconnect() { setV('google', '0', true); toast('Google disconnected', 'Events still show through macOS Calendar'); },
   // ---------- editor

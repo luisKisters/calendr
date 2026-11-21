@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Contrast check for Calendr v8: the one theme, D3 Graphite timetable, Dark and Paper (READABILITY-BRIEF.md §1 and §5).
+// Contrast check for Horion v8: the one theme, D3 Graphite timetable, Dark and Paper (READABILITY-BRIEF.md §1 and §5).
 //   node design/mockup-v8/contrast.mjs              summary: pairs, misses and the worst pair per theme
 //   node design/mockup-v8/contrast.mjs --all        every pair
 //   node design/mockup-v8/contrast.mjs --fails      only the misses
