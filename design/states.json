@@ -1,5 +1,5 @@
 {
-  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH` (scripts/snapshots.sh). An entry may override 'state' (the app state to render) and 'size'. 'mockup' is the mockupDir scene it is compared with (index.html#<mockup>, '&key=value' adds picks); scripts/render-mockup.swift writes it to <mockupDir>/shots/<mockup>.png after running the optional 'js' step, and scripts/compare-all.sh diffs it against the snapshot.",
+  "_comment": "Named UI states rendered by `Horion --snapshot <state> --out <png> --size WxH` (scripts/snapshots.sh). An entry may override 'state' (the app state to render) and 'size'. 'mockup' is the mockupDir scene it is compared with (index.html#<mockup>, '&key=value' adds picks); scripts/render-mockup.swift writes it to <mockupDir>/shots/<mockup>.png after running the optional 'js' step, and scripts/compare-all.sh diffs it against the snapshot.",
   "mockupDir": "design/mockup-v4",
   "size": "1440x900",
   "states": {
@@ -41,12 +41,6 @@
     },
     "v4-delete": {
       "mockup": "delete"
-    },
-    "v4-b-layout": {},
-    "v4-overlap-stack": {
-      "mockup": "overlap",
-      "shot": "overlap-stack",
-      "js": "document.querySelector('[data-pop=evmore]').click()"
     },
     "v4-allday-expanded": {
       "mockup": "week",

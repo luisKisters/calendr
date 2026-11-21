@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Contrast check for Calendr v7 · Packs: every pack (D1–D4, A, B, C) in both themes, one target table (READABILITY-BRIEF.md §1 and §5).
+// Contrast check for Horion v7 · Packs: every pack (D1–D4, A, B, C) in both themes, one target table (READABILITY-BRIEF.md §1 and §5).
 //   node design/mockup-v7/contrast.mjs              summary: pairs, misses and the worst pair per pack and theme
 //   node design/mockup-v7/contrast.mjs --all        every pair
 //   node design/mockup-v7/contrast.mjs --fails      only the misses

@@ -1,4 +1,4 @@
-// Calendr v10: state, theme, layout, views. Every colour and font comes from the chosen look (tokens.js, PK(): L0 = v8, L1–L4)
+// Horion v10: state, theme, layout, views. Every colour and font comes from the chosen look (tokens.js, PK(): L0 = v8, L1–L4)
 // or from the Designer (designer.js, look=D: one option per control, kept in the hash as d=…).
 // Editor/search/menus live in panel.js, input in input.js, the picker rail in rail.js.
 'use strict';

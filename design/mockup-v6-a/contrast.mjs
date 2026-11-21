@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Contrast check for Calendr v6 · A "Calm graphite".
+// Contrast check for Horion v6 · A "Calm graphite".
 //   node design/mockup-v6-a/contrast.mjs          prints every token pair (WCAG 2 ratio + APCA Lc) and exits 1 on a miss
 // Reads the same tokens.js and data.js the page uses, so the table is what the mockup renders.
 // APCA: 0.0.98G-4g constants (same as the brief's c.py). Lc is negative for light text on dark; the table shows |Lc|.

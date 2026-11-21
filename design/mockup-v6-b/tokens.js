@@ -1,4 +1,4 @@
-// Calendr v6 · B "Structured contrast": the design tokens. One source for the app (app.js themeVars / evVars)
+// Horion v6 · B "Structured contrast": the design tokens. One source for the app (app.js themeVars / evVars)
 // and for the contrast check (node design/mockup-v6-b/contrast.mjs). Values follow READABILITY-BRIEF.md §5–6 (direction B).
 'use strict';
 

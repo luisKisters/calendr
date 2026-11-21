@@ -1,4 +1,4 @@
-/* Calendr v7 · packs D1–D4, loaded on top of app.css (the v6 C stylesheet) only while a D pack is active.
+/* Horion v7 · packs D1–D4, loaded on top of app.css (the v6 C stylesheet) only while a D pack is active.
    Colours, fonts, tracking and radii arrive as custom properties from packs.js (themeVars); the structure flags arrive as
    data attributes on .desk: data-bar (3 px event bar), data-grid (calm | timetable), data-edges (pane hairlines),
    data-ad (all-day chips: tint | dots), data-tcol (single | stack time column), data-font (sf | inter).

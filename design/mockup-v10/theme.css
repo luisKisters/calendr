@@ -1,4 +1,4 @@
-/* Calendr v8 · D3 "Graphite timetable", the one theme (locked 2026-11-05), on top of app.css.
+/* Horion v8 · D3 "Graphite timetable", the one theme (locked 2026-11-05), on top of app.css.
    Colours, the font, tracking and radii arrive as custom properties from tokens.js (themeVars). No event bar; titles tinted with the
    calendar hue; timetable lines (hour + quiet half hour); hairline pane edges; start over end in one right-aligned time column.
    The second half of this file is the v8 round (2026-11-05): now line (A), density (B), sidebar groups and eyes (D, E),

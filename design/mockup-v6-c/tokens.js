@@ -1,4 +1,4 @@
-// Calendr v6 · C "Warm editorial": the design tokens and the event colour recipe.
+// Horion v6 · C "Warm editorial": the design tokens and the event colour recipe.
 // One source for the page (index.html loads it before app.js) and for the contrast check (node contrast.mjs).
 // Rules: READABILITY-BRIEF.md §5 and direction C. Neutrals are warm, colour means calendar only,
 // one alert hue (live), one focus blue. Paper is the default; Dark is "warm night", first-class too.

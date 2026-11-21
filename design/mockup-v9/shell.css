@@ -1,4 +1,4 @@
-/* Calendr v9: the page shell, the picker rail and the v7 fixes (overlap "+N"). Loaded after app.css + theme.css.
+/* Horion v9: the page shell, the picker rail and the v7 fixes (overlap "+N"). Loaded after app.css + theme.css.
    The rail is outside the app (dark in both themes). */
 html, body { height: 100%; overflow: hidden; background: #0E0E0F; color: #d8d4cc; font: 13px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; }
 #page { display: grid; grid-template-columns: minmax(0, 1fr) 348px; height: 100vh; }

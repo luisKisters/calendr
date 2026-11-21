@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horion Overflow</title>
+<!-- Horion v13 round 1: the time grid without the "+N" chip. -->
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+/* ================= the app: week / day grid ================= */
+@font-face { font-family: "Inter"; src: url("../mockup-v11/fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; }
+.desk { --bg: #0B0B0C; --rail: #070708; --bg3: #2A2A2C; --hover: #161617; --selected: #1E1E1F; --hair: #1C1C1D; --grid: #1A1A1B; --grid2: #141415;
+  --fg: #EBEBED; --fg2: #CCCCCE; --fg3: #A8A8AA; --act: #EBEBED; --onact: #0B0B0C; --now: #E5484D;
+  --blue: #0E1A2C; --blueBar: #4A78D8; --blueT: #DCE4F2; --orange: #26150B; --orangeBar: #C8671F; --orangeT: #F1DCCB;
+  --green: #0C2016; --greenBar: #2E9E5B; --greenT: #D3EEDD; --violet: #1B1430; --violetBar: #8A63D2; --violetT: #E4DCF5;
+  --font: "Inter", -apple-system, system-ui, sans-serif; --fs: 13px; --fs-ev: 12px; --fs-s: 11px; }
+.desk.paper { --bg: #FBFBFB; --rail: #F4F4F5; --bg3: #DCDCDC; --hover: #F1F1F1; --selected: #EAEAEB; --hair: #E8E8E8; --grid: #E6E6E7; --grid2: #F0F0F1;
+  --fg: #1D1D20; --fg2: #4A4A50; --fg3: #606067; --act: #1D1D20; --onact: #FBFBFB;
+  --blue: #E3ECFB; --blueBar: #3E6FD8; --blueT: #1C2E52; --orange: #FBE9DC; --orangeBar: #D0651B; --orangeT: #57290A;
+  --green: #DDF3E6; --greenBar: #23894C; --greenT: #0F3A22; --violet: #ECE5FA; --violetBar: #7A4FD0; --violetT: #2E1A57; }
+.desk { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: var(--bg); color: var(--fg); font: var(--fs)/1.4 var(--font); display: flex; -webkit-font-smoothing: antialiased; }
+.side { width: 220px; flex: none; background: var(--rail); border-right: 1px solid var(--hair); padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; }
+.side .t { font-weight: 600; margin: 0 8px 10px; }
+.side button { height: 28px; padding: 0 8px; border-radius: 8px; color: var(--fg2); text-align: left; }
+.side button:hover { background: var(--hover); } .side button.on { background: var(--selected); color: var(--fg); }
+.side .sp { flex: 1; }
+.side .hint { color: var(--fg3); font-size: var(--fs-s); padding: 8px; line-height: 1.45; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.top { height: 48px; flex: none; display: flex; align-items: center; padding: 0 16px; font-size: 18px; font-weight: 600; gap: 8px; }
+.top span { color: var(--fg3); font-weight: 400; }
+.dh { display: flex; height: 36px; flex: none; border-bottom: 1px solid var(--hair); }
+.dh .g { width: 56px; flex: none; }
+.dh .c { flex: 1; min-width: 0; display: flex; align-items: center; padding-left: 8px; gap: 6px; font-size: var(--fs-s); color: var(--fg3); }
+.dh .c .n { font-size: var(--fs); color: var(--fg); }
+.dh .c.today { color: var(--fg); } .dh .c.today .n { background: var(--act); color: var(--onact); border-radius: 6px; padding: 0 5px; line-height: 18px; font-weight: 600; }
+.gridwrap { flex: 1; overflow: hidden; position: relative; }
+.grid { position: relative; display: flex; }
+.gut { width: 56px; flex: none; position: relative; }
+.gut span { position: absolute; right: 8px; font-size: var(--fs-s); color: var(--fg3); transform: translateY(-50%); }
+.col { flex: 1; min-width: 0; position: relative; border-left: 1px solid var(--grid); }
+.hl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid); }
+.ev { position: absolute; border-radius: 4px; padding: 3px 6px 3px 11px; overflow: hidden; background: var(--fill); color: var(--tc); font-size: var(--fs-ev); line-height: 15px; text-align: left; display: flex; flex-direction: column; cursor: default; }
+.ev::before { content: ""; position: absolute; left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; background: var(--bar); }
+.ev .t { font-weight: 500; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.ev .m { opacity: .72; font-size: var(--fs-s); line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev.one { flex-direction: row; gap: 6px; align-items: center; padding-top: 0; padding-bottom: 0; white-space: nowrap; }
+.ev.one .t { display: block; text-overflow: ellipsis; white-space: nowrap; }
+.ev.narrow .t { display: block; white-space: nowrap; text-overflow: clip; } .ev.narrow .m { display: none; }
+.ev.thin { padding-left: 8px; padding-right: 2px; } .ev.thin .t { font-size: var(--fs-s); }
+.ev.cut { box-shadow: -1px 0 0 var(--bg); }
+.ev.un { background: var(--bg); box-shadow: inset 0 0 0 1px var(--bar), -1px 0 0 var(--bg); color: var(--fg2); }
+.ev.un::before { opacity: .55; }
+.ev.sel { box-shadow: inset 0 0 0 1.5px var(--fg); z-index: 60 !important; }
+.ev:hover { filter: brightness(1.12); } .paper .ev:hover { filter: brightness(.97); }
+.c-blue { --fill: var(--blue); --bar: var(--blueBar); --tc: var(--blueT); } .c-orange { --fill: var(--orange); --bar: var(--orangeBar); --tc: var(--orangeT); }
+.c-green { --fill: var(--green); --bar: var(--greenBar); --tc: var(--greenT); } .c-violet { --fill: var(--violet); --bar: var(--violetBar); --tc: var(--violetT); }
+.pn { position: absolute; height: 16px; padding: 0 5px; min-width: 22px; text-align: center; font: 600 10.5px/16px var(--font); background: var(--bg3); color: var(--fg); border-radius: 4px; box-shadow: 0 0 0 1.5px var(--bg); z-index: 70; }
+.nowl { position: absolute; left: 0; right: 0; height: 0; border-top: 1.5px solid var(--now); z-index: 80; }
+.tag { position: absolute; left: 6px; font-size: 10px; color: var(--fg3); z-index: 1; }
+
+.ev.wrap { padding: 2px 3px 2px 8px; } .ev.wrap::before { left: 2px; top: 2px; bottom: 2px; width: 2.5px; }
+.ev.wrap .t { font-size: var(--fs-s); line-height: 13px; -webkit-line-clamp: 5; word-break: break-word; overflow-wrap: anywhere; hyphens: auto; }
+.ev.wrap .m { display: none; }
+.lbl { position: absolute; height: 17px; padding: 0 5px 0 9px; font-size: var(--fs-s); font-weight: 500; line-height: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--fill); color: var(--tc); border-radius: 4px 4px 4px 0; box-shadow: 0 0 0 1px var(--bg); }
+.lbl::before { content: ""; position: absolute; left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; background: var(--bar); }
+.lbl.un { background: var(--bg); color: var(--fg2); box-shadow: inset 0 0 0 1px var(--bar); }
+.lane { position: absolute; width: 4px; border-radius: 2px; background: var(--bar); z-index: 12; }
+.lane.un { background: none; box-shadow: inset 0 0 0 1px var(--bar); }
+.lanebox { position: absolute; border-radius: 4px; background: var(--grid2); z-index: 10; }
+.row { position: absolute; height: 16px; display: flex; gap: 5px; align-items: center; padding: 0 4px 0 9px; border-radius: 4px; background: var(--fill); color: var(--tc); font-size: var(--fs-s); line-height: 16px; white-space: nowrap; overflow: hidden; z-index: 14; }
+.row::before { content: ""; position: absolute; left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; background: var(--bar); }
+.row .t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; } .row .m { opacity: .7; flex: none; }
+.row.un { background: var(--bg); color: var(--fg2); box-shadow: inset 0 0 0 1px var(--bar); } .row.sel { box-shadow: inset 0 0 0 1.5px var(--fg); }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Horion', VERSION = 'v13', ROUND = 2;
+const DESK = { w: 1440, h: 900 };
+const SCENES = [['week', 'Busy Wednesday, week'], ['day', 'Busy Wednesday, day'], ['light', 'Same week, Paper']];
+const HOWTO = ['Wednesday has 8 events at 9–11 and 4 at 13–15. Today the app hides some behind "+N".', 'Hover an option to see it; click to pick. Click an event to bring it to the front.', 'Ink / Paper (bottom left) switches the theme.'];
+const READ = 'Quiet tool UI: every event visible, titles readable first, no extra controls. Dials: variance 2, motion 2, density 7.';
+const LOCKED = {};
+const BEFORE = {};
+const P = (v, l, h) => [v, l, h];
+const DECISIONS = [
+  { id: 'fit', name: 'Events that do not fit in the time grid', fb: 'i meant remove the n+ more in the day view like the actual events', note: 'Wednesday 9–11 and 13–15. Check the narrow week column first, then the day view.', scene: 'week', hl: '.col.busy .ev', opts: [
+    P('lanes', 'Crowded spots: colour lanes + title list', 'Where today shows "+N" and side-by-side columns would be under 70 pt, each event becomes a thin colour lane at its real time on the left, and its title is listed next to it, one line each, in start order. Light overlaps look as today.'),
+    P('widen', 'Side by side, and a busy day gets wider', 'Overlaps go in columns. In week view a day with many columns takes more width (up to 2.5×) and quiet days give it up, so every column keeps room for a readable title.'),
+    P('wrap', 'Side by side, titles wrap', 'Overlaps go in columns of equal width. Narrow events drop the time and wrap the title over up to 4 lines in a smaller size.'),
+    P('titles', 'Cascade, titles always on top', 'The smart cascade without a limit. Every title is drawn above all event bodies, so no title is covered, even when the bodies overlap.'),
+    P('now', 'As now: "+N" chip (to compare)', 'Today: the 4th event and later go behind a "+N" chip that opens the stack panel.')] },
+];
+const SCENE_OF = {};
+
+// ================= demo data =================
+// Week of Mon 16 Nov 2026. day: 0 = Mon. Times in minutes. un = not accepted.
+const EV = (day, s, e, title, c, un) => ({ id: `${day}-${s}-${title}`, day, s, e, title, c, un: !!un });
+const H = (h, m = 0) => h * 60 + m;
+function fresh() {
+  return { sel: null, ev: [
+    EV(0, H(9), H(9, 30), 'Standup', 'blue'), EV(0, H(10), H(11, 30), 'Focus: billing spec', 'violet'), EV(0, H(14), H(15), 'Design crit', 'orange'),
+    EV(1, H(9), H(9, 30), 'Standup', 'blue'), EV(1, H(11), H(12), 'Customer call: Northwind', 'green'), EV(1, H(11, 30), H(12, 30), 'Lunch with Ana', 'orange'),
+    // Wednesday: the crowded day.
+    EV(2, H(9), H(10, 30), 'Design review: onboarding', 'blue'), EV(2, H(9), H(10), 'Standup', 'blue'), EV(2, H(9, 15), H(11), 'Hiring loop: frontend', 'green'),
+    EV(2, H(9, 30), H(10, 15), 'Vendor call', 'orange'), EV(2, H(9, 30), H(9, 40), 'Check-in', 'violet'), EV(2, H(9, 45), H(10, 45), 'Roadmap prep', 'violet'),
+    EV(2, H(10), H(10, 30), '1:1 with Mira', 'orange', true), EV(2, H(10), H(11), 'Offsite planning', 'green', true),
+    EV(2, H(13), H(14), 'Team lunch', 'orange'), EV(2, H(13, 30), H(14, 30), 'Budget sync', 'blue'), EV(2, H(13, 45), H(15), 'Quarterly numbers', 'green'), EV(2, H(14), H(14, 30), 'Interview debrief', 'violet'),
+    EV(2, H(16), H(17), 'Write-up', 'blue'),
+    // Thursday: light overlaps, the locked look.
+    EV(3, H(9), H(9, 30), 'Standup', 'blue'), EV(3, H(10), H(11), 'Planning', 'green'), EV(3, H(10, 15), H(11, 15), 'Sync with legal', 'orange'),
+    EV(3, H(13), H(15), 'Workshop', 'violet'), EV(3, H(13, 45), H(14, 45), 'Pairing', 'blue'), EV(3, H(14), H(14, 10), 'Ping Sam', 'orange'),
+    EV(4, H(9), H(9, 30), 'Standup', 'blue'), EV(4, H(11), H(12), 'Demo day prep', 'green', true), EV(4, H(11), H(11, 45), 'Review PRs', 'blue'), EV(4, H(15), H(16), 'Retro', 'orange'),
+    EV(5, H(10), H(11), 'Run', 'green'),
+  ] };
+}
+
+// ================= layout =================
+const SHORT = 15, SPAN = 22, JOIN = 30, STEP = 14, UNL = 0.5, HEAD = 0.66;
+// A port of HorionKit/OverlapV5.swift. mode: now (overflow to "+N"), cascade, split. Returns placements + "+N" groups.
+function v5(items, mode) {
+  const w = items.map((it, i) => ({ it, id: it.id, o: i, s: it.s, en: it.e - it.s <= SHORT ? it.s + SPAN : it.e, short: it.e - it.s <= SHORT, un: it.un, left: 0, width: 1, px: 0, level: 0, cut: false, grp: -1 }));
+  w.sort((a, b) => a.s - b.s || (b.en - b.s) - (a.en - a.s) || a.o - b.o);
+  const out = [], over = [], groups = [];
+  const ov = (a, b) => a.s < b.en && a.en > b.s, cov = (o, i) => o.s <= i.s && o.en > i.s;
+  const regroup = g => g.items.forEach((o, k) => { o.left = g.left + g.width * k / g.items.length; o.width = g.width / g.items.length; if (k > 0) o.cut = true; });
+  for (const i of w.filter(x => !x.short && !x.un)) {
+    const under = out.filter(o => ov(o, i));
+    const crowded = under.filter(o => cov(o, i)).length >= 2;
+    if (crowded && mode === 'now') { over.push(i); continue; }
+    let host = under.filter(o => i.s - groups[o.grp].s < JOIN).pop();
+    if (crowded && mode === 'split') host = under.filter(o => cov(o, i)).sort((a, b) => b.level - a.level || b.s - a.s)[0];
+    if (host) {
+      const g = groups[host.grp]; g.items.push(i);
+      Object.assign(i, { grp: host.grp, level: host.level, px: host.px, cut: host.cut }); regroup(g); out.push(i); continue;
+    }
+    let top = null;
+    for (const o of under) if (!top || o.level > top.level || (o.level === top.level && o.s > top.s)) top = o;
+    if (top) Object.assign(i, { level: top.level + 1, left: groups[top.grp].left, px: top.px + STEP, cut: true });
+    i.width = 1 - i.left; i.grp = groups.length; groups.push({ s: i.s, left: i.left, width: i.width, items: [i] }); out.push(i);
+  }
+  const right = [];
+  for (const i of w.filter(x => !x.short && x.un)) {
+    const hit = out.filter(o => ov(o, i));
+    if (!hit.length) { Object.assign(i, { left: 0, width: 1 }); out.push(i); continue; }
+    const r = right.filter(o => ov(o, i));
+    if (r.length && mode === 'now') { over.push(i); continue; }
+    for (const o of hit) if (Math.abs(i.s - o.s) < JOIN && o.left < UNL) o.width = Math.min(o.width, UNL - o.left);
+    if (r.length && mode === 'split') { const g = r[0].rg; g.items.push(i); i.rg = g; regroup(g); Object.assign(i, { level: 8 }); out.push(i); continue; }
+    Object.assign(i, { left: UNL, width: 1 - UNL, level: 8 + r.length, px: r.length ? Math.max(...r.map(o => o.px)) + STEP : 0, cut: true });
+    i.rg = { left: UNL, width: 1 - UNL, items: [i] }; right.push(i); out.push(i);
+  }
+  const blocks = out.slice();
+  for (const i of w.filter(x => x.short)) {
+    if (blocks.filter(o => cov(o, i)).length >= 2 && mode === 'now') { over.push(i); continue; }
+    const hit = blocks.some(o => ov(o, i)) || out.some(o => o.short && ov(o, i));
+    let head = false;
+    if (hit) for (const o of blocks) { const into = i.s - o.s; if (into >= -10 && into < JOIN && ov(o, i) && o.left + o.width > HEAD) { o.width = Math.max(HEAD - o.left, 0.3); head = true; } }
+    Object.assign(i, { left: hit ? (head ? HEAD : 0.5) : 0, level: 20 }); i.width = 1 - i.left; out.push(i);
+  }
+  const og = [];
+  for (const i of over.sort((a, b) => a.s - b.s)) { const g = og.filter(g => i.s - g.s < JOIN).pop(); if (g) g.n++; else og.push({ s: i.s, n: 1 }); }
+  return { out, og };
+}
+// Side by side everywhere: clusters of overlapping events, greedy columns, each widens into free columns on its right.
+function columns(items) {
+  const w = items.map((it, i) => ({ it, id: it.id, o: i, s: it.s, en: it.e - it.s <= SHORT ? it.s + SPAN : it.e, short: it.e - it.s <= SHORT, un: it.un, px: 0, level: 0 }))
+    .sort((a, b) => a.s - b.s || (b.en - b.s) - (a.en - a.s) || a.o - b.o);
+  const out = []; let cl = [], end = -1;
+  const flush = () => {
+    const cols = [];
+    for (const e of cl) { let k = cols.findIndex(c => c[c.length - 1].en <= e.s); if (k < 0) { k = cols.length; cols.push([]); } cols[k].push(e); e.col = k; }
+    for (const e of cl) {
+      let span = 1; while (e.col + span < cols.length && !cols[e.col + span].some(o => o.s < e.en && o.en > e.s)) span++;
+      Object.assign(e, { left: e.col / cols.length, width: span / cols.length, cut: e.col > 0, level: e.col, n: cols.length, cl: cl[0].id }); out.push(e);
+    }
+    cl = [];
+  };
+  for (const e of w) { if (e.s >= end && cl.length) flush(); cl.push(e); end = Math.max(end, e.en); }
+  if (cl.length) flush();
+  return { out, og: [] };
+}
+
+// Smart where it fits; a cluster that would hide events is laid out as columns.
+function hybrid(items) {
+  const w = items.slice().sort((a, b) => a.s - b.s), cls = []; let end = -1;
+  for (const e of w) { const en = e.e - e.s <= SHORT ? e.s + SPAN : e.e; if (e.s >= end || !cls.length) cls.push([]); cls[cls.length - 1].push(e); end = Math.max(end, en); }
+  const out = [];
+  for (const c of cls) { const r = v5(c, 'now'); out.push(...(r.og.length ? columns(c) : r).out); }
+  return { out, og: [] };
+}
+
+// ================= the app =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const hhmm = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], TODAY = 5, H0 = 8, H1 = 19;
+function deskClass() { return S.paper ? 'paper' : ''; }
+// Clusters of a day: events joined by overlap, in start order.
+function clusters(items) {
+  const w = items.slice().sort((a, b) => a.s - b.s), cls = []; let end = -1;
+  for (const e of w) { const en = e.e - e.s <= SHORT ? e.s + SPAN : e.e; if (e.s >= end || !cls.length) cls.push([]); cls[cls.length - 1].push(e); end = Math.max(end, en); }
+  return cls;
+}
+function layoutDay(items, mode, W) {
+  if (mode === 'columns' || mode === 'wrap' || mode === 'widen') return columns(items);
+  if (mode === 'titles') return v5(items, 'cascade');
+  if (mode === 'lanes') {
+    const out = [], lanes = [];
+    for (const c of clusters(items)) { const r = v5(c, 'now'); if (!r.og.length) { out.push(...r.out); continue; } const cc = columns(c).out; if (W / cc[0].n >= 70) out.push(...cc); else lanes.push(cc); }
+    return { out, og: [], lanes };
+  }
+  return v5(items, mode);
+}
+function app() {
+  const dayView = S.scene === 'day';
+  const days = dayView ? [2] : [0, 1, 2, 3, 4, 5, 6];
+  const hh = 64;
+  const mode = C('fit');
+  const Ls = days.map(d => layoutDay(A.ev.filter(e => e.day === d), mode, (1440 - 276) / days.length));
+  const total = 1440 - 220 - 56;
+  const wt = Ls.map(L => mode === 'widen' && !dayView ? Math.min(2.5, Math.max(1, 0.5 + 0.38 * Math.max(1, ...L.out.map(p => p.n || 1)))) : 1);
+  const sum = wt.reduce((a, b) => a + b, 0), DW = wt.map(x => total * x / sum);
+  const head = days.map((d, k) => `<div class="c ${d === TODAY ? 'today' : ''}" style="flex:none;width:${DW[k]}px">${DAYS[d]} <span class="n">${16 + d}</span></div>`).join('');
+  let gut = ''; for (let h = H0 + 1; h < H1; h++) gut += `<span style="top:${(h - H0) * hh}px">${h}:00</span>`;
+  const lines = Array.from({ length: H1 - H0 }, (_, k) => `<div class="hl" style="top:${k * hh}px"></div>`).join('');
+  const y = m => (m / 60 - H0) * hh;
+  const evBtn = (e, x, wd, top, ht, z, extra = '') => {
+    const wrap = (mode === 'wrap' || mode === 'widen') && wd < 90;
+    const cls = [`c-${e.c}`, extra, e.un ? 'un' : '', ht < 34 && !wrap ? 'one' : '', wrap ? 'wrap' : wd < 64 ? 'narrow' : '', !wrap && wd < 40 ? 'thin' : '', A.sel === e.id ? 'sel' : ''].join(' ');
+    return `<button class="ev ${cls}" data-ev="${esc(e.id)}" style="left:${x}px;width:${wd}px;top:${top}px;height:${ht}px;z-index:${z}"><span class="t">${esc(e.title)}</span><span class="m">${hhmm(e.s)}–${hhmm(e.e)}</span></button>`;
+  };
+  const cols = days.map((d, k) => {
+    const L = Ls[k], W = DW[k] - 1;
+    let evs = L.out.map(p => {
+      const e = p.it, x = p.left * W + p.px, wd = Math.max(p.width * W - p.px - 1, 14), top = y(p.s), ht = Math.max(y(p.en) - top - 1, 14);
+      return evBtn(e, x, wd, top, ht, 10 + p.level, p.cut ? 'cut' : '');
+    }).join('');
+    if (mode === 'titles') evs += L.out.slice().sort((a, b) => a.level - b.level).map(p => {
+      const x = p.left * W + p.px, wd = Math.max(p.width * W - p.px - 1, 14);
+      return `<button class="lbl c-${p.it.c} ${p.it.un ? 'un' : ''}" data-ev="${esc(p.it.id)}" style="left:${x}px;max-width:${wd}px;top:${y(p.s)}px;z-index:${100 + p.level}">${esc(p.it.title)}</button>`;
+    }).join('');
+    for (const g of L.lanes || []) {
+      const LW = 6, n = g[0].n, lw = n * LW + 2, x0 = 0;
+      let bottom = -1;
+      g.forEach(p => { evs += `<div class="lane c-${p.it.c} ${p.it.un ? 'un' : ''}" style="left:${x0 + p.col * LW}px;top:${y(p.s)}px;height:${Math.max(y(p.en) - y(p.s) - 1, 6)}px"></div>`; });
+      const top0 = y(g[0].s), box = Math.max(...g.map(p => y(p.en))) - top0;
+      evs += `<div class="lanebox" style="left:${lw}px;top:${top0}px;width:${W - lw - 1}px;height:${box - 1}px"></div>`;
+      g.slice().sort((a, b) => a.s - b.s).forEach(p => {
+        const t = Math.max(y(p.s), bottom + 1); bottom = t + 16;
+        evs += `<button class="row c-${p.it.c} ${p.it.un ? 'un' : ''} ${A.sel === p.it.id ? 'sel' : ''}" data-ev="${esc(p.it.id)}" style="left:${lw}px;top:${t}px;width:${W - lw - 1}px"><span class="t">${esc(p.it.title)}</span><span class="m">${hhmm(p.it.s)}</span></button>`;
+      });
+    }
+    const chips = L.og.map(g => `<button class="pn" style="right:4px;top:${y(g.s) + 2}px">+${g.n}</button>`).join('');
+    return `<div class="col ${d === 2 ? 'busy' : ''}" style="flex:none;width:${DW[k]}px;height:${(H1 - H0) * hh}px">${lines}${evs}${chips}</div>`;
+  }).join('');
+  const nav = SCENES.map(([id, n]) => `<button class="${S.scene === id ? 'on' : ''}" data-go="${id}">${n}</button>`).join('');
+  if (S.scene === 'light') S.paper = true;
+  const shown = A.ev.filter(e => e.day === 2).length;
+  return `<div class="side" data-area="sidebar"><div class="t">Overflow</div>${nav}<div class="sp"></div><div class="hint">Wednesday has ${shown} events. Count them in the grid.</div><button data-theme="1">${S.paper ? 'Paper → Ink' : 'Ink → Paper'}</button></div>
+  <div class="main" data-area="main"><div class="top">November <span>2026</span></div><div class="dh" data-area="header"><div class="g"></div>${head}</div>
+  <div class="gridwrap"><div class="grid"><div class="gut">${gut}</div>${cols}</div></div></div>`;
+}
+function appClick(t) {
+  if (t.dataset.go) S.scene = t.dataset.go;
+  else if (t.dataset.theme) S.paper = !S.paper;
+  else if (t.dataset.ev) A.sel = A.sel === t.dataset.ev ? null : t.dataset.ev;
+  else return false;
+  return true;
+}
+
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+// #scene&shot&fit=columns&paper sets picks for screenshot scripts.
+location.hash.split('&').slice(1).forEach(kv => { const [k, v] = kv.split('='); if (k === 'paper') S.paper = true; else if (v && DECISIONS.some(d => d.id === k)) S.c[k] = v; });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  const st = document.getElementById('stage').getBoundingClientRect();
+  // Scale so the real window fits, then grow the app to fill the stage: no empty space.
+  // Shots (#scene&shot) keep the exact DESK size.
+  const k = shot ? 1 : Math.min(st.width / DESK.w, st.height / DESK.h, 1);
+  desk.style.width = (shot ? DESK.w : st.width / k) + 'px'; desk.style.height = (shot ? DESK.h : st.height / k) + 'px';
+  desk.style.transform = `scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p>${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${notes ? `\n## Notes on elements\n${notes}` : ''}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') A = fresh();
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+desk.addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-k', 'data-d', 'data-v', 'data-go', 'data-open'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>

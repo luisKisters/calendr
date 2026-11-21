@@ -65,6 +65,15 @@ Each spec uses the tokens in `foundations.md`. Sizes are in points.
 | Lead (Now) | Label 11 / 500 `fg3` + countdown in `live`; a 36 pt time column (start `fg2`, end `fg3`), a 3 pt bar in the calendar mark, title 12 / 600 `fg1`, meta `small` `fg2`. Join 30 high on `raised` with a 1 px edge, 12 / 500 `fg1`, ⌘J in `fg3` (a ghost with a `hairStrong` edge on Up next). A pane edge under the lead card. No "Today" heading, no shortcut list. |
 | List rows | "Later today" label; rows 26 high, time 11 `fg2` tabular right-aligned in 36, a 3 × 14 bar in the calendar mark, title `body` 12 |
 
+## Keycap
+Locked in `design/mockup-v12-keycaps` round 1 (2026-11-21). `Keycap` / `Keycaps` in `Components.swift`; nothing draws a key by hand.
+| Part | Spec |
+|---|---|
+| Cap | 16 high, at least 16 wide, 4 sides, radius 4. Fill `raised`, 1 px `capEdge` (bg → fg1 21 % Dark `#3A3A3C`, 18.5 % Paper `#D2D2D4`). Key `small` 11 / 400 `fg3`, tabular. |
+| On a filled button | No fill; edge `onAct` 30 %, key `onAct` 62 % (This event ↩, Save ↩). |
+| Shortcut | One cap per shortcut: ⌘Z, ⌥↑, ⇧⇥. Alternatives are separate caps: 3 apart in hints (↑ ↓), 11 apart in the shortcuts sheet (⌥↑ ⌥↓). 6 from the caps to their label. |
+| Glyphs | ⌃ ⌥ ⇧ ⌘ in that order, then the key. ↩ ⌫ ⇥ ↑ ↓ ← →, `esc` as a word, letters upper case, punctuation as typed. ↩ is the SF Symbol `return` (10 pt, semibold), not the font glyph. |
+
 ## Alignment
 - Events, all-day chips and sidebar text: each set of text shares one left edge per column. G shows 0 red boxes in Dark and Paper.
 - The hour gutter is 56. Day columns are equal. The weekend is not narrower.

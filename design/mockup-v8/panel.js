@@ -1,4 +1,4 @@
-// Calendr v8: editor, popovers, search, command menu, settings, menu bar, render.
+// Horion v8: editor, popovers, search, command menu, settings, menu bar, render.
 'use strict';
 
 // ================================================================ notes: fold call invitation text (B5)
@@ -72,7 +72,7 @@ function detail(e) {
     if (google()) ph += `<input class="in" data-k="guest" placeholder="${oth.length ? 'Add guests' : 'Add participants'}" value="${esc(A.q.guest)}" autocomplete="off" ${oth.length ? 'style="margin-top:2px"' : ''}>`;
     else {
       ph += `<button class="fld ph" data-k="guest" data-a="guestHint" ${oth.length ? 'style="margin-top:2px"' : ''}>${oth.length ? 'Add guests' : 'Add participants'}</button>`;
-      if (A.guestHint) ph += `<div class="hintrow">${ic('lock', 13)}<span>macOS Calendar cannot add guests or send invitations. Connect Google to invite people from Calendr.</span><div class="acts"><button class="btn sm act" data-a="connect">${gLogo(13)} Connect Google</button><button class="btn sm" data-a="mailGuests" data-id="${e.id}">Email instead</button><button class="btn sm ghost" data-a="openCal">Open in Calendar</button></div></div>`;
+      if (A.guestHint) ph += `<div class="hintrow">${ic('lock', 13)}<span>macOS Calendar cannot add guests or send invitations. Connect Google to invite people from Horion.</span><div class="acts"><button class="btn sm act" data-a="connect">${gLogo(13)} Connect Google</button><button class="btn sm" data-a="mailGuests" data-id="${e.id}">Email instead</button><button class="btn sm ghost" data-a="openCal">Open in Calendar</button></div></div>`;
     }
   }
   if (ph) h += prow('users', ph);
@@ -308,7 +308,7 @@ function settingsHTML() {
     <div class="srow"><div class="grow">Show week numbers<small>In the mini month; point at the title to see this week's number.</small></div>${swt(A.settings.weekNo, 'togWeekNo')}</div>
     <div class="srow ${A.hlSetting === 'maps' ? 'hl2' : ''}"><div class="grow">Default maps app<small>A click on a location opens it here.</small></div><div class="segc">${[['ask', 'Ask'], ['apple', 'Apple Maps'], ['google', 'Google Maps'], ['osm', 'OpenStreetMap']].map(([v, l]) => `<button class="${A.settings.maps === v ? 'on' : ''}" data-a="setMaps" data-k="${v}">${l}</button>`).join('')}</div></div>
     <div class="srow ${A.hlSetting === 'declined' ? 'hl2' : ''}"><div class="grow">Show declined events<small>Declined invitations stay in the grid, faded and struck through. (C4)</small></div>${swt(A.settings.declined, 'togDeclined')}</div></div>`;
-  if (t === 'appearance') c = `<h3>Appearance</h3><p class="lede2">Calendr has both themes: ${PK().darkName} and Paper (light). Auto follows macOS.</p><div class="sbox">
+  if (t === 'appearance') c = `<h3>Appearance</h3><p class="lede2">Horion has both themes: ${PK().darkName} and Paper (light). Auto follows macOS.</p><div class="sbox">
     <div class="srow"><div class="grow">Theme</div><div class="segc">${[['dark', 'Dark', 'moon'], ['paper', 'Paper', 'sun'], ['auto', 'Auto', 'palette']].map(([v, l, i]) => `<button class="${(A.settings.appearance === 'auto' ? 'auto' : isLight() ? 'paper' : 'dark') === v ? 'on' : ''}" data-a="setAppearance" data-k="${v}">${ic(i, 13)} ${l}</button>`).join('')}</div></div>
     <div class="srow"><div class="grow">App icon</div><span style="display:flex;gap:8px;align-items:center">${appIcon('nowline', 34)} Now line</span></div></div>`;
   if (t === 'calendars') c = `<h3>Calendars</h3><p class="lede2">Hidden calendars stay hidden in search and the menu bar too.</p>` + GROUPS.map(g => `<div class="sbox"><div class="srow"><div class="grow"><b>${g.name}</b><small>${esc(g.sub)}</small></div></div>${Object.entries(A.cals).filter(([, cc]) => cc.g === g.id).map(([id, cc]) => `<div class="srow"><span style="width:12px;height:12px;border-radius:3px;background:${cc.hex}"></span><div class="grow">${esc(cc.name)}${cc.ro ? '<small>read-only</small>' : ''}</div>${swt(!A.hidden.includes(id), 'togCal', `data-k="${id}"`)}</div>`).join('')}</div>`).join('');
@@ -323,7 +323,7 @@ function settingsHTML() {
   if (t === 'menubar') c = `<h3>Menu bar</h3><p class="lede2">The calendar in the menu bar. (E2, F1, F2)</p><div class="sbox">
     <div class="srow"><div class="grow">Days</div><div class="segc">${[['2', 'Today and tomorrow'], ['3', 'Three days']].map(([v, l]) => `<button class="${A.settings.mbDays === v ? 'on' : ''}" data-a="setMb" data-k="mbDays" data-v="${v}">${l}</button>`).join('')}</div></div>
     <div class="srow"><div class="grow">Visible rows<small>The menu stops at this height and scrolls.</small></div><div class="segc">${[6, 8, 12].map(v => `<button class="${A.settings.mbRows === v ? 'on' : ''}" data-a="setMb" data-k="mbRows" data-v="${v}">${v}</button>`).join('')}</div></div>
-    <div class="srow"><div class="grow">Join the current call from anywhere<small>⌘J in the app; ⌃⌘J works even when Calendr is in the background.</small></div>${swt(true, 'noop')}</div>
+    <div class="srow"><div class="grow">Join the current call from anywhere<small>⌘J in the app; ⌃⌘J works even when Horion is in the background.</small></div>${swt(true, 'noop')}</div>
     <div class="srow"><div class="grow">New event from the menu bar<small>⌘N while the menu is open.</small></div>${swt(true, 'noop')}</div></div>`;
   if (t === 'keys') c = `<h3>Shortcuts</h3><p class="lede2">Every shortcut, also under ? in the app.</p>${shortcutTable()}`;
   return `<div class="scrim" data-a="closeModal"></div><div class="modal sheet"><nav><b>Settings</b>${nav.map(([k, l, i]) => `<button class="${t === k ? 'on' : ''}" data-a="openSettings" data-k="${k}">${ic(i, 15)} ${l}</button>`).join('')}</nav><div class="sc">${c}</div><button class="ibtn" style="position:absolute;right:12px;top:12px" data-a="closeModal">${ic('x')}</button></div>`;
@@ -336,7 +336,7 @@ function modalHTML() {
   if (m === 'settings') return settingsHTML();
   if (m === 'shortcuts') return `<div class="scrim" data-a="closeModal"></div><div class="modal" style="width:460px"><div class="mh"><b>Keyboard shortcuts</b></div><div class="mb" style="max-height:560px;overflow:auto">${shortcutTable()}</div></div>`;
   if (m === 'onboard') return onboardHTML();
-  if (m === 'oauth') return `<div class="scrim" data-a="closeModal"></div><div class="modal oauth">${gLogo(30)}<div class="gl2">Sign in with Google</div><p>Calendr wants to access your Google Account<br><b>${ME}</b></p><ul><li>See and edit events in your calendars</li><li>See your calendar list</li><li>See your contacts and "other contacts"</li></ul><div style="display:flex;gap:8px;justify-content:center"><button class="btn" data-a="closeModal">Cancel</button><button class="btn act" data-a="oauthOk">Continue</button></div></div>`;
+  if (m === 'oauth') return `<div class="scrim" data-a="closeModal"></div><div class="modal oauth">${gLogo(30)}<div class="gl2">Sign in with Google</div><p>Horion wants to access your Google Account<br><b>${ME}</b></p><ul><li>See and edit events in your calendars</li><li>See your calendar list</li><li>See your contacts and "other contacts"</li></ul><div style="display:flex;gap:8px;justify-content:center"><button class="btn" data-a="closeModal">Cancel</button><button class="btn act" data-a="oauthOk">Continue</button></div></div>`;
   if (m === 'delete') {
     const e = selEv(); if (!e) return '';
     return `<div class="scrim" data-a="closeModal"></div><div class="modal"><div class="mh"><b>Delete “${esc(e.t)}”?</b><p>${others(e).map(g => esc(nameOf(g.id))).join(', ')} ${google() ? 'get a cancellation email.' : 'keep the event until macOS Calendar syncs the change.'}</p></div><div class="mf"><button class="btn ghost" data-a="closeModal">Cancel</button>${google() ? '<button class="btn" data-a="doDelete" data-k="quiet">Delete without email</button>' : ''}<button class="btn red" data-a="doDelete">Delete${google() ? ' and notify' : ''}</button></div></div>`;
@@ -353,11 +353,11 @@ function onboardHTML() {
   const arts = [
     `<div class="a0"><div class="halo"></div>${appIcon('nowline', 128)}<div class="mini">${[['#5B8DEF', 10, 22], ['#5FB97E', 38, 30], ['#E9B949', 64, 16], ['#E5674F', 24, 54], ['#A9A6F5', 52, 60]].map(([c, x, y]) => `<i style="background:${c};left:${x}%;top:${y}%"></i>`).join('')}<b></b></div></div>`,
     `<div class="aacc"><div class="calbig">${ic('calendar', 60)}</div><span class="okb">${ic('check', 22, 'stroke-width="2.4"')}</span></div>`,
-    `<div class="a1">${chip(cloud, 'iCloud', '2 calendars')}${hasg ? chip(gLogo(15), 'Google', '9 calendars') : `<div class="src dashed"><span class="pv">${gLogo(15)}</span><span>Google<small>not on this Mac yet</small></span></div>`}${chip(ic('link', 15), 'Subscribed', '1 calendar')}${chip(ic('person', 15), 'Birthdays', 'from Contacts')}<div class="flow">${ic('down', 18)}</div><div class="into">${appIcon('nowline', 44)}<span>Calendr</span></div></div>`,
+    `<div class="a1">${chip(cloud, 'iCloud', '2 calendars')}${hasg ? chip(gLogo(15), 'Google', '9 calendars') : `<div class="src dashed"><span class="pv">${gLogo(15)}</span><span>Google<small>not on this Mac yet</small></span></div>`}${chip(ic('link', 15), 'Subscribed', '1 calendar')}${chip(ic('person', 15), 'Birthdays', 'from Contacts')}<div class="flow">${ic('down', 18)}</div><div class="into">${appIcon('nowline', 44)}<span>Horion</span></div></div>`,
     `<div class="a2"><div class="ring"></div><div class="g">${gLogo(46)}</div>${[['reply', 'b1'], ['users', 'b2'], ['mail', 'b3'], ['', 'b4']].map(([i, c]) => `<span class="badge ${c}">${i ? ic(i, 18) : meetLogo(18)}</span>`).join('')}</div>`,
     `<div class="a3"><div class="ok">${ic('check', 40, 'stroke-width="2.2"')}</div><div class="keys"><span><i>⌘</i><i>K</i></span><span><i>⌘</i><i>J</i></span><span><i>⌃</i><i>⌘</i><i>K</i></span></div></div>`,
   ];
-  const cb = (id, w) => { const on = !(A.obCals[id] && A.obCals[id][w] === false); return `<button class="obcb ${on ? 'on' : ''}" data-a="obCal" data-k="${id}" data-w="${w}" title="${w === 'app' ? 'Show in Calendr' : 'Show in the menu bar'}">${ic('check', 11, 'stroke-width="2.4"')}</button>`; };
+  const cb = (id, w) => { const on = !(A.obCals[id] && A.obCals[id][w] === false); return `<button class="obcb ${on ? 'on' : ''}" data-a="obCal" data-k="${id}" data-w="${w}" title="${w === 'app' ? 'Show in Horion' : 'Show in the menu bar'}">${ic('check', 11, 'stroke-width="2.4"')}</button>`; };
   const rows = g => Object.entries(CALS0).filter(([, c]) => c.g === g).map(([id, c]) => `<div class="crow"><span class="dot" style="background:${c.hex}"></span><span class="nm">${esc(c.name)}</span>${cb(id, 'app')}${cb(id, 'mb')}</div>`).join('');
   const gHead = `<div class="cgrp">Google <span class="acc">${ME}</span><span class="only-a gact"><button class="btn sm" data-a="obAuth">${gLogo(13)} Connect</button><small>to reply and invite</small></span><span class="only-g gact ok">${ic('check', 13)} Connected</span></div>`;
   const googleBlock = hasg ? gHead + rows('google')
@@ -365,17 +365,17 @@ function onboardHTML() {
         <div class="acts2"><button class="btn sm act" data-a="obAuth">${gLogo(13)} Connect Google account</button><button class="btn sm ghost" data-a="obSysSettings">Add in System Settings → Internet Accounts</button></div></div>
        <div class="only-gb"><div class="cgrp">Google <span class="acc">connected directly</span><span class="gact ok">${ic('check', 13)} Connected</span></div>${rows('google')}</div>`;
   const panes = [
-    `<span class="kick">Welcome</span><h3>Your calendars, calmer</h3><p>Calendr shows the calendars you already have in Apple Calendar: iCloud, Google, subscriptions and birthdays. Nothing to import.</p>
+    `<span class="kick">Welcome</span><h3>Your calendars, calmer</h3><p>Horion shows the calendars you already have in Apple Calendar: iCloud, Google, subscriptions and birthdays. Nothing to import.</p>
       <div class="cta"><button class="btn act" data-a="obGo" data-k="1">Get started</button></div>`,
-    `<span class="kick">Step 1 of 3</span><h3>Allow access to your calendars</h3><p>macOS asks once. Calendr reads and edits your events through Apple Calendar, so they stay in sync on every device.</p>
+    `<span class="kick">Step 1 of 3</span><h3>Allow access to your calendars</h3><p>macOS asks once. Horion reads and edits your events through Apple Calendar, so they stay in sync on every device.</p>
       <div class="perm"><span class="pv" style="color:var(--ok)">${ic('check', 15)}</span><div>Calendars<small>Allowed</small></div></div>
       <div class="perm"><span class="pv">${ic('person', 15)}</span><div>Contacts <span style="color:var(--fg3)">· optional</span><small>Shows names instead of bare email addresses</small></div><button class="btn sm" data-a="noop">Allow</button></div>
       <div class="cta"><button class="btn act" data-a="obGo" data-k="2">Continue</button></div>`,
-    `<span class="kick">Step 2 of 3</span><h3>Choose your calendars</h3><p>Tick what shows in Calendr and in the menu bar. You can change it later in Settings.</p>
-      <div class="callist"><div class="chead"><span></span><span>Calendr</span><span>Menu bar</span></div>${googleBlock}
+    `<span class="kick">Step 2 of 3</span><h3>Choose your calendars</h3><p>Tick what shows in Horion and in the menu bar. You can change it later in Settings.</p>
+      <div class="callist"><div class="chead"><span></span><span>Horion</span><span>Menu bar</span></div>${googleBlock}
         ${['icloud', 'subs', 'bday'].map(g => `<div class="cgrp">${GROUPS.find(x => x.id === g).name}</div>${rows(g)}`).join('')}</div>
       <div class="cta"><button class="btn act" data-a="obGo" data-k="3">Continue</button></div>`,
-    `<span class="kick">Step 3 of 3 · optional</span><h3>Reply and invite with Google</h3><p>Your Google events already show. To reply, invite or make Meet links, Calendr needs your Google account.</p>
+    `<span class="kick">Step 3 of 3 · optional</span><h3>Reply and invite with Google</h3><p>Your Google events already show. To reply, invite or make Meet links, Horion needs your Google account.</p>
       <div class="ba"><div class="bacard"><b>Without Google</b><small>You see your events</small>
           <div class="mini"><span class="lbl">Going?</span><div class="segc off"><button class="on">Yes</button><button>Maybe</button><button>No</button></div></div>
           <div class="mini dim">${ic('lock', 12)} Reply in Google Calendar</div></div>
@@ -384,17 +384,17 @@ function onboardHTML() {
           <div class="mini"><span class="chip2">${ic('plus', 11)} Add guests</span><span class="chip2">${meetLogo(12)} Meet link</span></div></div></div>
       <div class="cta only-ab"><button class="btn act" data-a="obAuth">${gLogo(15)} Connect Google account</button><button class="btn ghost" data-a="obSkip">Skip, use Apple Calendar only</button></div>
       <div class="cta only-gb"><div class="okline">${ic('check', 15)} Google is connected</div><button class="btn act" data-a="obGo" data-k="4">Continue</button></div>`,
-    `<span class="kick">All set</span><h3>You are ready</h3><p><span class="only-g">Google is connected as <b>${ME}</b>. Replies, guests, invitations and Meet links work.</span><span class="only-a">Calendr uses Apple Calendar only. Where Google would help, Calendr says so; connect any time in Settings → Accounts.</span></p>
+    `<span class="kick">All set</span><h3>You are ready</h3><p><span class="only-g">Google is connected as <b>${ME}</b>. Replies, guests, invitations and Meet links work.</span><span class="only-a">Horion uses Apple Calendar only. Where Google would help, Horion says so; connect any time in Settings → Accounts.</span></p>
       <div class="perm"><span class="pv">${ic('search', 15)}</span><div>Command menu and search<small>⌘K</small></div></div><div class="perm"><span class="pv">${ic('video', 15)}</span><div>Join the current call<small>⌘J</small></div></div>
-      <div class="cta"><button class="btn act" data-a="closeModal">Start using Calendr</button></div>`,
+      <div class="cta"><button class="btn act" data-a="closeModal">Start using Horion</button></div>`,
   ];
   return `<div class="scrim blur"></div><div class="modal onb2 s${s} ${google() ? 'g-on' : ''}" id="onb">
     <div class="art">${arts.map((h, i) => `<div class="pane ${i === s ? 'on' : ''}" data-i="${i}">${h}</div>`).join('')}</div>
     <div class="body">${panes.map((h, i) => `<div class="pane ${i === s ? 'on' : ''}" data-i="${i}">${h}</div>`).join('')}
       <div class="foot"><button class="btn ghost sm back" data-a="obGo" data-k="back">${ic('left', 13)} Back</button><div class="dots">${panes.map((_, i) => `<i class="${i === s ? 'on' : ''}" data-i="${i}"></i>`).join('')}</div><span class="back" style="visibility:hidden;width:64px"></span></div>
-      <div class="auth ${A.obAuthOpen ? 'on' : ''}">${gLogo(28)}<h3 style="margin:4px 0 0">Sign in with Google</h3><p>to continue to <b>Calendr</b></p>
+      <div class="auth ${A.obAuthOpen ? 'on' : ''}">${gLogo(28)}<h3 style="margin:4px 0 0">Sign in with Google</h3><p>to continue to <b>Horion</b></p>
         <div class="acct"><span class="av" style="background:#4f8f5f">YN</span><div>Your Name<small>${ME}</small></div>${ic('check', 15)}</div>
-        <p style="font-size:var(--fs-s)">Calendr will be able to see and edit events in your calendars, see your calendar list and your contacts.</p>
+        <p style="font-size:var(--fs-s)">Horion will be able to see and edit events in your calendars, see your calendar list and your contacts.</p>
         <div class="cta" style="flex-direction:row;justify-content:flex-end"><button class="btn ghost" data-a="obAuthCancel">Cancel</button><button class="btn act" data-a="obAuthOk">Continue</button></div></div>
     </div></div>`;
 }
@@ -447,7 +447,7 @@ function mbNative(before) {
     rows.forEach(e => { html += mbRow(e); });
   }
   if (!before) html += '</div>';
-  html += `<div class="sp2"></div><button class="mi" data-a="mbNew">${ic('plus', 14)} New event…<span class="kh">⌘N</span></button><button class="mi" data-a="mbOpenApp">Open Calendr<span class="kh">⌘1</span></button><button class="mi" data-a="openSettings" data-k="menubar">Settings…<span class="kh">⌘,</span></button><div class="sp2"></div><button class="mi" data-a="noop">Quit Calendr<span class="kh">⌘Q</span></button>`;
+  html += `<div class="sp2"></div><button class="mi" data-a="mbNew">${ic('plus', 14)} New event…<span class="kh">⌘N</span></button><button class="mi" data-a="mbOpenApp">Open Horion<span class="kh">⌘1</span></button><button class="mi" data-a="openSettings" data-k="menubar">Settings…<span class="kh">⌘,</span></button><div class="sp2"></div><button class="mi" data-a="noop">Quit Horion<span class="kh">⌘Q</span></button>`;
   return `<div class="mbmenu" data-mb style="width:${before ? 470 : 300}px">${html}</div>`;
 }
 function parseQuick(t) {
@@ -471,7 +471,7 @@ function qaddHTML() {
     <label class="boxf">${ic('plus', 14)}<input data-k="qadd" placeholder="e.g. Kaffee mit Sam morgen 15 uhr" value="${esc(A.q.qadd)}" autocomplete="off"></label>
     <div class="chips">${[[TODAY, 'Today'], [TODAY + 1, 'Tomorrow'], [TODAY + 2, fmtDay(TODAY + 2)]].map(([d, l]) => `<button class="${p.d === d ? 'on' : ''}" data-a="qaDay" data-d="${d}">${l}</button>`).join('')}${[[19 * 60, '19:00'], [20 * 60, '20:00'], [9 * 60, '09:00']].map(([t, l]) => `<button class="${p.s === t ? 'on' : ''}" data-a="qaTime" data-v="${t}">${l}</button>`).join('')}</div>
     <div class="r"><span class="parse tab">${esc(p.title || 'New event')} · ${fmtDay(p.d)} ${fmt(p.s)}–${fmt(p.e)} · Personal</span></div>
-    <div class="r"><button class="btn sm ghost" data-a="openFull">Open in Calendr</button><button class="btn sm act" data-a="qaddOk">Add <span class="kh">↩</span></button></div></div>`;
+    <div class="r"><button class="btn sm ghost" data-a="openFull">Open in Horion</button><button class="btn sm act" data-a="qaddOk">Add <span class="kh">↩</span></button></div></div>`;
 }
 function mbHTML() {
   let h = '';
@@ -481,7 +481,7 @@ function mbHTML() {
 function dockHTML() {
   if (V.dock !== '1') return '';
   const ph = c => `<div class="app"><i class="ph2" style="background:${c}"></i><span class="run" style="opacity:0"></span></div>`;
-  return `<div class="dockwrap"><div class="dock">${ph('linear-gradient(#5ac8fa,#007aff)')}${ph('linear-gradient(#ffffff,#d9d9d9)')}${ph('linear-gradient(#ff9f0a,#ff375f)')}<div class="app"><span class="lbl3">Calendr</span>${appIcon('nowline', 52)}<span class="run"></span></div>${ph('linear-gradient(#34c759,#30b0c7)')}${ph('linear-gradient(#3a3a3c,#1c1c1e)')}</div></div>`;
+  return `<div class="dockwrap"><div class="dock">${ph('linear-gradient(#5ac8fa,#007aff)')}${ph('linear-gradient(#ffffff,#d9d9d9)')}${ph('linear-gradient(#ff9f0a,#ff375f)')}<div class="app"><span class="lbl3">Horion</span>${appIcon('nowline', 52)}<span class="run"></span></div>${ph('linear-gradient(#34c759,#30b0c7)')}${ph('linear-gradient(#3a3a3c,#1c1c1e)')}</div></div>`;
 }
 
 // ================================================================ render
@@ -499,7 +499,7 @@ function render() {
   const rightCls = A._right == null || A._right === A.right ? (A.right ? '' : 'gone') : (A._right ? '' : 'gone');
   const rightBody = A.q.search.trim() ? searchCol() : d ? d.body : todayCol();
   host.innerHTML = `<div class="desk ${isLight() ? 'light' : ''} ov-cascade ${V.rowgrid === '1' ? 'rowgrid' : ''} pk-${PK().id}" ${deskAttrs()} style="${themeVars()}">
-    <div class="macbar"><span style="font-size:14px"></span><b>Calendr</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span><div class="sp"></div>
+    <div class="macbar"><span style="font-size:14px"></span><b>Horion</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span><div class="sp"></div>
       <button class="si ${A.mb ? 'on' : ''}" id="statusitem" data-a="togMenubar" title="Menu bar calendar  ⌃⌘K">${menuGlyph(15)}<span class="tab">${esc(statusText())}</span></button><span>${ic('search', 14)}</span><span class="tab">Wed 4 Nov ${fmt(NOW)}</span></div>
     <div class="win">${sidebar(sideCls)}
       <main class="center">${hdr()}${viewBody()}</main>

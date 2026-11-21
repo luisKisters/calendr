@@ -1,4 +1,4 @@
-/* Calendr v7 · Packs: the page shell, the picker rail and the fixes every pack shares. Loaded after the pack's stylesheet.
+/* Horion v7 · Packs: the page shell, the picker rail and the fixes every pack shares. Loaded after the pack's stylesheet.
    The rail is outside the app (dark in every pack and theme); its rules come from v6 C. */
 html, body { height: 100%; overflow: hidden; background: #0E0E0F; color: #d8d4cc; font: 13px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; }
 #page { display: grid; grid-template-columns: minmax(0, 1fr) 348px; height: 100vh; }

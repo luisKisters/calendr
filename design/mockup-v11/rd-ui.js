@@ -1,4 +1,4 @@
-// Calendr v11 · the Readability tab in the picker rail (round 2026-11-20 d). Dark only.
+// Horion v11 · the Readability tab in the picker rail (round 2026-11-20 d). Dark only.
 // Top: the presets (the iterations), Copy link, Reset, and the live result of the current design (every Dark pair, all calendar colours).
 // Then six groups of levers. Each lever: its name, the chosen option, one line of research (READABILITY-BRIEF.md section), and its
 // options as tiles: a preview drawn with that option's real tokens, the live WCAG ratio and APCA Lc of the tightest affected pair,

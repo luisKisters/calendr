@@ -12,7 +12,7 @@ TMP=artifacts/tmp/walkthrough.glide.mp4
 mkdir -p artifacts/tmp
 
 [ "${1:-}" = "--skip-build" ] || scripts/build-app.sh 2>&1 | tail -2
-build/Calendr.app/Contents/MacOS/Calendr --walkthrough --record "$REC" | tail -4
+build/Horion.app/Contents/MacOS/Horion --walkthrough --record "$REC" | tail -4
 rm -f artifacts/walkthrough.mov.sb-*
 
 glide render "$REC" -o "$TMP" --zoom off \

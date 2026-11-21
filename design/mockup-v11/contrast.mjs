@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Contrast check for Calendr v11 (v10 + the Readability designer, look R, Dark): every look (L0 = v8, L1–L4) × Dark and Paper, and the Designer: every combination of its
+// Contrast check for Horion v11 (v10 + the Readability designer, look R, Dark): every look (L0 = v8, L1–L4) × Dark and Paper, and the Designer: every combination of its
 // colour controls (READABILITY-BRIEF.md §1 and §5). The targets are the v8 targets, unchanged.
 //   node design/mockup-v10/contrast.mjs              summary per look: pairs, misses and the tightest pair per theme
 //   node design/mockup-v10/contrast.mjs --all        every pair

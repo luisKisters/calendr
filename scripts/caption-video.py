@@ -10,7 +10,7 @@ Chips sit bottom-centre in the padding under the window, so Glide's zoom never c
 import json, os, subprocess, sys, tempfile
 from PIL import Image, ImageDraw, ImageFont
 
-FONT = os.path.join(os.path.dirname(__file__), "..", "Sources", "Calendr", "Resources", "Fonts", "Geist[wght].ttf")
+FONT = os.path.join(os.path.dirname(__file__), "..", "Sources", "Horion", "Resources", "Fonts", "Geist[wght].ttf")
 
 
 SYMBOLS = "/System/Library/Fonts/SFNS.ttf"   # keycaps: Geist has no ⌘ ⌥ ⇧ ↩ glyphs

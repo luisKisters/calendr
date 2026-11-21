@@ -1,4 +1,4 @@
-# Calendr v11 decisions
+# Horion v11 decisions
 Mockup: `design/mockup-v11/index.html` (serve: `node design/mockup-v11/serve.mjs 8803`, https://<tailnet-host>:8803/). The picker (Readability tab) shows the same state.
 Look R covers Dark and (since round h) Paper, derived from the locked Dark rules. The hand-off files are `design/design-system/` (README, foundations, components).
 

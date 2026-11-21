@@ -1,4 +1,4 @@
-// Calendr v8 · the one theme: D3 "Graphite timetable", Dark and Paper. One source for the page (app.js reads THEME through PK()
+// Horion v8 · the one theme: D3 "Graphite timetable", Dark and Paper. One source for the page (app.js reads THEME through PK()
 // for CSS variables, event colours and structure flags) and for the contrast check (node design/mockup-v8/contrast.mjs).
 // Locked 2026-11-05: D3 is the design. The other v7 packs (A, B, C, D1, D2, D4) and the pack switch are gone.
 //   Dark  = graphite canvas #131315, darker sidebars #0E0E10 with hairline pane edges, timetable lines (hour + quiet half hour),

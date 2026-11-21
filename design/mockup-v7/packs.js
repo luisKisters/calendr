@@ -1,4 +1,4 @@
-// Calendr v7 · Packs: every theme pack in one file. One source for the page (app.js asks PK() for CSS variables,
+// Horion v7 · Packs: every theme pack in one file. One source for the page (app.js asks PK() for CSS variables,
 // event colours and structure flags) and for the contrast check (node design/mockup-v7/contrast.mjs).
 // A pack = a coherent pair: a Dark theme and a Paper theme that share fonts, event marks, lines, radii and spacing.
 //   A, B, C   reference packs, ported unchanged from design/mockup-v6-a, -b, -c (tokens.js of each).

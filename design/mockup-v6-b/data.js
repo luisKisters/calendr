@@ -1,4 +1,4 @@
-// Calendr mockup: neutral demo data (a made-up week, Mon 2 - Sun 8 Nov 2026). Every name, address, email and link
+// Horion mockup: neutral demo data (a made-up week, Mon 2 - Sun 8 Nov 2026). Every name, address, email and link
 // here is invented. Same layout features as a busy real week: overlaps, a full all-day lane, multi-day events,
 // tasks, a live call, a declined event, a call invitation in the notes and a search term that goes back months.
 'use strict';
@@ -36,7 +36,7 @@ const GROUPS = [
 const CALS0 = {
   personal: { name: 'Personal', hex: '#5B8DEF', g: 'google' },
   work: { name: 'Work', hex: '#8F86E8', g: 'google' },
-  product: { name: 'Calendr', hex: '#A9A6F5', g: 'google' },
+  product: { name: 'Horion', hex: '#A9A6F5', g: 'google' },
   family: { name: 'Family', hex: '#E5674F', g: 'google' },
   holidays2: { name: 'Holidays', hex: '#9254DE', g: 'google', ro: true },
   holidays: { name: 'Holidays in Germany', hex: '#3FA36B', g: 'google', ro: true },

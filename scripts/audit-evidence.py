@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render audit evidence using a baseline or fixed Calendr executable."""
+"""Render audit evidence using a baseline or fixed Horion executable."""
 import argparse
 from pathlib import Path
 import subprocess
