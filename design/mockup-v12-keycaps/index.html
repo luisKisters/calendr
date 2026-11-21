@@ -315,6 +315,8 @@ let S = null;
 try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
 S = S || { c: {}, scene: SCENES[0][0], hover: true };
 DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+// #scene&look=key&onfill=tint&group=one sets picks from the URL (shot scripts).
+for (const kv of location.hash.split('&').slice(1)) { const [k, v] = kv.split('='); if (v && DECISIONS.some(d => d.id === k)) S.c[k] = v; }
 let A = fresh(), PV = null;
 const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
