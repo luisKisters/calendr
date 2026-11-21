@@ -64,7 +64,7 @@ PY
   rm -f artifacts/tmp-videoinfo.txt
 
   step "unrecorded runs: the end-to-end tour again and every v4 feature tour (checks only)"
-  for tour in e2e v4-a v4-b v4-c-1 v4-c-2 v4-c-3 v4-c-4 v4-d-1 v4-d-2 v4-d-3 v4-d-4 v4-d-5 v4-d-6 v4-e-1 v4-e-2 v4-e-3 v4-e-4; do
+  for tour in e2e v4-a v4-b v4-c-1 v4-c-2 v4-c-3 v4-c-4 v4-d-1 v4-d-2 v4-d-3 v4-d-4 v4-d-5 v4-d-6 v4-e-1 v4-e-2 v4-e-3 v4-e-4 tab; do
     out=$("$BIN" --walkthrough "$tour" 2>&1 | tail -6) || { echo "$tour failed:"; echo "$out"; exit 1; }
     echo "$tour: $(echo "$out" | grep '^walkthrough:' | sed 's/^walkthrough: //')"
   done

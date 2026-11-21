@@ -36,7 +36,8 @@ enum Walkthrough {
         case "v4-e-2": WalkthroughV4.e2(d, model)
         case "v4-e-3": WalkthroughV4.e3(d, model)
         case "v4-e-4": WalkthroughV4.e4(d, model)
-        case let t?: print("unknown tour \(t) (tours: e2e (the default), v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-6, v4-e-1 ... v4-e-4)"); return 2
+        case "tab": tabTour(d, model)
+        case let t?: print("unknown tour \(t) (tours: e2e (the default), v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-6, v4-e-1 ... v4-e-4, tab)"); return 2
         }
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }
@@ -44,6 +45,65 @@ enum Walkthrough {
         print("walkthrough: \(d.checks) checks, \(d.failures.count) failures, video \(secs)s, animations stretched \(Int(Motion.timeScale))x, wall \(String(format: "%.1f", Date().timeIntervalSince(started)))s")
         if !d.failures.isEmpty { d.failures.forEach { print(" - \($0)") } }
         return d.failures.isEmpty ? 0 : 1
+    }
+
+    /// `--walkthrough tab`: Tab and Shift-Tab through the new-event editor. Every press lands on a field, the fields come in column
+    /// order (top to bottom) and wrap, notes take typing, and the app keeps running (Tab into the notes used to hang SwiftUI).
+    static func tabTour(_ d: Driver, _ m: AppModel) {
+        d.section("Tab through the new event")
+        d.drag(from: d.gridPoint(day: 3, minute: 14 * 60 + 30), to: d.gridPoint(day: 3, minute: 15 * 60 + 30))
+        d.check(m.isDraftOpen, "drag opens a new event")
+        // The offscreen window hands the title the field editor late: nudge until it has it.
+        let deadline = Date().addingTimeInterval(4)
+        while !(d.win.window.firstResponder is NSTextView) && Date() < deadline {
+            m.requestTitleFocus()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        }
+        d.type("Standup", frames: false)
+        d.check(m.draft?.title == "Standup", "title typed (\(m.draft?.title ?? "nil"))")
+
+        /// The focused field: its top in window points (top-left origin) and its text.
+        func field() -> (y: Int, text: String)? {
+            guard let t = d.win.window.firstResponder as? NSTextView else { return nil }
+            let r = t.convert(t.bounds, to: nil)
+            return (Int((d.win.window.frame.height - r.maxY).rounded()), t.string)
+        }
+        func press(_ key: String) -> (y: Int, text: String)? {
+            d.special(key)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.08))
+            return field()
+        }
+        guard let first = field() else { d.check(false, "the title has the keyboard"); return }
+        var forward: [(y: Int, text: String)] = [first]
+        for _ in 0..<12 {
+            guard let f = press("tab") else { d.check(false, "Tab \(forward.count) lands on a field"); return }
+            if f.y == first.y && f.text == first.text { break }
+            forward.append(f)
+        }
+        print("tab order: " + forward.map { "\($0.y):\($0.text.isEmpty ? "-" : $0.text)" }.joined(separator: " "))
+        // the editor's fields top to bottom, then the column's search field above them, then the title again
+        let editor = Array(forward.prefix { $0.y >= first.y })
+        d.check(editor.count == 7, "Tab visits title, date, start, end, guests, location and notes (\(editor.count) editor stops)")
+        d.check(forward.count == editor.count + 1 && forward.last.map { $0.y < first.y } == true, "then the column's search field")
+        d.check(field()?.text == "Standup", "Tab wraps back to the title")
+        d.check(zip(editor, editor.dropFirst()).allSatisfy { $0.y <= $1.y }, "Tab goes down the column")
+        d.check(editor.map(\.text).prefix(4) == ["Standup", "Thu 1 Oct", "14:30", "15:30"], "title, date, start, end first")
+
+        var backward: [(y: Int, text: String)] = []
+        for _ in 0..<forward.count {
+            guard let f = press("backtab") else { d.check(false, "Shift-Tab \(backward.count + 1) lands on a field"); return }
+            backward.append(f)
+        }
+        print("shift-tab order: " + backward.map { "\($0.y):\($0.text.isEmpty ? "-" : $0.text)" }.joined(separator: " "))
+        d.check(backward.map(\.y) == forward.reversed().map(\.y), "Shift-Tab walks the same fields back")
+
+        // the last editor stop is the notes: it takes typing, and its text shows when Tab leaves it
+        for _ in 0..<(editor.count - 1) { _ = press("tab") }
+        d.type("Agenda", frames: false)
+        d.check(m.draft?.notes == "Agenda", "notes reached by Tab take typing (\(m.draft?.notes ?? "nil"))")
+        _ = press("tab"); _ = press("tab")
+        d.check(field()?.text == "Standup", "Tab from the notes goes round to the title")
+        d.check(m.isDraftOpen && m.draft?.title == "Standup", "the new event is still open")
     }
 
     static func placed(_ m: AppModel, _ title: String, day: Int) -> PlacedEvent? { m.layout.timed[day].first { $0.event.title == title } }

@@ -250,6 +250,8 @@ final class Driver {
         case "right": press(Key(chars: "\u{F703}", code: 124, label: "\u{2192}"))
         case "down": press(Key(chars: "\u{F701}", code: 125, label: "\u{2193}"))
         case "up": press(Key(chars: "\u{F700}", code: 126, label: "\u{2191}"))
+        case "tab": press(Key(chars: "\t", code: 48, label: "\u{21E5}"))
+        case "backtab": press(Key(chars: "\u{19}", code: 48, mods: .shift, label: "\u{21E4}"))
         default: break
         }
     }
