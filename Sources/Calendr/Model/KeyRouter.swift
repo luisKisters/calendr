@@ -47,6 +47,13 @@ final class KeyRouter {
         // ⌘↩ sends the held update, or saves (and invites) the event being created.
         if input.command && !input.option && !input.control && input.keyCode == ShortcutResolver.keyReturn && model.overlay == nil && model.sendShortcut() { return true }
 
+        // Return in the recurring-delete dialog takes its default, the safe one: only this occurrence.
+        if case .deleteRecurring(let id)? = model.overlay, !input.command,
+           input.keyCode == ShortcutResolver.keyReturn || input.keyCode == ShortcutResolver.keyEnter {
+            model.deleteRecurring(id, span: .this, notify: model.deleteNotify)
+            return true
+        }
+
         guard let action = ShortcutResolver.resolve(input, textFocused: typing) else {
             // A sheet keeps every other key from the grid underneath. Outside a field a bare character has no other
             // meaning: swallow it rather than let it beep.
