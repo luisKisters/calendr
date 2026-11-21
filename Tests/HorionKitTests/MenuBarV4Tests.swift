@@ -48,5 +48,8 @@ struct MenuBarV4Tests {
                    ev("Client call", d(2026, 9, 29, 17), link: "https://zoom.us/j/123"), evs[3]]
         let b = build(two, at: 9, 50)
         #expect(b.joinIndices == [0, 2] && b.joinIndices.map { b.rows[$0].logo } == ["meet", "zoom"])
+        // The rows carry it too, so the laid-out lines (`MenuBarMenu.lines`) draw the Join pill on the same rows.
+        #expect(b.rows.indices.filter { b.rows[$0].join } == b.joinIndices)
+        #expect(m.rows.indices.filter { m.rows[$0].join } == m.joinIndices)
     }
 }

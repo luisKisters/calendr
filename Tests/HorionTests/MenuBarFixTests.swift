@@ -15,30 +15,21 @@ struct MenuBarItemFixTests {
         #expect(m.storeVersion > v)
     }
 
-    @Test func highlightedRowIsAllSelectedColour() {
-        let m = makeModel()
-        let rows = m.menuBarMenu.rows
-        guard let r = rows.first(where: { $0.left != nil }) ?? rows.first else { Issue.record("no rows"); return }
-        let cols = MenuBarColumns(rows: rows)
-        let lit = cols.title(for: r, highlighted: true)
-        var colors: [NSColor] = []
-        lit.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: lit.length)) { v, _, _ in
-            if let c = v as? NSColor { colors.append(c) }
+    @Test func itemTitleHasADotAndNoRed() {
+        let s = MenuBarController.itemTitle(title: "Clean the flat", countdown: "2 h 3 min left")
+        #expect(s.string == " Clean the flat  \u{00B7}  2 h 3 min left")
+        s.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: s.length)) { v, _, _ in
+            if let c = v as? NSColor { #expect(c != MenuBarArt.soon) }
         }
-        #expect(!colors.isEmpty)
-        #expect(colors.allSatisfy { $0 == .selectedMenuItemTextColor || $0 == NSColor.selectedMenuItemTextColor.withAlphaComponent(0.86) })
-        #expect(lit.string == cols.title(for: r, highlighted: false).string)
-
-        let item = NSMenuItem(title: r.title, action: nil, keyEquivalent: "")
-        let state = MenuBarRowItem(row: r, columns: cols)
-        state.apply(to: item, highlighted: true)
-        #expect(item.attributedTitle == lit)
-        state.apply(to: item, highlighted: false)
-        #expect(item.attributedTitle != lit)
     }
 
-    @Test func timeColumnFitsAllDay() {
-        let w = MenuBarColumns.width("all-day", MenuBarColumns.timeFont)
-        #expect(MenuBarColumns.timeWidth >= w && MenuBarColumns(rows: []).titleX == MenuBarColumns.timeWidth + 8)
+    @Test func rowWidthCutsLongTitles() {
+        let long = String(repeating: "Plan the weekend trip with Jamie ", count: 4)
+        let m = makeModel()
+        guard var r = m.menuBarMenu.rows.first else { Issue.record("no rows"); return }
+        r.event.title = long
+        let w = MenuBarRowView.width(for: [.row(r)])
+        #expect(w <= MenuBarRowView.titleX + MenuBarRowView.maxTitle + 21 + MenuBarRowView.trailing + 1)
+        #expect(MenuBarRowView.timeWidth >= MenuBarRowView.width("all-day", MenuBarRowView.timeFont))
     }
 }

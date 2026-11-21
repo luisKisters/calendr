@@ -26,9 +26,8 @@ struct MenuBarMenuTests {
         #expect(m.focus?.text == "in 12 min" && m.focus?.soon == true)
         #expect(m.headLabel == "Up next" && m.itemTitle == "Calculus")
         #expect(m.head?.title == "Calculus" && m.head?.start == "12:00" && m.head?.end == "13:40")
-        // The focus event is not repeated under Today; the running one says how long it has left.
+        // The focus event is not repeated under Today.
         #expect(m.sections[0].rows.map(\.title) == ["Genetics", "Sam / Alex", "Evening journal"])
-        #expect(m.sections[0].rows[0].left == "2 min left")
     }
     @Test func twoMinutesAhead() {
         let m = build(day, at: 11, 58)
@@ -38,7 +37,7 @@ struct MenuBarMenuTests {
         let m = build(day, at: 12, 20)
         #expect(m.focus?.event.title == "Calculus" && m.focus?.running == true)
         #expect(m.focus?.text == "1 h 20 min left" && m.focus?.soon == true)
-        #expect(m.headLabel == "Now" && m.head?.left == "1 h 20 min left")
+        #expect(m.headLabel == "Now")
         #expect(m.sections[0].rows.map(\.title) == ["Sam / Alex", "Evening journal"])
     }
     @Test func runningGivesWayInsideFifteenMinutes() {
@@ -73,24 +72,78 @@ struct MenuBarMenuTests {
         #expect(m.sections[1].rows.map(\.title) == ["Half-year review", "Meal prep"])
         #expect(m.sections[2].rows.map(\.title) == ["Statistics"])
     }
-    @Test func onlyCallsAndGuestsGetARowMenu() {
+    @Test func hintSaysWhatTheRowMenuHas() {
         let m = build(day + [ev("Call", d(2026, 9, 29, 16), video: "https://meet.example.com/x"), ev("Party", d(2026, 9, 29, 17), guests: ["A", "B"])], at: 11, 48)
-        let menus = Dictionary(uniqueKeysWithValues: m.rows.map { ($0.title, $0.hasSubmenu) })
-        #expect(menus == ["Calculus": false, "Genetics": false, "Sam / Alex": true, "Call": true, "Party": false, "Evening journal": false])
+        let hints = Dictionary(uniqueKeysWithValues: m.rows.map { ($0.title, $0.hint) })
+        #expect(hints == ["Calculus": nil, "Genetics": nil, "Sam / Alex": .call, "Call": .call, "Party": nil, "Evening journal": nil])
+        // The icon after the title says what the menu has: a call, or guests to answer.
+        #expect(m.rows.first { $0.title == "Sam / Alex" }?.hint == .call && m.rows.first { $0.title == "Genetics" }?.hint == nil)
     }
     @Test func rowMenuOffersOnlyWhatApplies() {
         let sam = day[2]
         let full = MenuBarMenu.submenu(for: sam, canRespond: true, guestAddresses: ["sam@example.com"])
-        #expect(full.map(\.title) == ["Join call", "", "Going?", "Yes", "No", "Maybe", "", "Email Sam Okafor", "", "Show in Horion"])
+        #expect(full.map(\.title) == ["Join call", "", "Going?", "Yes", "No", "Maybe", "", "Email Sam Okafor", "", "Copy details", "Show in Horion"])
         #expect(full.first == .join(URL(string: "https://meet.example.com/sam-alex")!))
         #expect(full.contains(.respond(.confirmed, checked: true)))
         if case .email(_, let url) = full[7] { #expect(url.absoluteString == "mailto:sam@example.com?subject=Sam%20/%20Alex") } else { Issue.record("no email") }
         // A store that cannot change the answer gets no Yes / No / Maybe.
-        #expect(MenuBarMenu.submenu(for: sam, canRespond: false, guestAddresses: ["sam@example.com"]).map(\.title) == ["Join call", "", "Email Sam Okafor", "", "Show in Horion"])
+        #expect(MenuBarMenu.submenu(for: sam, canRespond: false, guestAddresses: ["sam@example.com"]).map(\.title) == ["Join call", "", "Email Sam Okafor", "", "Copy details", "Show in Horion"])
         let call = ev("Call", d(2026, 9, 29, 16), video: "meet.example.com/x")
-        #expect(MenuBarMenu.submenu(for: call, canRespond: true, guestAddresses: []).map(\.title) == ["Join call", "", "Show in Horion"])
+        #expect(MenuBarMenu.submenu(for: call, canRespond: true, guestAddresses: []).map(\.title) == ["Join call", "", "Copy details", "Show in Horion"])
         let party = ev("Party", d(2026, 9, 29, 17), guests: ["A <a@x.org>", "B"])
-        #expect(MenuBarMenu.submenu(for: party, canRespond: false, guestAddresses: ["a@x.org"]).map(\.title) == ["Email 2 guests", "", "Show in Horion"])
+        #expect(MenuBarMenu.submenu(for: party, canRespond: false, guestAddresses: ["a@x.org"]).map(\.title) == ["Email 2 guests", "", "Copy details", "Show in Horion"])
         #expect(MenuBarMenu.guestAddress("A <a@x.org>") == "a@x.org" && MenuBarMenu.guestAddress("B") == nil && MenuBarMenu.guestName("A <a@x.org>") == "A")
+    }
+
+    @Test func sameEventInTwoCalendarsIsOneRow() {
+        var a = ev("Father & son", d(2026, 9, 29, 20, 10), mins: 80), b = a
+        b.id = "copy"; b.calendarID = "family"
+        let m = MenuBarMenu.build(events: [a, b], now: d(2026, 9, 29, 9, 0), fmt: fmt) { $0.calendarID == "c" ? "#3D8BFD" : "#FF5F57" }
+        #expect(m.rows.count == 1)
+        #expect(m.rows[0].colorHex == "#3D8BFD" && m.rows[0].secondColorHex == "#FF5F57")
+    }
+    @Test func noEndTimeForAnEventWithoutLength() {
+        let m = build([ev("Vitamin D", d(2026, 9, 29, 18), mins: 0), ev("Gym", d(2026, 9, 29, 19))], at: 9, 0)
+        #expect(m.rows.first { $0.title == "Vitamin D" }?.end == nil)
+        #expect(m.rows.first { $0.title == "Gym" }?.end == "20:00")
+    }
+}
+
+@Suite("Menu bar layout")
+struct MenuBarLayoutTests {
+    let fmt = Fmt(math: berlin)
+    func ev(_ t: String, _ start: Date) -> CalendarEvent {
+        CalendarEvent(id: t + "\(start.timeIntervalSince1970)", calendarID: "c", title: t, start: start, end: start.addingTimeInterval(1800),
+                      isAllDay: false, status: .confirmed)
+    }
+    /// `n` events a day from 13:00 on, for today, tomorrow and the day after.
+    func menu(today: Int, tomorrow: Int, after: Int) -> MenuBarMenuModel {
+        var evs: [CalendarEvent] = []
+        for (k, n) in [today, tomorrow, after].enumerated() {
+            for i in 0..<n { evs.append(ev("E\(k)-\(i)", berlin.addDays(d(2026, 9, 29, 13), k).addingTimeInterval(Double(i) * 1800))) }
+        }
+        return MenuBarMenu.build(events: evs, now: d(2026, 9, 29, 9, 0), fmt: fmt) { _ in "#5C88E4" }
+    }
+    func rows(_ l: [MenuBarLine]) -> [String] { l.compactMap { if case .row(let r) = $0 { r.title } else { nil } } }
+    func folds(_ l: [MenuBarLine]) -> [String] { l.compactMap { if case .fold(let t, let d, _) = $0 { t + (d.map { " | " + $0 } ?? "") } else { nil } } }
+
+    @Test func todayAndTomorrowInFullWhenTheyFit() {
+        let l = MenuBarMenu.lines(menu(today: 3, tomorrow: 4, after: 5), maxHeight: 450)
+        #expect(rows(l).count == 1 + 2 + 4)          // the focus row, the rest of today, all of tomorrow
+        #expect(folds(l) == ["Thu 1 Oct | 5 events"])
+    }
+    @Test func moreOnlyPastHalfTheScreen() {
+        let m = menu(today: 4, tomorrow: 14, after: 13)
+        let l = MenuBarMenu.lines(m, maxHeight: 450)
+        let height = l.reduce(MenuBarMenu.menuPadding + MenuBarMenu.footHeight) { $0 + ($1 == .separator ? MenuBarMenu.separatorHeight : MenuBarMenu.rowHeight) }
+        #expect(height <= 450)
+        let shown = rows(l).count - 1
+        #expect(folds(l) == ["\(4 - 1 + 14 - shown) more tomorrow", "Thu 1 Oct | 13 events"])
+        // The fold lists exactly what was left out, in order.
+        if case .fold(_, _, let s) = l.first(where: { if case .fold = $0 { true } else { false } }) {
+            #expect(s.flatMap(\.rows).map(\.title) == Array(m.sections[1].rows.map(\.title).suffix(s.flatMap(\.rows).count)))
+        }
+        // A tall screen shows everything.
+        #expect(folds(MenuBarMenu.lines(m, maxHeight: 1400)) == ["Thu 1 Oct | 13 events"])
     }
 }

@@ -63,9 +63,14 @@ The mockup opens on the locked design. The first option of every element in the 
 ### Overlapping events: cascade
 - An event reaches across later columns unless something there starts inside its own head (title and time). A 15 minute event an hour into a lecture sits on the lecture's right half, cut out with the window colour, and the lecture keeps its full width. Events that start together split the column.
 
-## Menu bar: not locked yet
+## Menu bar: locked in design/menubar-v2
 
-The v3 menu bar proposal (Notion Calendar's menu as the base, with a countdown in the item and in the list, a time column, row menus only where an event has a call or guests). It is waiting for the owner's picks.
+`design/menubar-v2/index.html` and its `DECISIONS.md` are the spec for the menu bar menu (21 November 2026). They replace the v3 proposal and the v4 two-line rows. The v4 pick "Call logo and Join" stays.
+Rows are custom views with no arrows: bar, start time, title cut at 220 pt, and a camera or people icon for a call or guests. Today's timed rows with a call show a Join pill with the call logo instead of the icon.
+Every row has a menu (Join, Going?, Email where they apply, then Copy details and Show in Horion).
+Today and tomorrow are listed in full, and the day after is one fold row. An "N more" fold appears only when the menu would be taller than half the screen.
+The same event in two calendars is one row with a two-colour bar. The countdown appears once, in the "Now" line, and is never red. The only shortcuts are ⌘, and ⌘Q.
+Keys: Down and Up start at the first and last event, and Return opens the highlighted event.
 Already done in the app: the "Start transcription" button is removed from the menu bar popover.
 
 ## Not designed in v3
