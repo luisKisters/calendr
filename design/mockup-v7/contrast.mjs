@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+// Contrast check for Calendr v7 · Packs: every pack (D1–D4, A, B, C) in both themes, one target table (READABILITY-BRIEF.md §1 and §5).
+//   node design/mockup-v7/contrast.mjs              summary: pairs, misses and the worst pair per pack and theme
+//   node design/mockup-v7/contrast.mjs --all        every pair
+//   node design/mockup-v7/contrast.mjs --fails      only the misses
+//   node design/mockup-v7/contrast.mjs --pack D3    one pack only (combine with --all)
+// WCAG 2.x relative-luminance ratio and APCA-W3 0.0.98G-4g (Lc; negative = light on dark, only the size counts).
+// Tokens and event recipes come from packs.js (the page reads the same file); calendar colours from data.js (CALS0 + SWATCHES).
+import { createRequire } from 'node:module'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const PACKS = createRequire(import.meta.url)(join(here, 'packs.js'))
+const arg = process.argv.slice(2), onlyFails = arg.includes('--fails'), all = arg.includes('--all')
+const onePack = arg.includes('--pack') ? arg[arg.indexOf('--pack') + 1] : null
+
+// ---------------------------------------------------------------- maths
+const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+const lin = c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+const relL = h => { const [r, g, b] = rgb(h).map(lin); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+const wcag = (a, b) => { const x = relL(a), y = relL(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05) }
+function apca(txt, bg) {
+  const Y = h => { const [r, g, b] = rgb(h).map(c => c ** 2.4); return 0.2126729 * r + 0.7151522 * g + 0.0721750 * b }
+  const clamp = y => y > 0.022 ? y : y + (0.022 - y) ** 1.414
+  const t = clamp(Y(txt)), b = clamp(Y(bg))
+  if (Math.abs(b - t) < 0.0005) return 0
+  if (b > t) { const s = (b ** 0.56 - t ** 0.57) * 1.14; return s < 0.1 ? 0 : (s - 0.027) * 100 }
+  const s = (b ** 0.65 - t ** 0.62) * 1.14; return s > -0.1 ? 0 : (s + 0.027) * 100
+}
+
+// ---------------------------------------------------------------- calendar colours
+const data = readFileSync(join(here, 'data.js'), 'utf8')
+const cals = [...data.matchAll(/(\w+): \{ name: '([^']+)', hex: '(#[0-9A-Fa-f]{6})'/g)].map(m => [m[2], m[3]])
+const swatches = [...data.matchAll(/\['(#[0-9A-Fa-f]{6})', '(\w+)'\]/g)].map(m => [m[2], m[1]])
+const colours = [...new Map([...cals, ...swatches].map(([n, h]) => [h.toUpperCase(), n])).entries()].map(([h, n]) => [n, h])
+
+// ---------------------------------------------------------------- targets: [min ratio, min |Lc|, max |Lc|]
+// Canvas floors are the brief's §1 table. "soft" = one surface step off the canvas (cards, fields, hover, selected): the ratio floor
+// stays, the Lc floor is 3–5 lower (the brief states its Lc floors for the canvas). Non-text (focus ring, selected segment, now line,
+// needs-reply outline) needs 3:1 (WCAG 1.4.11). Hairlines are decoration: below Lc 15 on purpose; the hour line must still be visible (≥ 1.15:1).
+// "structure" lines (the all-day edge, C8: 22 % / 24 %, and the hour line of timetable packs, brief §6 B "visible grid") may reach Lc 35.
+const T = {
+  dark: {
+    fg1: [12, 88, 96], fg1soft: [12, 85], fg2: [7, 68], fg2soft: [7, 63], fg3: [6.5, 48], fg3soft: [5.5, 45],
+    accent: [12, 85], live: [4.5, 45], status: [4.5, 45], nontext: [3, 0],
+    evTitle: [7, 75], evMeta: [6.5, 60], evSelMeta: [5.5, 55], evPastTitle: [7, 65], evPastMeta: [5.7, 48], evDecl: [6, 55],
+    decor: [1, 0, 15], decorMin: [1.15, 0, 15], structure: [1.15, 0, 35],
+  },
+  paper: {
+    fg1: [12, 95], fg1soft: [12, 88], fg2: [7, 80], fg2soft: [7, 75], fg3: [5, 70], fg3soft: [5, 65],
+    accent: [12, 90], live: [4.5, 60], status: [4.5, 60], nontext: [3, 0],
+    evTitle: [7, 75], evMeta: [5.9, 70], evSelMeta: [5.5, 65], evPastTitle: [7, 75], evPastMeta: [5, 65], evDecl: [6.5, 75],
+    decor: [1, 0, 15], decorMin: [1.15, 0, 15], structure: [1.15, 0, 35],
+  },
+}
+const DECOR = new Set(['decor', 'decorMin', 'structure'])
+
+const rows = []
+function check(pack, theme, what, fg, bg, key) {
+  const [minR, minLc, maxLc] = T[theme][key]
+  const r = wcag(fg, bg), lc = apca(fg, bg), a = Math.abs(lc)
+  const ok = r >= minR - 1e-9 && a >= minLc - 0.05 && (maxLc == null || a <= maxLc + 0.05)
+  // margin: how far above its floor the pair sits (1 = exactly on the floor); decoration has none
+  const margin = DECOR.has(key) ? Infinity : Math.min(r / minR, minLc ? a / minLc : Infinity)
+  rows.push({ pack, theme, what, fg, bg, r, lc, key, ok, margin, target: `≥${minR}:1${minLc ? ` Lc≥${minLc}` : ''}${maxLc != null ? ` Lc≤${maxLc}` : ''}` })
+}
+
+for (const pk of PACKS.list) {
+  if (onePack && pk.id !== onePack) continue
+  for (const theme of ['dark', 'paper']) {
+    const N = pk.check(theme), C = (what, fg, bg, key) => check(pk.id, theme, what, fg, bg, key)
+    // the canvas floor on dark only applies the halation cap on near-black grounds (#00–#16)
+    for (const [sn, s] of N.canvas) { C(`fg1 on ${sn}`, N.fg1, s, relL(s) < 0.01 || !N.dark ? 'fg1' : 'fg1soft'); C(`fg2 on ${sn}`, N.fg2, s, 'fg2'); C(`fg3 on ${sn}`, N.fg3, s, 'fg3') }
+    for (const [sn, s] of N.soft) { C(`fg1 on ${sn}`, N.fg1, s, 'fg1soft'); C(`fg2 on ${sn}`, N.fg2, s, 'fg2soft'); C(`fg3 on ${sn}`, N.fg3, s, 'fg3soft') }
+    C('primary button / today pill text', N.onAccent, N.accent, 'accent')
+    if (N.liveText) for (const [sn, s] of (N.liveOn || N.canvas)) C(`live text ("now", "min left") on ${sn}`, N.liveText, s, 'live')
+    C('now line vs bg', N.live, N.canvas[0][1], 'nontext')
+    C('focus ring vs bg', N.focus, N.canvas[0][1], 'nontext')
+    C('focus ring vs raised', N.focus, [...N.canvas, ...N.soft].find(x => x[0] === 'raised')[1], 'nontext')
+    C('selected segment edge vs track', N.segRing, N.track, 'nontext')
+    for (const [sn, hex] of N.status) C(`${sn} text on bg`, hex, N.canvas[0][1], 'status')
+    for (const [ln, hex, key] of N.lines) C(`${ln} on bg`, hex, N.canvas[0][1], key)
+    if (N.chip) C('all-day chip title (neutral chip)', N.chip.fg, N.chip.bg, 'fg1soft')
+    for (const [cn, hex] of colours) {
+      const e = N.ev(hex)
+      C(`event title · ${cn}`, e.title, e.fill, 'evTitle')
+      C(`event time · ${cn}`, e.meta, e.fill, 'evMeta')
+      C(`event title on hover · ${cn}`, e.title, e.fillH, 'evTitle')
+      C(`selected title · ${cn}`, e.titleSel, e.fillSel, 'evTitle')
+      C(`selected time · ${cn}`, e.metaSel, e.fillSel, 'evSelMeta')
+      C(`past title · ${cn}`, e.titlePast, e.fillPast, 'evPastTitle')
+      C(`past time · ${cn}`, e.metaPast, e.fillPast, 'evPastMeta')
+      C(`declined title · ${cn}`, e.titleDec, e.fillDec, 'evDecl')
+      C(`needs-reply outline vs bg · ${cn}`, e.edge, N.canvas[0][1], 'nontext')
+    }
+  }
+}
+
+// ---------------------------------------------------------------- print
+const pad = (s, n) => String(s).padEnd(n)
+const line = r => `${pad(r.pack, 3)} ${pad(r.theme, 6)} ${pad(r.what, 50)} ${pad(r.fg, 8)} ${pad(r.bg, 8)} ${pad(r.r.toFixed(2), 6)} ${pad(r.lc.toFixed(1), 7)} ${pad(r.target, 22)} ${r.ok ? 'pass' : 'FAIL'}`
+if (all || onlyFails) {
+  console.log(`${pad('pk', 3)} ${pad('theme', 6)} ${pad('pair', 50)} ${pad('fg', 8)} ${pad('bg', 8)} ${pad('ratio', 6)} ${pad('Lc', 7)} ${pad('target', 22)} ok`)
+  for (const r of rows.filter(r => all || !r.ok)) console.log(line(r))
+  console.log('-'.repeat(120))
+}
+const fails = rows.filter(r => !r.ok)
+console.log(`${rows.length} pairs (${colours.length} calendar colours × 9 event states per pack and theme), ${fails.length} below target.`)
+console.log('\nWorst pair per pack and theme (smallest margin over its floor; ratio and Lc):')
+for (const id of PACKS.order) for (const theme of ['dark', 'paper']) {
+  const rs = rows.filter(r => r.pack === id && r.theme === theme); if (!rs.length) continue
+  const w = rs.filter(r => r.margin !== Infinity).sort((a, b) => a.margin - b.margin)[0]
+  const minText = rs.filter(r => !DECOR.has(r.key) && r.key !== 'nontext').sort((a, b) => a.r - b.r)[0]
+  console.log(`  ${pad(id, 3)} ${pad(theme, 6)} ${pad(w.what, 44)} ${w.fg} on ${w.bg}  ${w.r.toFixed(2)}:1  Lc ${Math.abs(w.lc).toFixed(1)}  (floor ${w.target})` +
+    `   · lowest text ratio ${minText.r.toFixed(2)}:1 (${minText.what})`)
+}
+process.exit(fails.length ? 1 : 0)

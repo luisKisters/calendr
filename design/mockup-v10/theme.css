@@ -1,0 +1,166 @@
+/* Calendr v8 · D3 "Graphite timetable", the one theme (locked 2026-11-05), on top of app.css.
+   Colours, the font, tracking and radii arrive as custom properties from tokens.js (themeVars). No event bar; titles tinted with the
+   calendar hue; timetable lines (hour + quiet half hour); hairline pane edges; start over end in one right-aligned time column.
+   The second half of this file is the v8 round (2026-11-05): now line (A), density (B), sidebar groups and eyes (D, E),
+   location (F), conferencing (G). */
+@font-face { font-family: "Inter"; src: url("fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+.desk { font-feature-settings: var(--ff); font-optical-sizing: auto; }
+.desk:not(.light) { --evhov: rgba(255,255,255,.06); }
+.macbar, .light .macbar { background: var(--macbar); }
+.light .macbar { color: #1c1a16; }
+
+/* times: Inter with tabular figures (no mono face) */
+.gut .h, .gut .now, .later .tm, .restlist .row .tm, .restlist .nowrow, .tcol, .cmd .it .tm2, .boiler { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.gut .h { color: var(--hourc); }
+
+/* timetable: hour lines (clearly visible) + a quiet half-hour line */
+.hh { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid-half); pointer-events: none; }
+
+/* radius 4 / 6 / 8 / 12 */
+.ev, .adi, .sel-rect, .mline, .evx { border-radius: var(--r-ev); }
+.segc button { border-radius: 6px; }
+
+/* the event mark: no bar, a soft hue fill and a hue-tinted title, the same in Dark and Paper */
+.ev, .light .ev { padding-left: 6px; }
+.ev.thin, .light .ev.thin { padding-left: 4px; }
+.adi, .light .adi { padding-left: 8px; }
+.adi .dot { display: none; }
+.adi.cont { padding-left: 8px; }
+
+/* right column: Now / Up next lead; start over end in the shared 36 px right-aligned time column, the mark, then the title.
+   Content edge 20, time column 20–56, mark at 66, title at 79: the same columns as the Later rows and the search results. */
+.card.dc { margin: 0 12px 4px; padding: 10px 8px; border-radius: var(--r-lg); background: none; box-shadow: none; }
+.card.dc.lead { background: var(--card); padding-top: 10px; }
+.light .card.dc.lead { box-shadow: 0 0 0 1px rgba(60,50,35,.07), 0 1px 2px rgba(60,50,35,.05); }
+.card.dc:not(.lead) { padding-top: 8px; }
+.card.dc .lab { padding-left: 0; }
+.card.dc .lab .cd { color: var(--fg2); }
+.card.dc .lab .cd.live { color: var(--live); }
+.card.dc .ttl { display: grid; grid-template-columns: 36px 7px 1fr; column-gap: 8px; align-items: start; margin-top: 6px; width: 100%; text-align: left; }
+.card.dc .ttl .b { justify-self: center; width: 3px; align-self: stretch; margin: 2px 0; border-radius: 1.5px; background: var(--dot); }
+.card.dc .ttl .tcol { padding-top: 3px; }
+.card.dc .ttl b { display: block; font-weight: 500; font-size: var(--fs); line-height: 20px; }
+.card.dc.lead .ttl b { font-size: var(--fs); font-weight: 600; letter-spacing: var(--tr-h); }
+.card.dc .ttl small { display: block; color: var(--fg2); font-size: var(--fs-s); letter-spacing: var(--tr-s); line-height: 14px; margin-top: 1px; }
+.card.dc .acts { margin: 10px 0 0 59px; }
+.tcol { width: 36px; display: flex; flex-direction: column; align-items: flex-end; font-size: var(--fs-s); line-height: 14px; color: var(--fg2); flex: none; }
+.tcol .end { color: var(--fg3); }
+
+/* Day view list with the stacked time column */
+.restlist .row { grid-template-columns: 36px 7px 1fr auto; column-gap: 8px; min-height: 34px; padding: 4px 8px; }
+.restlist .row .b { justify-self: center; align-self: stretch; height: auto; margin: 2px 0; }
+.restlist .row.past .tcol { color: var(--fg3); }
+.restlist .free { display: grid; grid-template-columns: 36px 7px 1fr; column-gap: 8px; padding: 4px 8px; }
+.restlist .nowrow { display: grid; grid-template-columns: 36px 1fr; column-gap: 8px; padding: 2px 8px; font: inherit; }
+.restlist .nowrow::after { content: none; }
+.restlist .nowrow .tcol { color: var(--live); font-weight: 500; }
+.restlist .nowrow .ln { border-top: 2px solid var(--live); align-self: center; }
+
+/* tertiary text on dark: weight 500 for the small fg3 labels (brief §1: Lc ≥ 48 only at ≥ 500); placeholders and hour labels stay 400 */
+.desk:not(.light) :is(.grp .gn, .lab2, .card .lab, .focus .lab, .ad .g .lbl, .mm .wd, .mm .wkn, .tcol .end, .sres .sh, .cmd .sec, .pop .sec, .dh .c) { font-weight: 500; }
+.desk:not(.light) .dh .c .n { font-weight: 400; }
+.desk:not(.light) .dh .c.today .n { font-weight: 500; }
+
+/* onboarding art: neutral graphite */
+.desk:not(.light) .onb2 .art { background: radial-gradient(120% 90% at 20% 10%, #2C2C32 0%, #18181B 55%, #0E0E10 100%); }
+
+/* ================================================================ v8 · A: the now line sits above every event
+   The grid isolates its own stacking, so the line can take the top layer there (events 1–45, dragged 50) without covering menus.
+   Today: 2 px red with a dot at the left edge; other days of the week: a thin faint red line; the time on a red pill in the gutter. */
+.gridwrap { isolation: isolate; }
+.nowl { z-index: 60; border-top: 1px solid color-mix(in srgb, var(--live) 38%, transparent); }
+.nowl.today { border-top: 2px solid var(--live); margin-top: -1px; box-shadow: 0 0 0 .5px color-mix(in srgb, var(--bg) 60%, transparent); }
+.nowl.today::before { left: -5px; top: -5px; width: 8px; height: 8px; box-shadow: 0 0 0 1.5px var(--bg); }
+.gut { z-index: 61; }
+.gut .now { right: 4px; padding: 0 5px; border-radius: 4px; background: var(--live); color: var(--on-live); font-weight: 600; line-height: 16px; z-index: 3; }
+
+/* ================================================================ v8 · B: calmer and denser
+   Smaller title (18), lighter event titles (450), shorter chrome (header 48, day header 32, sidebar rows 26, mini month 24),
+   one strong "today" mark in the grid (the mini month marks today softly), quieter half hours; hour lines stay clear. */
+.hdr { height: 48px; padding: 0 12px 0 20px; gap: 10px; }
+.hdr h2 { line-height: 24px; }
+.hdr h2 span { font-weight: 400; }
+.dh { height: 32px; }
+.dh .c .n { font-size: var(--fs-ev); }
+.dh .c.today .n { line-height: 18px; padding: 0 5px; }
+.btn-line { height: 26px; font-weight: 400; }
+.segc button { height: 22px; padding: 0 10px; }
+.segc button.on { font-weight: 500; }
+.ibtn { width: 26px; height: 26px; }
+.ibtn.sm { width: 22px; height: 22px; }
+.wtop { margin-bottom: 12px; }
+.mm-h { padding-bottom: 4px; }
+.mm .d, .mm .wkn { height: 24px; line-height: 24px; }
+.mm .wd { height: 18px; line-height: 18px; }
+.mm .d.today { background: var(--selected); color: var(--fg1); font-weight: 600; box-shadow: inset 0 0 0 1px var(--seg-ring); }
+.ad .gridN { grid-auto-rows: 19px; row-gap: 3px; padding: 3px 0 6px; }
+.adi { height: 19px; }
+.ev { padding-top: 2px; line-height: 14px; }
+.ev .m { line-height: 13px; }
+.later { height: 26px; }
+.lab2 { padding-top: 16px; }
+.join { height: 28px; font-weight: 500; }
+.srch { padding: 10px 12px 6px; }
+.srch label { height: 28px; padding-left: 10px; }
+.btn { height: 28px; }
+.btn.sm { height: 26px; }
+.pd-top { min-height: 36px; margin-bottom: 4px; }
+.prow { min-height: 30px; padding: 5px 0; }
+.fcard h3 { font-size: var(--fs-title); line-height: 24px; }
+
+/* ================================================================ v8 · D + E: sidebar groups and calendar rows */
+.calscroll { margin-right: -4px; padding-right: 4px; }
+.grp { display: flex; align-items: center; gap: 4px; width: calc(100% + 8px); margin: 12px -4px 2px; padding: 0 4px 0 8px; height: 24px; border-radius: var(--r-sm); text-align: left; color: var(--fg3); }
+.grp .gn { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp .gc { color: var(--fg3); font-weight: 400; margin-left: 4px; white-space: nowrap; }
+.grp .chev { display: grid; place-items: center; width: 16px; height: 16px; color: var(--fg3); opacity: 0; transition: opacity .12s, transform .2s cubic-bezier(.22,.61,.36,1); margin-left: 2px; }
+.grp:hover { color: var(--fg1); }
+.grp:hover .chev, .grp:focus-visible .chev, .grp.closed .chev { opacity: 1; }
+.grp.closed .chev { transform: rotate(-90deg); }
+.grpbody.closed { display: none; }
+/* a row: colour square · name · eye. The whole row lights on hover (it used to light only behind the text, which looked broken). */
+.cal { display: flex; align-items: center; gap: 10px; height: 26px; width: calc(100% + 8px); margin: 0 -4px; padding: 0 4px 0 8px; border-radius: var(--r-sm); color: var(--fg1); }
+.cal:hover { background: var(--hover); }
+.cal .cb { width: 12px; height: 12px; margin: 0; border-radius: 3px; background: var(--cc); flex: none; cursor: pointer; }
+.cal .cb:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc) 35%, transparent); }
+.cal .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; cursor: default; }
+.cal .eye { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: var(--fg3); flex: none; opacity: 0; }
+.cal:hover .eye, .cal .eye:focus-visible { opacity: 1; }
+.cal .eye:hover { color: var(--fg1); background: color-mix(in srgb, var(--fg1) 8%, transparent); }
+/* hidden: stays in the list, dimmed, the eye-slash always shown */
+.cal.off .cb { background: var(--cc); opacity: .35; box-shadow: none; }
+.cal.off .nm { color: var(--fg3); }
+.cal.off .eye { opacity: 1; }
+
+/* ================================================================ v8 · F: a set location is text that opens the default maps app */
+.locset { display: flex; align-items: flex-start; gap: 4px; min-height: 20px; }
+.loclink { flex: 1; min-width: 0; text-align: left; color: var(--fg1); line-height: 20px; border-radius: 4px; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: text-decoration-color .12s; cursor: pointer; }
+.loclink:hover, .locrow.hot .loclink { text-decoration-color: color-mix(in srgb, var(--fg1) 60%, transparent); }
+.locset .la { display: flex; gap: 0; flex: none; margin-top: -1px; }
+.locset .la .ibtn { color: var(--fg3); }
+.locset .la .edit { opacity: 0; }
+.locrow:hover .locset .la .edit, .locrow.hot .locset .la .edit, .locset .la .edit:focus-visible { opacity: 1; }
+.pop .mlogo { width: 18px; display: grid; place-items: center; flex: none; }
+.pop .it.remember .ck { color: var(--fg1); }
+
+/* ================================================================ v8 · G: conferencing */
+.confacts { display: flex; flex-direction: column; gap: 6px; margin-top: -6px; }
+.confacts .boxf { margin-top: 0; }
+.confor { color: var(--fg3); font-size: var(--fs-s); padding-left: 2px; }
+.confopt { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 10px; margin: 0 -8px; width: calc(100% + 16px); border-radius: var(--r-md); color: var(--fg1); text-align: left; }
+.confopt:hover { background: var(--hover); }
+.confnote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 -8px; padding: 8px 10px; border-radius: var(--r-md); background: var(--surface); color: var(--fg2); font-size: var(--fs-s); line-height: 16px; width: calc(100% + 16px); }
+.confnote > span { flex: 1 1 180px; }
+.confnote > .ic { opacity: .6; }
+.callrow { display: flex; align-items: center; gap: 8px; min-height: 28px; margin-top: -4px; }
+.callrow .lg { display: grid; place-items: center; flex: none; }
+.callrow .cn { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px; }
+.callrow .cn b { font-weight: 500; }
+.callrow .url { color: var(--fg3); font-size: var(--fs-s); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; cursor: text; }
+.callrow.pending .cn { color: var(--fg2); }
+.callrow .ca { display: flex; flex: none; }
+.callrow .ca .ibtn { color: var(--fg3); }
+.joinsm { height: 28px; padding: 0 12px; border-radius: var(--r-md); background: var(--accent); color: var(--on-accent); font-weight: 500; display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.joinsm:hover { background: color-mix(in srgb, var(--accent) 88%, var(--bg)); }
+.joinsm .kh { font-weight: 400; color: color-mix(in srgb, var(--on-accent) 62%, var(--accent)); font-size: var(--fs-s); }

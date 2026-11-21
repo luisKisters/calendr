@@ -1,0 +1,229 @@
+/* Calendr v11 · the Readability designer (look=R). Loaded last. Colours come from readability.js; shapes mostly from designer.css
+   (the look carries the DESIGNER classes too). This file adds what is new: today column, elapsed shade, next ring, outline / card
+   recipes in the past state, and the Readability tab in the picker rail. */
+
+/* ---------------------------------------------------------------- today column, elapsed time, next event */
+.desk.rd-tcol .day.today { background: var(--today-tint); }
+.desk.rd-tcol .dh .c.today { background: var(--today-tint); }
+.desk.rd-shade .day.today::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--now-top); background: var(--elapsed); pointer-events: none; }
+.desk.rd-next .ev.next:not(.sel) { outline: 1px solid var(--line); outline-offset: 1px; }
+/* the today header: weekday and date one step stronger than the other days (it is the one place that says "today") */
+.desk.rd .dh .c.today { color: var(--fg1); }
+
+/* ---------------------------------------------------------------- outline recipe: the hue edge steps back when past; needs reply = dashed */
+.desk.rd-rec-3 .ev { box-shadow: inset 0 0 0 1px var(--edge2); }
+.desk.rd-rec-3 .ev.past { box-shadow: inset 0 0 0 1px var(--edge2p); }
+.desk.rd-rec-3 .ev.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--cc); }
+.desk.rd-rec-3 .ev.st-none, .desk.rd-rec-3.ov-cascade .ev.stk.st-none { box-shadow: none; outline: 1px dashed var(--line); outline-offset: -1px; }
+.desk.rd-rec-3.ov-cascade .ev.stk { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--edge2); }
+.desk.rd-rec-3.ov-cascade .ev.stk.past { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--edge2p); }
+/* card recipe: the neutral ring (edge2) stays, the bar fades with the past */
+.desk.rd-rec-4 :is(.ev, .adi).past { box-shadow: none; }
+
+/* ---------------------------------------------------------------- calm chrome: weights per the brief (600 only for the one title) */
+.desk.rd-chrome-0 .hdr h2 { font-weight: 600; letter-spacing: -.01em; }
+.desk.rd .dh .c { font-weight: 450; }
+.desk.rd .dh .c.today .n { font-weight: 600; }
+
+/* ================================================================ the Readability tab (picker rail; the rail itself stays dark) */
+.rdp { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0 6px; }
+.rdp button { text-align: left; padding: 6px 8px 7px; border-radius: 7px; background: rgba(140,130,115,.07); color: #C9C1B2; display: flex; flex-direction: column; gap: 1px; min-height: 44px; }
+.rdp button:hover { background: rgba(140,130,115,.15); color: #fff; }
+.rdp button.on { background: rgba(231,182,106,.14); color: #fff; box-shadow: inset 0 0 0 1px rgba(231,182,106,.45); }
+.rdp b { font-size: 11.5px; font-weight: 600; color: inherit; }
+.rdp b i { font-style: normal; font: 500 9.5px ui-monospace, Menlo, monospace; color: #E7B66A; margin-right: 4px; }
+.rdp small { font-size: 10.5px; line-height: 1.3; color: #8F887A; }
+.rdhead { display: flex; align-items: center; gap: 6px; margin: 4px 0 4px; flex-wrap: wrap; }
+.rdhead .nm2 { flex: 1; font-size: 12px; font-weight: 600; color: #EEE9DF; min-width: 0; }
+.rdhead .nm2 em { font-style: normal; color: #E7B66A; font-weight: 500; }
+.rdidea { color: #A39B8C; margin: 0 0 4px; }
+.rdidea .rules { display: block; color: #8F887A; font-size: 10.5px; margin-top: 2px; }
+.rdsum { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 7px; background: rgba(143,211,166,.08); color: #BFD9C6; font-size: 11px; margin: 6px 0 2px; }
+.rdsum.bad { background: rgba(255,107,95,.1); color: #F2B5AE; }
+.rdg { margin-top: 14px; }
+.rdg > h4 { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8F887A; margin: 0 0 2px; padding-top: 10px; border-top: 1px solid rgba(245,238,225,.08); }
+.rdl { padding: 8px 0 4px; }
+.rdl .lh { display: flex; align-items: baseline; gap: 6px; }
+.rdl .lh .ln { font-size: 12px; font-weight: 600; color: #EEE9DF; }
+.rdl .lh .lv { font-size: 11px; color: #E7B66A; flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdl .lh .ch { width: 6px; height: 6px; border-radius: 50%; background: #E7B66A; flex: none; align-self: center; }
+.rdl .wy { color: #8F887A; font-size: 10.5px; line-height: 1.35; margin: 1px 0 6px; }
+.rdo { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 4px; }
+.rdo.wide { grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); }
+.rdo button { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 4px 4px 5px; border-radius: 7px; background: rgba(140,130,115,.06); color: #C9C1B2; text-align: left; min-width: 0; position: relative; }
+.rdo button:hover:not(:disabled) { background: rgba(140,130,115,.15); color: #fff; }
+.rdo button.on { background: rgba(231,182,106,.13); box-shadow: inset 0 0 0 1px rgba(231,182,106,.55); color: #fff; }
+.rdo button:disabled { cursor: not-allowed; opacity: .55; }
+.rdo button:disabled .on2 { text-decoration: line-through; }
+.rdo .on2 { font-size: 11px; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdo .nt { font-size: 9.5px; color: #8F887A; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdo .num { display: flex; align-items: center; gap: 4px; font: 9.5px/1.2 ui-monospace, Menlo, monospace; letter-spacing: -.02em; color: #B8B0A1; white-space: nowrap; overflow: hidden; }
+.rdo:not(.wide) .num i { display: none; }
+.rdo .num i { font-style: normal; color: #8F887A; overflow: hidden; text-overflow: ellipsis; }
+.rdo .bd { flex: none; width: 7px; height: 7px; border-radius: 50%; font-size: 0; }
+.rdo .bd.pass { background: #6FCF8E; }
+.rdo .bd.near { background: #F0C060; }
+.rdo .bd.fail { background: #FF7B6E; }
+.rdo .why2 { font-size: 9.5px; color: #FFA197; line-height: 1.25; white-space: normal; }
+/* previews: drawn with the option's real tokens */
+.rpv { height: 46px; border-radius: 5px; position: relative; overflow: hidden; display: block; font-family: 'Inter', -apple-system, system-ui, sans-serif; font-feature-settings: 'cv05' 1, 'cv08' 1; }
+.rpv .p-ev { position: absolute; border-radius: 3px; padding: 2px 5px 0 6px; overflow: hidden; font-size: 10px; line-height: 12px; white-space: nowrap; }
+.rpv .p-ev b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.rpv .p-ev i { display: block; font-style: normal; font-size: 9px; line-height: 11px; font-variant-numeric: tabular-nums; }
+.rpv .p-ev .p-br { position: absolute; left: 2px; top: 2px; bottom: 2px; width: 2px; border-radius: 1px; }
+.rpv .p-tx { position: absolute; left: 7px; font-size: 10.5px; line-height: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rpv .p-ln { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid; }
+.rpv .p-vl { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid; }
+.rpv .p-sd { position: absolute; left: 0; top: 0; bottom: 0; width: 22%; }
+.rpv .p-dt { position: absolute; font-size: 10.5px; line-height: 16px; font-variant-numeric: tabular-nums; }
+.rpv .p-dt .p-nn { display: inline-block; min-width: 16px; text-align: center; border-radius: 999px; margin-left: 2px; }
+.rdbar { display: flex; gap: 6px; margin: 6px 0 2px; }
+/* ?railwide=1: the rail as a wide page in columns (for screenshots) */
+html:has(#page.railwide), html:has(#page.railwide) body { height: auto; overflow: visible; }
+#page.railwide { display: block; height: auto; }
+#page.railwide #stage { display: none; }
+#page.railwide #rail { height: auto; overflow: visible; }
+#page.railwide .rbody { overflow: visible; column-count: 4; column-gap: 28px; padding: 8px 24px 30px; }
+#page.railwide .rstat { display: none; }
+#page.railwide :is(.rdl, .rdg > h4, .rdhead, .rdp, .rdsum, .rdidea, .rnote) { break-inside: avoid; }
+#page.railwide .rdg { margin-top: 6px; }
+
+/* ================================================================ round e: sliders, fluid frame, full screen */
+/* the desk takes the frame's logical size (fit() sets it: 1440 × 900 or the window, divided by the UI scale) */
+#frame #host { width: 100%; height: 100%; }
+#frame .desk { width: 100%; height: 100%; }
+#fsctl { display: none; }
+#page.full { grid-template-columns: minmax(0, 1fr) 0; }
+#page.full #stage { position: fixed; inset: 0; z-index: 1; }
+#page.full #frame { left: 0; top: 0; border-radius: 0; box-shadow: none; }
+#page.full .fab { display: none; }
+#page.full .desk .macbar { display: none; }
+#page.full .desk .win { top: 0; }
+#page.full #rail { position: fixed; top: 0; right: 0; bottom: 0; width: 372px; z-index: 50; transform: translateX(102%); transition: transform .22s cubic-bezier(.22,.61,.36,1); }
+#page.full.drawer #rail { box-shadow: -18px 0 48px rgba(0,0,0,.55); }
+#page.full.drawer #rail { transform: none; }
+#page.full #fsctl { display: flex; gap: 4px; position: fixed; right: 12px; bottom: 12px; z-index: 60; }
+#page.full.drawer #fsctl { right: 384px; }
+#fsctl button { font: 500 11.5px -apple-system, system-ui, sans-serif; color: #EEE9DF; background: rgba(28,27,24,.88); border: 1px solid rgba(245,238,225,.16); border-radius: 8px; padding: 5px 10px; backdrop-filter: blur(8px); }
+#fsctl button:hover { background: rgba(48,45,40,.95); }
+.rh .rbtn.sm, .rdg .rbtn.sm { padding: 2px 7px; font-size: 10.5px; }
+.rdg h4 .sct { text-transform: none; letter-spacing: 0; font-weight: 500; color: #E7B66A; margin-left: 6px; }
+.rdg h4 .rbtn { float: right; text-transform: none; letter-spacing: 0; }
+.rdlive { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 8px; border-radius: 7px; background: rgba(140,130,115,.08); color: #C9C1B2; font-size: 10.5px; line-height: 1.35; margin: 6px 0 4px; }
+.rdlive .mono { font-family: ui-monospace, Menlo, monospace; color: #EEE9DF; }
+.rdlive i { font-style: normal; color: #8F887A; }
+.rdlive .bd2 { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #6FCF8E; }
+.rdlive .bd2.near { background: #F0C060; } .rdlive .bd2.fail { background: #FF7B6E; }
+.sgrp { margin: 4px 0; }
+.sgh { width: 100%; text-align: left; font-size: 11.5px; font-weight: 600; color: #D8D0C1; padding: 5px 2px; border-radius: 5px; }
+.sgh:hover { background: rgba(140,130,115,.1); }
+.rds { padding: 4px 2px 5px; border-radius: 6px; }
+.rds.dis { opacity: .45; }
+.rds .sh { display: flex; align-items: baseline; gap: 6px; font-size: 11px; }
+.rds .sl { color: #C9C1B2; flex: 1; min-width: 0; }
+.rds.set .sl { color: #fff; }
+.rds .cdot { width: 5px; height: 5px; border-radius: 50%; background: linear-gradient(135deg, #6E9BF5, #E5674F); align-self: center; }
+.rds .sv { font: 10.5px ui-monospace, Menlo, monospace; color: #E7B66A; }
+.rds .auto { font-style: normal; font-size: 9.5px; color: #8F887A; min-width: 22px; }
+.rds .sr { display: flex; align-items: center; gap: 6px; }
+.rds input[type=range] { flex: 1; min-width: 0; accent-color: #E7B66A; height: 16px; cursor: pointer; }
+.rds .snum { width: 58px; flex: none; background: #1C1A17; color: #EEE9DF; border: 1px solid #332F28; border-radius: 5px; font: 10.5px ui-monospace, Menlo, monospace; padding: 2px 4px; }
+.rds .snote { font-size: 9.5px; color: #F0C060; line-height: 1.3; }
+.rds .snote:empty { display: none; }
+.rds.tog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #C9C1B2; cursor: pointer; }
+.rds.tog .nt { font-style: normal; color: #8F887A; font-size: 9.5px; }
+/* slider-driven shapes */
+.desk.rd .cal { height: var(--cal-h, 26px); }
+.desk.rd .side { padding-left: var(--pane-p, 12px); padding-right: var(--pane-p, 12px); }
+.desk.rd .hdr { padding-left: calc(var(--pane-p, 12px) + 8px); }
+.desk.rd.d-bar-2 :is(.ev, .adi)::before { width: var(--bar-w, 3px); }
+.desk.rd.d-bar-4 :is(.ev, .adi)::before { width: var(--bar-w, 3px); }
+.desk.rd.d-bar-2 .ev { padding-left: calc(var(--ev-px) + var(--bar-w, 3px)); }
+.desk.rd.d-bar-4 .ev { padding-left: calc(var(--ev-px) + var(--bar-w, 3px) + 1px); }
+.desk.rd.d-bar-2 .ev.thin, .desk.rd.d-bar-4 .ev.thin { padding-left: calc(var(--bar-w, 3px) + 2px); }
+.desk.rd.rd-hatch.d-maybe-0 :is(.ev, .adi).st-maybe:not(.past) { background-image: repeating-linear-gradient(var(--hatch-a), color-mix(in srgb, var(--fillh) var(--hatch-o), transparent) 0 var(--hatch-w), transparent var(--hatch-w) calc(2 * var(--hatch-w))); }
+.desk.rd.rd-dash.d-maybe-1 :is(.ev, .adi).st-maybe { outline-color: var(--dash); }
+
+/* round f: per-option reset (shown only when the option differs from the preset) */
+.rst { flex: none; width: 18px; height: 18px; border-radius: 5px; display: inline-grid; place-items: center; font-size: 12px; line-height: 1; color: #E7B66A; background: rgba(231,182,106,.12); margin-left: 4px; }
+.rst:hover { background: rgba(231,182,106,.28); color: #fff; }
+.rdl .lh .rst { align-self: center; }
+.rdl.rchg, .rds.rchg { background: rgba(231,182,106,.05); box-shadow: inset 2px 0 0 rgba(231,182,106,.6); padding-left: 6px; border-radius: 6px; }
+.rdl:focus-visible, .rds:focus-visible { outline: 1px solid rgba(231,182,106,.7); outline-offset: 1px; }
+.sghr { display: flex; align-items: center; gap: 6px; }
+.sghr .sgh { flex: 1; }
+.rds.tog { justify-content: space-between; }
+.rds.tog label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.rdg h4 .rbtn { margin-top: -3px; }
+
+/* ================================================================ round g: type roles, event padding, clipping, past tasks */
+/* every event uses the padding-y slider; a block too short for it centres its one line instead (never a clipped glyph) */
+.desk.rd .ev { padding-top: var(--ev-pt); padding-bottom: 0; }
+.desk.rd .ev.one, .desk.rd.ov-cascade .ev.one.cut { align-items: center; padding-top: 0; padding-bottom: 0; }
+.desk.rd .ev.one.tall1, .desk.rd.ov-cascade .ev.one.cut.tall1 { align-items: flex-start; padding-top: var(--ev-pt); }
+.desk.rd .ev .t { -webkit-line-clamp: var(--tl, 2); }
+.desk.rd .ev .m { flex: none; }
+/* mini month and sidebar group headers follow their role sizes */
+.desk.rd .mm-h { font-size: var(--fs-mmh); line-height: calc(var(--fs-mmh) + 6px); }
+.desk.rd .mm { font-size: var(--fs-mini); }
+.desk.rd .grp { font-size: var(--fs-grp); }
+/* past task markers: no opacity on text or the checkbox; the fitted past colours do the dimming */
+.desk.rd .tmk .cb { opacity: 1; }
+.desk.rd .tmk.past { color: var(--tcp); }
+/* weights (round g decision): rd-w0 = 400 / 500 / 600 (600 only for the month title and today), rd-w1 = 400 / 500 only */
+.desk.rd-w0 .dh .c { font-weight: 400; } .desk.rd-w0 .dh .c .n { font-weight: 500; } .desk.rd-w0 .dh .c.today .n { font-weight: 600; }
+.desk.rd-w0 .hdr h2 { font-weight: 600; } .desk.rd-w0 :is(.grp .gn, .mm-h) { font-weight: 500; }
+.desk.rd-w1 .dh .c, .desk.rd-w1 .dh .c .n { font-weight: 400; } .desk.rd-w1 .dh .c.today .n, .desk.rd-w1 .hdr h2 { font-weight: 500; }
+.desk.rd-w1 :is(.grp .gn, .mm-h) { font-weight: 500; } .desk.rd-w1 :is(.card.dc.lead .ttl b, .mm .d.today) { font-weight: 500; }
+
+/* ================================================================ round g: counter, alignment guides, design system (dsys.js) */
+#dcount { position: absolute; left: 12px; bottom: 12px; z-index: 200; max-width: 520px; max-height: 70%; overflow: auto; padding: 10px 12px; border-radius: 10px; background: rgba(12,12,14,.94); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 12px 40px rgba(0,0,0,.5); font: 11px/1.45 -apple-system, system-ui, sans-serif; color: #ddd; }
+#dcount b { color: #fff; } #dcount .big { font-size: 13px; margin-bottom: 4px; }
+#dcount table { border-collapse: collapse; margin-top: 4px; width: 100%; }
+#dcount td { padding: 1px 8px 1px 0; vertical-align: top; } #dcount td:first-child { font-family: ui-monospace, Menlo, monospace; color: #E7B66A; white-space: nowrap; }
+#dcount .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,.2); }
+#dguides { position: absolute; inset: 0; pointer-events: none; z-index: 190; }
+#dguides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#dguides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#dguides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#dguides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#dguides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#dguides .legend { position: absolute; right: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.9); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+#dsys { position: absolute; inset: 0; z-index: 210; overflow: auto; background: var(--bg); color: var(--fg2); font: 12px/1.5 -apple-system, system-ui, sans-serif; padding: 28px 36px; }
+#dsys h2 { font-size: 18px; color: var(--fg1); margin: 0 0 2px; font-weight: 600; } #dsys .sub { color: var(--fg3); margin-bottom: 16px; }
+#dsys .cols { display: grid; grid-template-columns: 1fr 1.1fr 1.3fr; gap: 28px; }
+#dsys h3 { font-size: 11px; font-weight: 600; color: var(--fg1); margin: 0 0 6px; text-transform: uppercase; letter-spacing: .06em; }
+#dsys table { border-collapse: collapse; width: 100%; }
+#dsys td, #dsys th { text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--hair); vertical-align: middle; }
+#dsys th { color: var(--fg3); font-weight: 500; font-size: 11px; }
+#dsys .mono { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--fg2); }
+#dsys .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; box-shadow: 0 0 0 1px var(--hair-strong); }
+#dsys .ba { position: sticky; top: -28px; display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--surface); margin: 0 0 14px; z-index: 2; }
+#dsys .ba button { padding: 4px 12px; border-radius: 6px; color: var(--fg2); font-size: 12px; } #dsys .ba button.on { background: var(--raised); color: var(--fg1); box-shadow: 0 0 0 1px var(--hair); }
+#dsys .x { position: absolute; top: 16px; right: 20px; color: var(--fg2); font-size: 12px; border: 1px solid var(--hair-strong); border-radius: 6px; padding: 3px 10px; }
+.rdts { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; }
+.rdts .o { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; border-radius: 7px; background: rgba(140,130,115,.06); color: #C9C1B2; text-align: left; }
+.rdts .o:hover { background: rgba(140,130,115,.15); color: #fff; }
+.rdts .o.on { background: rgba(231,182,106,.13); box-shadow: inset 0 0 0 1px rgba(231,182,106,.55); color: #fff; }
+.rdts .o .tx { flex: 1; min-width: 0; font-size: 11.5px; } .rdts .o .tx small { display: block; color: #8F887A; font-size: 10px; }
+.rdts .o .rec { font: 600 9px/15px -apple-system, system-ui; letter-spacing: .05em; color: #12110E; background: #8FD3A6; border-radius: 4px; padding: 0 5px; text-transform: uppercase; flex: none; }
+.rdts .o .q { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1px solid #5A544A; color: #A39B8C; font-size: 10px; line-height: 14px; text-align: center; cursor: help; }
+.rdts .qt { display: none; font-size: 10.5px; color: #A39B8C; padding: 2px 8px 6px; }
+.rdts .qt.show { display: block; }
+.rdtools { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.rdtools .rbtn.on { background: rgba(231,182,106,.16); color: #EBC98F; border-color: rgba(231,182,106,.35); }
+/* one-line blocks: title and time share one line box (the time never sets a taller line), baselines aligned; a box shorter than the line shrinks the line box */
+.desk.rd .ev.one :is(.t, .m) { line-height: min(var(--lh-ev), var(--evh, 99px)); }
+/* alignment (round g, G guides): all-day chip text starts on the same edge as event text below it (chips sit 1 px further left than blocks) */
+.desk.rd { --chip-dx: 1px; }
+.desk.rd.d-bar-2 .adi { padding-left: calc(var(--ev-px) + var(--bar-w, 3px) + var(--chip-dx, 0px)); }
+.desk.rd.d-bar-4 .adi { padding-left: calc(var(--ev-px) + var(--bar-w, 3px) + 1px + var(--chip-dx, 0px)); }
+.desk.rd:is(.d-bar-0, .d-bar-5) .adi { padding-left: calc(var(--ev-px) + var(--chip-dx, 0px)); }
+
+/* round h: the lock */
+.rdlock { padding: 7px 9px; border-radius: 7px; background: rgba(143,211,166,.08); color: #BFD9C6; font-size: 11px; line-height: 1.45; margin: 6px 0; }
+.rdlock b { color: #E8F3EB; } .rdlock i { color: #F0C060; font-style: normal; }
+.rdts .o .rec.rc2 { background: #5A544A; color: #EEE9DF; }
+#dsys { padding: 22px 28px; font-size: 11.5px; }
+#dsys .evc { padding: 6px; border-radius: 6px; } #dsys .evc.d { background: #0B0B0C; } #dsys .evc.p { background: #FBFBFB; }
+#dsys td.mono, #dsys td:first-child { white-space: nowrap; }

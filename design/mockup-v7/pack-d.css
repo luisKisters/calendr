@@ -1,0 +1,88 @@
+/* Calendr v7 · packs D1–D4, loaded on top of app.css (the v6 C stylesheet) only while a D pack is active.
+   Colours, fonts, tracking and radii arrive as custom properties from packs.js (themeVars); the structure flags arrive as
+   data attributes on .desk: data-bar (3 px event bar), data-grid (calm | timetable), data-edges (pane hairlines),
+   data-ad (all-day chips: tint | dots), data-tcol (single | stack time column), data-font (sf | inter).
+   Shared by every D pack: body-font page titles (22/600, the year 400 in fg3), 5 sizes, weights 400/500 (+600 for one title
+   per area), times in the body font's tabular figures, radius 4 events · 6 rows · 8 fields · 12 cards and menus, hour 48 px. */
+@font-face { font-family: "Inter"; src: url("fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+.desk { font-feature-settings: var(--ff); font-optical-sizing: auto; }
+.desk:not(.light) { --evhov: rgba(255,255,255,.06); }
+.macbar, .light .macbar { background: var(--macbar); }
+.light .macbar { color: #1c1a16; }
+
+/* times: the body font with tabular figures (no mono face in D packs) */
+.gut .h, .gut .now, .later .tm, .restlist .row .tm, .restlist .nowrow, .tcol, .cmd .it .tm2, .boiler { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.gut .h { color: var(--hourc); }
+
+/* grid: calm = hour lines only; timetable = + half-hour lines (D4 dotted, quieter) */
+.hh { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid-half); pointer-events: none; }
+.desk[data-pack="D4"] .hh { border-top-style: dotted; }
+
+/* radius 4 / 6 / 8 / 12 */
+.ev, .adi, .sel-rect, .mline, .evx { border-radius: var(--r-ev); }
+.segc button { border-radius: 6px; }
+
+/* the event mark: a 3 px bar (D1, D4) or none (D2, D3), the same in Dark and Paper */
+.desk[data-bar="1"] .ev { padding-left: 11px; }
+.desk[data-bar="1"] .ev.thin { padding-left: 9px; }
+.desk[data-bar="0"] .ev { padding-left: 6px; }
+.desk[data-bar="0"] .ev.thin { padding-left: 4px; }
+.desk[data-bar="1"][data-ad="tint"] .adi { padding-left: 12px; }
+.desk[data-bar="0"][data-ad="tint"] .adi { padding-left: 8px; }
+.desk[data-ad="tint"] .adi .dot { display: none; }
+.desk[data-ad="tint"] .adi.cont { padding-left: 8px; }
+
+/* D4: neutral all-day chips with a 6 px calendar dot (B's lane), the timed events keep the pack's bar + tint */
+.desk[data-ad="dots"] .adi { background: var(--surface); color: var(--fg1); padding: 0 8px 0 6px; gap: 6px; }
+.desk[data-ad="dots"].light .adi { background: var(--raised); box-shadow: inset 0 0 0 1px var(--hair); }
+.desk[data-ad="dots"] .adi::before { display: none; }
+.desk[data-ad="dots"] .adi .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dot); flex: none; }
+.desk[data-ad="dots"] .adi .tm { color: var(--fg2); }
+.desk[data-ad="dots"] .adi.cont { padding-left: 8px; }
+.desk[data-ad="dots"] .adi.past { background-color: var(--surface); color: var(--fg2); }
+.desk[data-ad="dots"].light .adi.past { background-color: var(--bg); }
+.desk[data-ad="dots"] .adi.past .dot { opacity: .5; }
+.desk[data-ad="dots"] .adi.sel { background-color: var(--raised); color: var(--fg1); box-shadow: inset 0 0 0 1.5px var(--fg1); }
+.desk[data-ad="dots"] .adi.st-no { background-color: var(--surface); color: var(--fg2); }
+.desk[data-ad="dots"] .adi.st-none { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+
+/* panes: D1, D2, D4 separate the sidebars by their own shade only; D3 (timetable) keeps a hairline */
+.desk[data-edges="0"] .side, .desk[data-edges="0"] .right { box-shadow: none; }
+
+/* right column: Now / Up next lead; start over end in the shared 36 px right-aligned time column, the mark, then the title.
+   Content edge 20, time column 20–56, mark at 66, title at 79: the same columns as the Later rows and the search results. */
+.card.dc { margin: 0 12px 8px; padding: 12px 8px; border-radius: var(--r-lg); background: none; box-shadow: none; }
+.card.dc.lead { background: var(--card); padding-top: 12px; }
+.light .card.dc.lead { box-shadow: 0 0 0 1px rgba(60,50,35,.07), 0 1px 2px rgba(60,50,35,.05); }
+.card.dc:not(.lead) { padding-top: 8px; }
+.card.dc .lab { padding-left: 0; }
+.card.dc .lab .cd { color: var(--fg2); }
+.card.dc .lab .cd.live { color: var(--live); }
+.card.dc .ttl { display: grid; grid-template-columns: 36px 7px 1fr; column-gap: 8px; align-items: start; margin-top: 8px; width: 100%; text-align: left; }
+.card.dc .ttl .b { justify-self: center; width: 3px; align-self: stretch; margin: 2px 0; border-radius: 1.5px; background: var(--dot); }
+.card.dc .ttl .tcol { padding-top: 3px; }
+.card.dc .ttl b { display: block; font-weight: 500; font-size: var(--fs); line-height: 20px; }
+.card.dc.lead .ttl b { font-size: var(--fs-h); font-weight: 600; letter-spacing: var(--tr-h); }
+.card.dc .ttl small { display: block; color: var(--fg2); font-size: var(--fs-s); letter-spacing: var(--tr-s); line-height: 14px; margin-top: 2px; }
+.card.dc .acts { margin: 12px 0 0 59px; }
+.tcol { width: 36px; display: flex; flex-direction: column; align-items: flex-end; font-size: var(--fs-s); line-height: 14px; color: var(--fg2); flex: none; }
+.tcol .end { color: var(--fg3); }
+
+/* Day view list with the stacked time column (D3, D4: B's structure) */
+.desk[data-tcol="stack"] .restlist .row { grid-template-columns: 36px 7px 1fr auto; column-gap: 8px; min-height: 36px; padding: 4px 8px; }
+.desk[data-tcol="stack"] .restlist .row .b { justify-self: center; align-self: stretch; height: auto; margin: 2px 0; }
+.desk[data-tcol="stack"] .restlist .row.past .tcol { color: var(--fg3); }
+.desk[data-tcol="stack"] .restlist .free { display: grid; grid-template-columns: 36px 7px 1fr; column-gap: 8px; padding: 4px 8px; }
+.desk[data-tcol="stack"] .restlist .nowrow { display: grid; grid-template-columns: 36px 1fr; column-gap: 8px; padding: 2px 8px; font: inherit; }
+.desk[data-tcol="stack"] .restlist .nowrow::after { content: none; }
+.restlist .nowrow .tcol { color: var(--live); font-weight: 500; }
+.restlist .nowrow .ln { border-top: 2px solid var(--live); }
+
+/* tertiary text on dark: weight 500 for the small fg3 labels (brief §1: Lc ≥ 48 only at ≥ 500); placeholders and hour labels stay 400 */
+.desk:not(.light) :is(.grp, .lab2, .card .lab, .focus .lab, .ad .g .lbl, .mm .wd, .mm .wkn, .tcol .end, .short b, .sres .sh, .cmd .sec, .pop .sec, .dh .c) { font-weight: 500; }
+.desk:not(.light) .dh .c .n { font-weight: 400; }
+.desk:not(.light) .dh .c.today .n { font-weight: 500; }
+
+/* onboarding art: neutral in the cool dark packs (v6 C's was warm brown) */
+.desk:not(.light) .onb2 .art { background: radial-gradient(120% 90% at 20% 10%, #2C2C32 0%, #18181B 55%, #0E0E10 100%); }

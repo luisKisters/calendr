@@ -1,0 +1,178 @@
+/* Calendr v9: the page shell, the picker rail and the v7 fixes (overlap "+N"). Loaded after app.css + theme.css.
+   The rail is outside the app (dark in both themes). */
+html, body { height: 100%; overflow: hidden; background: #0E0E0F; color: #d8d4cc; font: 13px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; }
+#page { display: grid; grid-template-columns: minmax(0, 1fr) 348px; height: 100vh; }
+#page.norail { grid-template-columns: minmax(0, 1fr) 0; }
+#stage { position: relative; overflow: hidden; min-width: 0; }
+#frame { position: absolute; left: 50%; top: 50%; width: 1440px; height: 900px; transform-origin: 0 0; border-radius: 12px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08); }
+
+/* ================================================================ picker rail */
+#rail { position: relative; z-index: 10; display: flex; flex-direction: column; min-height: 0; min-width: 0; background: #12110E; border-left: 1px solid rgba(245,238,225,.09); color: #EEE9DF; font: 11.5px/1.5 -apple-system, system-ui, sans-serif; overflow: hidden; }
+.rh { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px 16px; }
+.rh .tt { flex: 1; font-size: 13px; font-weight: 600; letter-spacing: -.2px; }
+.rh .tt em { font-style: normal; color: #E7B66A; }
+.rh .x { width: 24px; height: 24px; border-radius: 6px; color: #7A7366; display: grid; place-items: center; }
+.rh .x:hover { background: rgba(140,130,115,.14); color: #EEE9DF; }
+.rtabs { flex: none; display: flex; flex-wrap: wrap; gap: 2px; padding: 0 10px 8px; border-bottom: 1px solid rgba(245,238,225,.09); }
+.rtabs button { padding: 4px 8px; border-radius: 6px; color: #A39B8C; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.rtabs button:hover { color: #EEE9DF; background: rgba(140,130,115,.12); }
+.rtabs button.on { color: #E7B66A; background: rgba(231,182,106,.13); font-weight: 600; }
+.rbody { flex: 1; overflow-y: auto; padding: 4px 14px 30px 16px; scrollbar-width: thin; }
+.rel { padding: 12px 0 10px; border-top: 1px solid rgba(245,238,225,.07); }
+.rel:first-child { border-top: 0; }
+.rel .nm { display: flex; align-items: baseline; gap: 6px; font-size: 12px; font-weight: 600; color: #EEE9DF; }
+.rel .nm .ids { font: 10px ui-monospace, Menlo, monospace; color: #E7B66A; font-weight: 500; }
+.rel .why { color: #A39B8C; margin: 2px 0 6px; }
+.ropt { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #C9C1B2; text-align: left; }
+.ropt:hover { background: rgba(140,130,115,.12); color: #fff; }
+.ropt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #615A4E; flex: none; margin-top: 2px; }
+.ropt.on { color: #fff; background: rgba(231,182,106,.1); }
+.ropt.on .r { border-color: #E7B66A; background: radial-gradient(#E7B66A 0 3px, transparent 3.5px); }
+.ropt .tx { flex: 1; min-width: 0; }
+.ropt .tx small { display: block; color: #8F887A; font-size: 11px; line-height: 1.4; margin-top: 1px; }
+.ropt .rec { font: 600 9.5px/16px -apple-system, system-ui; letter-spacing: .06em; color: #12110E; background: #8FD3A6; border-radius: 4px; padding: 0 5px; flex: none; margin-top: 1px; }
+.ropt .was { font: 600 9.5px/16px -apple-system, system-ui; letter-spacing: .06em; color: #D2CABB; background: #3A352D; border-radius: 4px; padding: 0 5px; flex: none; margin-top: 1px; }
+.rtog { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border-radius: 7px; color: #C9C1B2; text-align: left; }
+.rtog:hover { background: rgba(140,130,115,.12); }
+.rtog i { width: 26px; height: 15px; border-radius: 8px; background: #3A352D; position: relative; flex: none; }
+.rtog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #A39B8C; transition: transform .15s; }
+.rtog.on i { background: #E7B66A; } .rtog.on i::after { transform: translateX(11px); background: #12110E; }
+.rtog .tx small { display: block; color: #8F887A; font-size: 11px; }
+.rnote { margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: #1A1814; border: 1px solid rgba(245,238,225,.08); color: #ADA594; line-height: 1.5; }
+.rnote b { color: #EEE9DF; font-weight: 600; }
+.rnote code { font: 10.5px ui-monospace, Menlo, monospace; color: #EBC98F; }
+.rbtn { padding: 4px 9px; border-radius: 6px; background: #221F1A; color: #D2CABB; border: 1px solid #332F28; font-size: 11.5px; }
+.rbtn:hover { background: #2A2620; color: #fff; }
+.rbtn.key { background: rgba(231,182,106,.16); color: #EBC98F; border-color: rgba(231,182,106,.35); }
+.rscenes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.fb { display: grid; grid-template-columns: 34px 1fr auto; gap: 2px 8px; align-items: start; padding: 7px 0; border-top: 1px solid rgba(245,238,225,.06); }
+.fb .id { font: 600 11px/18px ui-monospace, Menlo, monospace; color: #EBC98F; }
+.fb .ti { color: #EEE9DF; font-weight: 500; line-height: 18px; }
+.fb .ti .sev { font: 600 9px/14px -apple-system, system-ui; padding: 0 4px; border-radius: 3px; margin-left: 4px; vertical-align: 1px; letter-spacing: .04em; }
+.sev.p0 { background: #5a1f22; color: #ff9b94; } .sev.p1 { background: #4a3a14; color: #f2cf7d; } .sev.p2 { background: #26313f; color: #9fc0e8; } .sev.f { background: #3a2f22; color: #EBC98F; } .sev.q { background: #333; color: #ccc; }
+.fb .fx { grid-column: 2; color: #A39B8C; font-size: 11px; line-height: 1.45; }
+.fb .go { grid-row: 1 / span 2; grid-column: 3; align-self: center; }
+.fb.cur { background: rgba(231,182,106,.07); border-radius: 6px; }
+.rstat { flex: none; border-top: 1px solid rgba(245,238,225,.09); padding: 8px 14px; color: #A39B8C; display: flex; gap: 8px; align-items: center; font-size: 11px; }
+.rstat code { font: 10.5px ui-monospace, Menlo, monospace; color: #EBC98F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.fab { position: absolute; right: 0; top: 50%; z-index: 5; width: 24px; height: 96px; margin-top: -48px; border: 1px solid rgba(231,182,106,.46); border-right: 0; border-radius: 8px 0 0 8px; background: #1A1814; color: #E7B66A; font-weight: 600; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; writing-mode: vertical-rl; display: none; }
+.norail .fab { display: block; }
+.banner { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 4; padding: 6px 12px; border-radius: 8px; background: rgba(26,24,20,.94); border: 1px solid rgba(231,182,106,.35); color: #F0E3CB; font: 12px -apple-system, system-ui; max-width: 70%; text-align: center; pointer-events: none; }
+/* Dark / Paper preview switch, on top of every tab */
+.rpacks { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 12px 8px 16px; border-bottom: 1px solid rgba(245,238,225,.09); }
+.rpk1 { color: #8F887A; font-size: 11px; line-height: 1.35; }
+.rseg { display: inline-flex; flex: none; padding: 2px; gap: 2px; border-radius: 8px; background: #1A1814; border: 1px solid #2A2620; }
+.rseg button { height: 24px; min-width: 32px; padding: 0 8px; border-radius: 6px; color: #C9C1B2; font: 600 11.5px/24px -apple-system, system-ui, sans-serif; }
+.rseg button:hover { color: #fff; background: rgba(140,130,115,.14); }
+.rseg button.on { color: #12110E; background: #E7B66A; }
+
+/* ================================================================ v7 fixes (they read the theme tokens) */
+/* fix (a): a narrow one-line block keeps its title and drops the time (the tooltip has it) */
+.ev.notime .m { display: none; }
+/* "+N" is gone (overlap round 2026-11-05); .evx stays styled only for old hashes */
+.evx { display: none; }
+
+/* ================================================================ Overlaps: cascade (decided 2026-11-05) */
+/* task markers: tasks never take a place in the cascade; they sit on their time */
+.tmk { position: absolute; z-index: 46; display: flex; align-items: center; gap: 5px; padding: 0 5px 0 4px; min-width: 0; overflow: hidden; white-space: nowrap;
+  border-radius: var(--r-ev); background-color: var(--fill); color: var(--tc); font-size: var(--fs-s); line-height: 14px; letter-spacing: var(--tr-s); text-align: left; cursor: default; }
+.tmk .cb { flex: none; width: 8px; height: 8px; border-radius: 2px; box-shadow: inset 0 0 0 1.25px currentColor; opacity: .85; }
+.tmk .tl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tmk:hover { background-image: linear-gradient(var(--evhov), var(--evhov)); }
+.tmk.past { background-color: var(--fillp); color: var(--tcp); }
+.tmk.sel { background-color: var(--fills); color: var(--tcs); box-shadow: inset 0 0 0 1.5px var(--fg1); z-index: 47; }
+.tmk.drag { opacity: .9; z-index: 50; }
+/* checkbox only, in a 17 px strip at the right edge where a pill would touch a title */
+.tmk.icon { padding: 0; justify-content: center; }
+
+/* cascade: a 1 px ring in the grid colour separates a block from the one under it */
+/* a block covered within 40 min keeps one line at its top */
+.ov-cascade .ev.one.cut { align-items: flex-start; padding-top: 2px; }
+.ov-cascade .ev.stk { box-shadow: 0 0 0 1px var(--bg); }
+.ov-cascade .ev.stk.st-none { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--line); }
+.ov-cascade .ev.stk.sel { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1.5px var(--fg1); }
+
+/* narrow blocks (deep cascades, right halves): the title wraps at word breaks and a long word is clipped at the edge;
+   no time (the tooltip has it) */
+.desk .ev.squeezed:not(.one) .t, .desk .ev.narrow:not(.one) .t { display: -webkit-box; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; -webkit-line-clamp: 4; text-overflow: clip; }
+
+/* v9: the Look switch beside Dark/Paper, and its one-line note */
+.rseg.rlook button { min-width: 0; padding: 0 7px; font-variant-numeric: tabular-nums; }
+.rlookn { flex: none; padding: 0 16px 8px; color: #8F887A; font-size: 11px; line-height: 1.4; border-bottom: 1px solid rgba(245,238,225,.09); margin-top: -2px; }
+.rlookn b { color: #EEE9DF; font-weight: 600; margin-right: 4px; }
+
+.rpacks { border-bottom: 0; padding-bottom: 6px; }
+
+/* v10: the Designer tab (round c: sections, previews, steppers, locks) */
+.dzp { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.rbtn[disabled] { opacity: .45; cursor: default; }
+.dzok { margin: 4px 0 8px; padding: 7px 10px; border-radius: 8px; background: rgba(143,211,166,.08); border: 1px solid rgba(143,211,166,.28); color: #A39B8C; font-size: 11px; line-height: 1.45; }
+.dzok b { color: #8FD3A6; font-weight: 600; }
+.dzok.bad { background: rgba(255,120,110,.08); border-color: rgba(255,120,110,.35); } .dzok.bad b { color: #FF9B94; }
+.dzok code, .rnote code { font: 10.5px ui-monospace, Menlo, monospace; color: #EBC98F; word-break: break-all; }
+.dzsec { border-top: 1px solid rgba(245,238,225,.08); }
+.dzsh { display: flex; align-items: center; gap: 7px; width: 100%; padding: 10px 0 8px; color: #EEE9DF; font-size: 13px; font-weight: 650; letter-spacing: -.1px; text-align: left; }
+.dzsh .cnt { margin-left: auto; color: #7E7769; font-size: 10.5px; font-weight: 500; } .dzsh .cnt b { color: #E7B66A; font-weight: 600; }
+.cv { display: inline-block; width: 12px; color: #A39B8C; font-size: 12px; transition: transform .15s; }
+.dzsec.open > .dzsh .cv, .dzadv.open .cv { transform: rotate(90deg); }
+.dzrow { padding: 7px 8px 9px; margin: 0 -8px 2px; border-radius: 8px; outline: none; }
+.dzrow:hover { background: rgba(140,130,115,.06); }
+.dzrow:focus-visible { box-shadow: inset 0 0 0 1.5px rgba(231,182,106,.7); }
+.dzh { display: flex; align-items: center; gap: 6px; min-height: 18px; }
+.dzl { color: #EEE9DF; font-size: 11.5px; font-weight: 600; }
+.cdot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: linear-gradient(135deg, #5B8DEF, #E5674F 50%, #E9B949); margin-left: 5px; vertical-align: 2px; }
+.dzv { color: #E7B66A; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chg { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #E7B66A; box-shadow: 0 0 0 2px rgba(231,182,106,.2); flex: none; }
+.dzh .lk { margin-left: auto; width: 22px; height: 18px; border-radius: 5px; font-size: 10px; color: #6E685C; filter: grayscale(1); opacity: .55; }
+.dzrow:hover .dzh .lk, .dzh .lk.on { opacity: 1; } .dzh .lk.on { background: rgba(231,182,106,.18); filter: none; }
+.dzhint { color: #8F887A; font-size: 10.5px; line-height: 1.35; margin: 1px 0 6px; }
+.dzgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.dzgrid.swatch { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dzopt { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 3px; border-radius: 7px; background: #1A1814; border: 1px solid #2A2620; min-width: 0; }
+.dzopt:hover { border-color: #4A443A; }
+.dzopt.on { border-color: #E7B66A; box-shadow: 0 0 0 1px #E7B66A; background: #221E17; }
+.dzopt .ol { font-size: 10px; line-height: 12px; color: #C9C1B2; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 1px 1px; }
+.dzopt.on .ol { color: #F2D7A6; font-weight: 600; }
+.dzopt.dis { cursor: not-allowed; opacity: .5; } .dzopt.dis .ol { text-decoration: line-through; } .dzopt.dis .mcan { filter: grayscale(.6); }
+.dzopt.part { border-style: dashed; }
+/* swatches */
+.sw { display: flex; height: 30px; border-radius: 5px; overflow: hidden; position: relative; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.sw.can .h { display: flex; flex: 1.5; min-width: 0; } .sw.can .h + .h { flex: 1; }
+.sw.can .h i { width: 6px; flex: none; } .sw.can .h b { flex: 1; display: flex; align-items: center; justify-content: center; gap: 2px; font: 600 11px/1 -apple-system, system-ui, sans-serif; }
+.sw.can .h + .h b { font-size: 9.5px; } .sw.can em { font-style: normal; font-weight: 500; font-size: 9px; }
+.sw.pal { align-items: center; justify-content: center; gap: 3px; padding: 0 3px; }
+.sw.pal i { width: 8px; height: 14px; border-radius: 2px; flex: none; }
+.sw.acc { align-items: center; justify-content: center; }
+.sw.acc i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font: 600 10.5px/1 -apple-system, system-ui, sans-serif; font-style: normal; }
+.sw.acc em { position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-radius: 50%; }
+.sw.wn .p { display: block; min-width: 0; } .sw.wn .hd { display: block; height: 11px; font: 600 8px/11px -apple-system, system-ui, sans-serif; padding-left: 3px; text-align: left; }
+/* mini previews (real tokens) */
+.mcan { display: flex; gap: 3px; height: 34px; padding: 3px; border-radius: 5px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.mev { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start; padding: 2px 3px 0 5px; overflow: hidden; font: 11px/12px 'Inter', -apple-system, system-ui, sans-serif; text-align: left; }
+.mev b { font-size: 11px; } .mev .tm { font-style: normal; font-size: 9.5px; line-height: 11px; }
+.mev .bar, .mchip .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; } .mev .bar.b1 { width: 2px; } .mev .bar.b3 { width: 4px; } .mev .bar.b4 { left: 2px; top: 2px; bottom: 2px; width: 2.5px; border-radius: 2px; }
+.mev .dot { position: absolute; left: 2px; top: 4px; width: 4px; height: 4px; border-radius: 50%; } .mev:has(.dot) { padding-left: 8px; }
+.mchip { position: relative; flex: 1; min-width: 0; height: 14px; align-self: center; display: flex; align-items: center; padding: 0 3px 0 6px; font: 10px/14px 'Inter', -apple-system, system-ui, sans-serif; overflow: hidden; }
+.mchip .dot { width: 5px; height: 5px; border-radius: 50%; margin-right: 3px; flex: none; } .mchip:has(.dot) { padding-left: 3px; }
+.mcan.day { align-items: center; justify-content: center; gap: 4px; font: 500 10.5px/1 'Inter', -apple-system, system-ui, sans-serif; position: relative; }
+.mcan.day b { min-width: 18px; height: 18px; line-height: 18px; text-align: center; padding: 0 3px; font-weight: 600; font-size: 11px; }
+.mcan.day.stk { flex-direction: column; gap: 1px; font-size: 8.5px; letter-spacing: .06em; } .mcan.day.stk b { font-size: 13px; font-weight: 400; height: 15px; line-height: 15px; }
+.mcan.day .rdot { position: absolute; width: 5px; height: 5px; border-radius: 50%; left: calc(50% + 2px); top: 8px; }
+.mcan.grid { flex-direction: column; gap: 0; padding: 4px 6px; } .mcan.grid i { flex: 1; border-top: 1px solid; } .mcan.grid i.dash { border-top-style: dashed; }
+.mcan.hl { align-items: center; justify-content: center; font: 10.5px/1 'Inter', -apple-system, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+/* segmented and steps */
+.dzseg { display: flex; flex-wrap: wrap; gap: 3px; }
+.dzseg button { height: 24px; padding: 0 9px; border-radius: 6px; background: #1A1814; border: 1px solid #2A2620; color: #C9C1B2; font-size: 11px; white-space: nowrap; }
+.dzseg button:hover { border-color: #4A443A; color: #fff; }
+.dzseg button.on { background: #E7B66A; border-color: #E7B66A; color: #12110E; font-weight: 600; }
+.dzstep { display: flex; align-items: center; gap: 6px; }
+.dzstep .sb { width: 24px; height: 24px; border-radius: 6px; background: #1A1814; border: 1px solid #2A2620; color: #EEE9DF; font-size: 14px; line-height: 1; flex: none; }
+.dzstep .sb:hover:not([disabled]) { border-color: #4A443A; } .dzstep .sb[disabled] { opacity: .35; cursor: default; }
+.dzstep .ticks { flex: 1; display: flex; align-items: center; gap: 3px; height: 24px; padding: 0 4px; border-radius: 6px; background: #161410; border: 1px solid #24211B; }
+.dzstep .ticks button { flex: 1; height: 100%; display: grid; place-items: center; }
+.dzstep .ticks i { width: 100%; height: 4px; border-radius: 2px; background: #3A352D; }
+.dzstep .ticks button.lit i { background: rgba(231,182,106,.55); } .dzstep .ticks button.on i { background: #E7B66A; height: 8px; }
+.dzstep .sv { min-width: 44px; text-align: right; color: #EEE9DF; font: 600 11px/1 -apple-system, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.dzadv { display: flex; align-items: center; gap: 7px; width: 100%; margin: 4px 0 8px; padding: 6px 8px; border-radius: 7px; background: #171511; border: 1px dashed #332F28; color: #ADA594; font-size: 11px; font-weight: 600; text-align: left; }
+.dzadv:hover { color: #EEE9DF; border-color: #4A443A; }
+.dzadvb { padding: 2px 0 6px 8px; border-left: 2px solid #2A2620; margin: -2px 0 8px 2px; }
