@@ -1,0 +1,96 @@
+/* Calendr v9 · looks L1–L4 (round 2026-11-20). Loaded last. Colours arrive from tokens.js (THEME.look(id).vars / evVars);
+   this file only shapes them. Everything is scoped: .v9 = any new look (L1–L4), .pk-L1 … .pk-L4 = one look. L0 (v8) has no rule here.
+   Structure is untouched: pane sizes, 44 px hours, cascade, task markers, now line, sidebar groups, eyes, location, conferencing.
+   Shared polish: gaps between blocks (geometry in tokens.js `gap`), title clearly stronger than time, all-day chips with the same
+   mark as timed events, quieter grid (hour line kept), a calm Join button, a right column without the card-in-a-panel. */
+
+/* ================================================================ shared (L1–L4) */
+/* events: title 12 / weight from the look (560–600), time 11 / 400 in the muted time colour */
+.desk.v9 .ev { padding: 3px 6px 2px 7px; line-height: 15px; }
+.desk.v9 .ev .t { font-weight: var(--ev-w); letter-spacing: -.004em; }
+.desk.v9 .ev .m { font-size: var(--fs-s); font-weight: 400; line-height: 13px; margin-top: 1px; letter-spacing: .004em; }
+.desk.v9 .ev.one { padding-top: 0; padding-bottom: 0; gap: 5px; }
+.desk.v9 .ev.task .t { font-weight: 450; }
+.desk.v9 .ev:not(.past):not(.sel):not(.st-none):hover { background-image: none; background-color: var(--fillh); }
+.desk.v9 .adi:not(.past):not(.sel):not(.st-none):hover { background-image: none; background-color: var(--fillh); }
+.desk.v9 .ev.thin { padding-left: 5px; padding-right: 2px; }
+/* all-day chips: same type and mark as the timed blocks */
+.desk.v9 .adi { font-weight: var(--ev-w); border-radius: var(--r-ev); padding-left: 8px; }
+.desk.v9 .adi .tm { font-weight: 400; }
+.desk.v9 .ad { box-shadow: inset 0 -1px 0 var(--hair-strong); }
+.desk.v9 .ad .gridN { row-gap: 3px; }
+.desk.v9 .ad .cols i { border-left-color: var(--grid-v); }
+/* task markers: a touch rounder, same colours */
+.desk.v9 .tmk { border-radius: 4px; }
+/* day header: the number a little stronger than the weekday */
+.desk.v9 .dh .c { color: var(--fg3); }
+.desk.v9 .dh .c .n { font-weight: 500; }
+.desk.v9 .dh .c.today .n { font-weight: 600; }
+
+/* right column: Now is no longer a card in a panel; it is the top block of the column with a hairline under it */
+.desk.v9 .card.dc.lead { background: none; box-shadow: none; border-radius: 0; margin: 2px 20px 6px; padding: 10px 0 16px; border-bottom: 1px solid var(--hair); }
+.desk.v9 .card.dc:not(.lead) { margin: 0 20px 4px; padding: 8px 0 10px; }
+.desk.v9 .card.dc.lead .ttl b { font-size: var(--fs-h); line-height: 20px; }
+.desk.v9 .card.dc .ttl .b { width: 3px; border-radius: 2px; }
+.desk.v9 .card.dc .lab { font-weight: 500; }
+.desk.v9 .card.dc .acts { margin-top: 12px; }
+/* Join: a calm raised neutral button; the call logo carries the colour */
+.desk.v9 .join { height: 30px; border-radius: var(--r-md); background: var(--join-bg); color: var(--join-fg); box-shadow: var(--join-sh); font-weight: 500; gap: 7px; }
+.desk.v9 .join:hover { background: color-mix(in srgb, var(--fg1) 5%, var(--join-bg)); }
+.desk.v9 .join .kh { color: var(--fg3); font-weight: 400; }
+.desk.v9 .join.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--hair-strong); }
+.desk.v9 .join.ghost:hover { background: var(--hover); }
+.desk.v9 .joinsm { background: var(--join-bg); color: var(--join-fg); box-shadow: var(--join-sh); }
+.desk.v9 .joinsm:hover { background: color-mix(in srgb, var(--fg1) 5%, var(--join-bg)); }
+.desk.v9 .joinsm .kh { color: var(--fg3); }
+/* neutral shadows instead of v8's warm ones */
+.desk.v9.light .card { box-shadow: none; }
+.desk.v9.light .fcard { box-shadow: var(--shadow-card); }
+.desk.v9 .mm .d.today { box-shadow: inset 0 0 0 1px var(--seg-ring); }
+
+/* ================================================================ L1 · Clean bar */
+/* light hue tint, a 3 px saturated bar flush at the left, near-fg1 title */
+.desk.pk-L1 .ev::before, .desk.pk-L1 .adi::before { left: 0; top: 0; bottom: 0; width: 3px; border-radius: 0; background: var(--bar); opacity: 1; }
+.desk.pk-L1 .ev { padding-left: 8px; }
+.desk.pk-L1 .ev.thin { padding-left: 6px; }
+.desk.pk-L1 .adi { padding-left: 9px; }
+.desk.pk-L1 .adi.cont { padding-left: 8px; }
+.desk.pk-L1 :is(.ev, .adi).past::before { background: var(--barp); opacity: 1; }
+.desk.pk-L1 :is(.ev, .adi).st-no::before { background: var(--barp); opacity: 1; }
+.desk.pk-L1 .ev.sel, .desk.pk-L1 .adi.sel { box-shadow: inset 0 0 0 1px var(--cc), 0 1px 3px rgba(0,0,0,.12); }
+.desk.pk-L1.ov-cascade .ev.stk.sel { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--cc), 0 1px 3px rgba(0,0,0,.12); }
+
+/* ================================================================ L2 · Soft solid */
+/* a clearly tinted fill with a faint 1 px hue edge; the title in the deep (Paper) / bright (Dark) hue; no bar */
+.desk.pk-L2 .ev::before, .desk.pk-L2 .adi::before { display: none; }
+.desk.pk-L2 .ev, .desk.pk-L2 .adi { box-shadow: inset 0 0 0 1px var(--edge2); }
+.desk.pk-L2 .ev { padding-left: 7px; }
+.desk.pk-L2.ov-cascade .ev.stk { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--edge2); }
+.desk.pk-L2 :is(.ev, .adi).past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--edge2) 45%, var(--fillp)); }
+.desk.pk-L2.ov-cascade .ev.stk.past { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px color-mix(in srgb, var(--edge2) 45%, var(--fillp)); }
+.desk.pk-L2 :is(.ev, .adi).st-no { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--edge2) 45%, var(--decfill)); }
+.desk.pk-L2 :is(.ev, .adi).sel, .desk.pk-L2.ov-cascade .ev.stk.sel { box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1.5px var(--cc); }
+
+/* ================================================================ L3 · Vivid */
+/* the hue as a solid fill, white title; past = a light tint (Paper) / a dim fill (Dark) */
+.desk.pk-L3 .ev::before, .desk.pk-L3 .adi::before { display: none; }
+.desk.pk-L3 .ev { padding-left: 7px; }
+.desk.pk-L3 .ev .m { opacity: 1; }
+.desk.pk-L3 :is(.ev, .adi).sel, .desk.pk-L3.ov-cascade .ev.stk.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--fills), 0 2px 6px rgba(0,0,0,.18); }
+.desk.pk-L3 .tmk .cb { opacity: 1; }
+
+/* ================================================================ L4 · Cards */
+/* raised neutral cards on a darker canvas; colour only as the 3 px bar */
+.desk.pk-L4 .ev::before, .desk.pk-L4 .adi::before { left: 0; top: 0; bottom: 0; width: 3px; border-radius: 0; background: var(--bar); opacity: 1; }
+.desk.pk-L4 .ev, .desk.pk-L4 .adi { box-shadow: var(--shadow-card); }
+.desk.pk-L4 .ev { padding-left: 8px; }
+.desk.pk-L4 .ev.thin { padding-left: 6px; }
+.desk.pk-L4 .adi { padding-left: 10px; }
+.desk.pk-L4 .adi.cont { padding-left: 8px; }
+.desk.pk-L4.ov-cascade .ev.stk { box-shadow: 0 0 0 1px var(--bg), var(--shadow-card); }
+.desk.pk-L4 :is(.ev, .adi).past { box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg1) 7%, transparent); }
+.desk.pk-L4 :is(.ev, .adi).past::before, .desk.pk-L4 :is(.ev, .adi).st-no::before { background: var(--barp); opacity: 1; }
+.desk.pk-L4 :is(.ev, .adi).sel, .desk.pk-L4.ov-cascade .ev.stk.sel { box-shadow: inset 0 0 0 1.5px var(--cc), 0 2px 8px rgba(0,0,0,.14); }
+.desk.pk-L4 .tmk { box-shadow: var(--shadow-card); }
+/* the panes: the canvas is the darker plane, the sidebars sit on their own shade */
+.desk.pk-L4 .srch label { background: var(--raised); }

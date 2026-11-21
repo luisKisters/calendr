@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calendr v10</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%221%22 y=%221%22 width=%2214%22 height=%2214%22 rx=%224%22 fill=%22%2323232b%22/%3E%3Cpath d=%22M3 9h10%22 stroke=%22%23FF453A%22 stroke-width=%221.6%22/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+<!-- app.css + theme.css = the v8 base (L0); shell.css = page shell and picker rail -->
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="shell.css">
+<!-- v9: the skins L1–L4 (scoped under .pk-L1 … .pk-L4 / .v9); L0 = v8 has no rules there -->
+<link rel="stylesheet" href="looks.css">
+<!-- v10: the Designer (look=D) -->
+<link rel="stylesheet" href="designer.css">
+</head>
+<body>
+<div id="page">
+  <div id="stage"><div id="frame"><div id="host"></div></div><button class="fab" id="fab">Picker</button></div>
+  <aside id="rail"></aside>
+</div>
+<script src="tokens.js"></script>
+<script src="designer.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script src="panel.js"></script>
+<script src="input.js"></script>
+<script src="designer-ui.js"></script>
+<script src="rail.js"></script>
+</body>
+</html>
