@@ -37,7 +37,7 @@ enum MenuBarControl {
 
 // MARK: Preview (snapshots and the walkthrough; a real NSMenu cannot be drawn offscreen)
 
-/// The colours and metrics of a native dark macOS menu, as in design/mockup-v3/menubar.html. Not Theme tokens: this imitates the system.
+/// The colours and metrics of a native dark macOS menu, as in the v3 menu bar mockup (in git history). Not Theme tokens: this imitates the system.
 private enum NativeMenu {
     static let font = Font.system(size: 13)
     static let small = Font.system(size: 12)

@@ -65,7 +65,7 @@ extension CommandID {
 // MARK: Command menu
 
 extension AppModel {
-    func openPalette(_ mode: ChromeV3State.PaletteMode = .all) {
+    func openPalette(_ mode: ChromeState.PaletteMode = .all) {
         let mode = mode == .meet && !store.canOverlayTeammates ? .all : mode
         chromeState.paletteMode = mode
         chromeState.paletteQuery = ""
@@ -256,7 +256,7 @@ extension AppModel {
         return true
     }
 
-    // discardDraft() lives in PanelV3State.swift (the panel owns the draft's lifecycle).
+    // discardDraft() lives in PanelState.swift (the panel owns the draft's lifecycle).
 
     // MARK: Teammates
 

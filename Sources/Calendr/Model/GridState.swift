@@ -2,8 +2,8 @@ import Foundation
 import Observation
 import CalendrKit
 
-/// v3 view state of the GRID area (TimeGridView, EventsCanvas, EventViews, GridInteraction, DayHeaderView, MonthView, CalendrKit/Layout). Stored on `AppModel.gridState`; the area owns this file and grows the struct.
-struct GridV3State: Equatable {
+/// View state of the GRID area (TimeGridView, EventsCanvas, EventViews, GridInteraction, DayHeaderView, MonthView, CalendrKit/Layout). Stored on `AppModel.gridState`; the area owns this file and grows the struct.
+struct GridState: Equatable {
     /// The hour range and height the period on screen opened with ("Fit, then yours").
     var fit: HourFit?
     /// Height of the scrolling grid, published by the view; the fit fills it.
@@ -35,7 +35,7 @@ struct GridV3State: Equatable {
     let pointer = GridPointer()
     let monthCache = MonthLayoutCache()
 
-    static func == (a: GridV3State, b: GridV3State) -> Bool {
+    static func == (a: GridState, b: GridState) -> Bool {
         a.fit == b.fit && a.viewportHeight == b.viewportHeight && a.scrollTarget == b.scrollTarget && a.scrollTick == b.scrollTick
             && a.dayList == b.dayList && a.allDayFrame == b.allDayFrame && a.monthFrame == b.monthFrame && a.draftMadeAt == b.draftMadeAt
             && a.zoom == b.zoom && a.stack == b.stack && a.stackBox === b.stackBox && a.allDayExpanded == b.allDayExpanded && a.allDayScrollTarget == b.allDayScrollTarget && a.allDayScrollTick == b.allDayScrollTick && a.pointer === b.pointer && a.monthCache === b.monthCache

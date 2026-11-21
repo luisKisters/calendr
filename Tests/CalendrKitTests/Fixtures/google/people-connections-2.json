@@ -1,0 +1,6 @@
+{
+  "connections": [
+    { "resourceName": "people/c4", "names": [{ "displayName": "Kim Lindqvist" }], "emailAddresses": [{ "value": "kim.lindqvist@example.org" }] }
+  ],
+  "totalPeople": 4
+}

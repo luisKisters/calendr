@@ -302,7 +302,7 @@ struct PanelGoingRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Text("Going?").foregroundStyle(Theme.fg3)
-            if model.canRespond {
+            if model.canRespond(e) {
                 Segmented(options: [(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], selection: e.myReply,
                           enabled: !e.iAmOrganizer) { model.setMyReply($0) }
             } else {

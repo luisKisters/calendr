@@ -16,7 +16,7 @@ struct PanelParticipants: View {
         let cur = e.attendees
         let gone = base.map { b in b.attendees.filter { a in !cur.contains { $0.email == a.email && $0.name == a.name } } } ?? []
         let added = base.map { b in Set(cur.filter { a in !b.attendees.contains { $0.email == a.email && $0.name == a.name } }.map(GuestRow.key)) } ?? []
-        let canAdd = canEdit && model.store.canEditParticipants
+        let canAdd = canEdit && model.store.canEditParticipants(calendarID: e.calendarID)
         VStack(alignment: .leading, spacing: 0) {
             if cur.isEmpty && gone.isEmpty {
                 if canAdd { addField(empty: true).padding(.top, -8) } else { Text("No participants").foregroundStyle(Theme.fg3) }
@@ -42,8 +42,9 @@ struct PanelParticipants: View {
                     }
                 }
                 .padding(.top, 4)
-                let bare = EditorRows.withoutName(cur + gone)
-                if bare > 0 { NameHint(count: bare) }
+                // names from Contacts fill the gaps; the hint offers access once (mockup: hidden once Contacts is allowed)
+                let bare = EditorRows.withoutName(model.displayed(cur + gone))
+                if bare > 0 && !model.services.contacts.isAllowed { NameHint(count: bare) }
                 if canAdd { addField(empty: false) }
             }
         }
@@ -99,11 +100,13 @@ struct GuestRow: View {
         let h = hover || HoverProbe.shared.target == key
         // expanded per event: another event's "me" row never opens by itself
         let open = model.panelMenus.expandedGuest == "\(eventID)|\(key)"
+        // the name from Contacts or Google when the event has none (display only: the stored guest keeps its bare address)
+        let shown = model.displayed(a)
         HStack(alignment: .center, spacing: 8) {
             ReplyMark(status: gone ? nil : (a.isOrganizer ? .confirmed : a.status)).padding(.top, open ? 0 : 0)
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(a.label).foregroundStyle(gone ? Theme.fg3 : Theme.fg).strikethrough(gone).lineLimit(1).truncationMode(.tail)
+                    Text(shown.label).foregroundStyle(gone ? Theme.fg3 : Theme.fg).strikethrough(gone).lineLimit(1).truncationMode(.tail)
                     let role = EditorRows.role(a)
                     if !role.isEmpty { Text(role).font(.small).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize() }
                 }
@@ -112,10 +115,10 @@ struct GuestRow: View {
                     if a.isMe {
                         if !isDraft {
                             Segmented(options: [(ResponseStatus.confirmed, "Going"), (.tentative, "Maybe"), (.declined, "Decline")], selection: a.status,
-                                      enabled: model.canRespond && !a.isOrganizer) { model.setMyReply($0) }
+                                      enabled: model.event(id: eventID).map(model.canRespond) == true && !a.isOrganizer) { model.setMyReply($0) }
                                 .padding(.top, 4).padding(.bottom, 2)
                         }
-                    } else if a.name != nil && !a.email.isEmpty {
+                    } else if shown.name != nil && !a.email.isEmpty {
                         Text(a.email).font(.small).foregroundStyle(Theme.fg3).lineLimit(1).frame(height: 16)
                     }
                 }
@@ -132,7 +135,7 @@ struct GuestRow: View {
                             model.panelMenus.expandedGuest = open ? nil : "\(eventID)|\(key)"
                         }
                         .help(open ? "Less" : (a.isMe ? "My reply" : "Details"))
-                        if canEdit && !a.isMe && !a.isOrganizer && model.store.canEditParticipants {
+                        if canEdit && !a.isMe && !a.isOrganizer && model.event(id: eventID).map({ model.store.canEditParticipants(calendarID: $0.calendarID) }) == true {
                             PanelIconButton(icon: .x) { model.removeSelectedGuest(email: a.email, name: a.name) }.help("Remove")
                         }
                     }
@@ -167,7 +170,7 @@ struct ReplyMark: View {
     }
 }
 
-/// `.namehint`: guests known only by their address, and one way to fix that. Contacts access itself comes with v4 Phase 8a.
+/// `.namehint`: guests known only by their address, and one way to fix that: Allow Contacts (macOS asks once).
 struct NameHint: View {
     @Environment(AppModel.self) private var model
     let count: Int

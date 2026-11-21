@@ -8,7 +8,7 @@ enum SnapshotStates {
                       "month", "day", "menubar-popover", "sidebar-hidden", "all-day-collapsed", "create-drag", "shortcuts-sheet",
                       "settings", "light-week", "delete-recurring", "meet-with", "readonly-event", "empty-access", "month-light", "toast", "search-empty", "menubar-empty",
                       "create-event", "week-zoomed", "week-numbers", "detail-guests",
-                      "menubar", "menubar-submenu", "menubar-running", "menubar-none"] + SnapshotV4.states + SnapshotChrome.v4States + SnapshotPanel.v4States
+                      "menubar", "menubar-submenu", "menubar-running", "menubar-none"] + SnapshotV4.states + SnapshotChrome.v4States + SnapshotPanel.v4States + SnapshotServices.states
 
     static func find(_ m: AppModel, _ title: String, day: Int) -> CalendarEvent? {
         m.layout.timed[day].first { $0.event.title == title }?.event
@@ -50,7 +50,7 @@ enum SnapshotStates {
         case "detail-guests":
             if let e = find(m, "Sam / Alex", day: 1) { m.select(eventID: e.id) }
         default:
-            return SnapshotAudit.apply(name, m) || SnapshotGrid.apply(name, m) || SnapshotChrome.apply(name, m) || SnapshotPanel.apply(name, m) || SnapshotMenuBar.apply(name, m) || SnapshotV4.apply(name, m)
+            return SnapshotAudit.apply(name, m) || SnapshotGrid.apply(name, m) || SnapshotChrome.apply(name, m) || SnapshotPanel.apply(name, m) || SnapshotMenuBar.apply(name, m) || SnapshotV4.apply(name, m) || SnapshotServices.apply(name, m)
         }
         return true
     }

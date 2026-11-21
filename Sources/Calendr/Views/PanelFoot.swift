@@ -15,7 +15,7 @@ struct PanelFoot: View {
             if model.draft?.id == e.id {
                 Spacer(minLength: 0)
                 GhostButton(title: "Discard", key: "esc") { model.discardDraft() }
-                if model.store.canSendUpdates && e.attendees.contains(where: { !$0.isMe }) {
+                if model.store.canSendUpdates(calendarID: e.calendarID) && e.attendees.contains(where: { !$0.isMe }) {
                     SplitButton(title: "Send invite", menu: .inviteSend, help: "Send invite  \u{2318}\u{21A9}") { model.saveDraft() }
                 } else {
                     PanelFillButton(title: "Save", key: "\u{21A9}") { model.saveDraft() }.frame(height: Dim.field)

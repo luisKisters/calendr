@@ -82,19 +82,21 @@ final class AppModel {
     var scrollToHourTick = 0
     var secondTimeZoneVisible = false
 
-    // MARK: v3 area state (each area owns its struct and file)
+    // MARK: Area state (each area owns its struct and file)
     /// The event being created (drag, double-click, C): drawn dashed on the grid, shown with Save / Discard in the panel.
-    /// It lives only here until it is saved (`saveDraft`, `settleDraft`); set by `createEvent`, cleared by the draft functions in PanelV3State.swift.
+    /// It lives only here until it is saved (`saveDraft`, `settleDraft`); set by `createEvent`, cleared by the draft functions in PanelState.swift.
     var draft: CalendarEvent?
     /// Setting nil settles the draft (kept with a title, dropped without).
     var draftEventID: String? {
         get { draft?.id }
         set { if newValue == nil { settleDraft() } }
     }
-    var gridState = GridV3State()
-    var chromeState = ChromeV3State()
-    var panelState = PanelV3State()
+    var gridState = GridState()
+    var chromeState = ChromeState()
+    var panelState = PanelState()
     let panelMenus = PanelMenuState()
+    /// Contacts and Google (v4 Phase 8): logic in Services/ and Model/ServicesModel.swift.
+    let services: Services
     /// Bumped on every store change, for observers that read the store directly (the menu bar item).
     private(set) var storeVersion = 0
 
@@ -137,9 +139,10 @@ final class AppModel {
         var endMinute: Int
     }
 
-    init(store: CalendarStore, options: LaunchOptions, persist: Bool = true) {
+    init(store: CalendarStore, options: LaunchOptions, persist: Bool = true, services: Services? = nil) {
         self.store = store
         self.options = options
+        self.services = services ?? Services.make(options)
         // The v4 fixture is a fixed demo (46 pt hours, pinned clock): it never reads or writes the user's settings.
         let persist = persist && options.fixture != .v4
         self.persist = persist
@@ -159,6 +162,7 @@ final class AppModel {
         upcoming = UpcomingSummary(next: nil, sections: [])
         authState = store.authorization
         store.onChange = { [weak self] in self?.storeChanged() }
+        wireServices()
         reload()
         refreshUpcoming()
         if !options.freezeClock { startClock() }
@@ -219,6 +223,7 @@ final class AppModel {
         corpus = nil
         corpusGeneration += 1
         storeVersion += 1
+        services.google.refreshInfo()
         reload()
         refreshUpcoming()
         if !searchText.isEmpty { runSearch() }
@@ -591,10 +596,16 @@ final class AppModel {
         }
         do {
             try store.delete(e, span: span, notify: notify)
-            undoStack.push(.deleted(removed))
             selectedEventID = nil
             overlay = nil
-            showToast("Deleted \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}", undo: true)
+            let title = "\u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}"
+            if span != .this && e.isRecurring && !store.canUndoSeriesDelete(calendarID: e.calendarID) {
+                // Google lists a series as single occurrences: undo would make one new event per occurrence
+                showToast("Deleted \(title). A Google series cannot be undone.")
+            } else {
+                undoStack.push(.deleted(removed))
+                showToast("Deleted \(title)", undo: true)
+            }
             return true
         } catch { showToast("Could not delete event"); return false }
     }
@@ -604,7 +615,8 @@ final class AppModel {
         guard let change = undoStack.pop() else { showToast("Nothing to undo"); return }
         switch change {
         case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }
-        case .deleted(let es): for e in es { _ = try? store.create(e) }; selectedEventID = es.first?.id
+        // put back without telling anyone (`create` without notify: no new invitations); the store may give it a new id
+        case .deleted(let es): let made = es.compactMap { try? store.create($0) }; selectedEventID = made.first?.id ?? es.first?.id
         case .updated(let old, let new):
             // Undo the move/resize only: text typed into the inspector since then stays.
             var cur = event(id: new.id) ?? new

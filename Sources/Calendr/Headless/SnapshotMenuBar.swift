@@ -8,7 +8,7 @@ enum SnapshotMenuBar {
     /// The menu bar states are whole screens drawn by `run`, so no window state applies.
     static func apply(_ state: String, _ m: AppModel) -> Bool { false }
 
-    /// The menu bar screens of design/mockup-v3/menubar.html (moment m12, an open row menu, run, none).
+    /// The menu bar screens of the v3 menu bar mockup (in git history) (moment m12, an open row menu, run, none).
     /// "menubar-popover" and "menubar-empty" are the older names design/states.json still lists for "menubar" and "menubar-none".
     static let screens = ["menubar-popover", "menubar", "menubar-submenu", "menubar-running", "menubar-none", "menubar-empty", "v4-menubar"]
 

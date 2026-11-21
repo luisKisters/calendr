@@ -1,0 +1,23 @@
+{
+  "kind": "calendar#events",
+  "nextSyncToken": "sync-1",
+  "items": [
+    {
+      "id": "trip",
+      "status": "confirmed",
+      "summary": "Trip (maybe)",
+      "start": { "date": "2026-10-02" },
+      "end": { "date": "2026-10-05" },
+      "transparency": "transparent",
+      "visibility": "private",
+      "colorId": "11"
+    },
+    {
+      "id": "run",
+      "summary": "Long run",
+      "start": { "dateTime": "2026-10-04T09:45:00+02:00", "timeZone": "Europe/Berlin" },
+      "end": { "dateTime": "2026-10-04T11:30:00+02:00", "timeZone": "Europe/Berlin" },
+      "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=SU;UNTIL=20261231T000000Z"]
+    }
+  ]
+}

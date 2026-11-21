@@ -1,7 +1,7 @@
 import Foundation
 
-/// v3 view state of the CHROME area (CenterView toolbar, SidebarView, Overlays, Components, KeyRouter, CalendrKit/Commands and Shortcuts). Stored on `AppModel.chromeState`; the area owns this file and grows the struct.
-struct ChromeV3State: Equatable {
+/// View state of the CHROME area (CenterView toolbar, SidebarView, Overlays, Components, KeyRouter, CalendrKit/Commands and Shortcuts). Stored on `AppModel.chromeState`; the area owns this file and grows the struct.
+struct ChromeState: Equatable {
     /// What the command menu's one field is for. Every mode but `.all` shows a crumb; Backspace on an empty field returns to `.all`.
     enum PaletteMode: Equatable { case all, goTo, search, meet }
     var paletteMode = PaletteMode.all
@@ -16,7 +16,7 @@ struct ChromeV3State: Equatable {
     var searchFocused = false
     var searchFocusTick = 0
 
-    static func == (a: ChromeV3State, b: ChromeV3State) -> Bool {
+    static func == (a: ChromeState, b: ChromeState) -> Bool {
         a.paletteMode == b.paletteMode && a.paletteQuery == b.paletteQuery && a.paletteIndex == b.paletteIndex
             && a.columnQuery == b.columnQuery && a.searchFocused == b.searchFocused && a.searchFocusTick == b.searchFocusTick
     }
@@ -24,7 +24,7 @@ struct ChromeV3State: Equatable {
 
 final class PaletteCache {
     struct Key: Equatable {
-        var mode: ChromeV3State.PaletteMode
+        var mode: ChromeState.PaletteMode
         var query: String
         var hasSelection: Bool
         var layoutGeneration: Int

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The command menu's commands (design/mockup-v3 `COMMANDS`).
+/// The command menu's commands (design/mockup-v4 `cmdHTML`, which keeps the v3 `COMMANDS`).
 public enum CommandID: String, CaseIterable, Sendable {
     case newEvent, today, goToDate, nextPeriod, previousPeriod
     case viewDay, viewWeek, viewMonth, toggleSidebar, switchAppearance

@@ -4,7 +4,7 @@ import CalendrKit
 extension CalendarStore {
     /// Only a store that can read other people's calendars offers Meet with. EventKit only knows the events of your own
     /// calendars that someone attends, which would draw ghost copies of your own events instead of their availability.
-    var canOverlayTeammates: Bool { self is DemoStore }
+    var canOverlayTeammates: Bool { isDemo }
 }
 
 // MARK: Keyboard selection (Tab, arrows, Return, Option-arrows)

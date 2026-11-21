@@ -29,6 +29,8 @@ struct OverlayHost: View {
         }
         .animation(isSheet ? Motion.slow : Motion.base, value: model.overlay)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // while a sheet is open its toast sits above the scrim (the column's own toast would be dimmed under it)
+        .overlay(alignment: .bottom) { if isSheet { ToastHost() } }
     }
 }
 
@@ -52,9 +54,12 @@ extension View {
 /// Bottom centre of the grid column.
 struct ToastHost: View {
     @Environment(AppModel.self) private var model
+    /// The grid column's host steps aside while a sheet shows the toast above its scrim.
+    var yieldsToSheet = false
     var body: some View {
+        let sheetOpen: Bool = { if case .command? = model.overlay { return false }; return model.overlay != nil }()
         ZStack {
-            if let t = model.toast { ToastView(toast: t).id(t.id).transition(.toast) }
+            if let t = model.toast, !(yieldsToSheet && sheetOpen) { ToastView(toast: t).id(t.id).transition(.toast) }
         }
         .padding(.bottom, 20)
         .animation(Motion.spring, value: model.toast)
@@ -169,11 +174,11 @@ struct CommandMenu: View {
         }
     }
 
-    static func crumb(_ m: ChromeV3State.PaletteMode) -> String? {
+    static func crumb(_ m: ChromeState.PaletteMode) -> String? {
         switch m { case .all: nil; case .goTo: "Go to date"; case .search: "Events"; case .meet: "Meet with" }
     }
 
-    static func placeholder(_ m: ChromeV3State.PaletteMode) -> String {
+    static func placeholder(_ m: ChromeState.PaletteMode) -> String {
         switch m {
         case .all: "Search, go to a date, or run a command"
         case .goTo: "oct 12, next friday, w42, 2026-12-24"
@@ -230,7 +235,7 @@ struct PaletteRowView: View {
 }
 
 struct PaletteEmpty: View {
-    let mode: ChromeV3State.PaletteMode
+    let mode: ChromeState.PaletteMode
     let query: String
     var body: some View {
         let q = !query.trimmingCharacters(in: .whitespaces).isEmpty
@@ -258,12 +263,15 @@ struct SheetFrame<Content: View>: View {
     let width: CGFloat
     var closable = true
     var bottom: CGFloat = 18
+    /// Next to the close button (Settings: its page switch).
+    var accessory: AnyView?
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(title).font(.title18).tracking(-0.37).foregroundStyle(Theme.fg)
                 Spacer()
+                if let accessory { accessory.padding(.trailing, 8) }
                 if closable { IconButton(name: "xmark") { model.closeOverlay() } }
             }
             .frame(height: Dim.iconButton)
@@ -331,10 +339,13 @@ struct SettingsRow<Content: View>: View {
     let title: String
     var detail: String?
     var first = false
+    /// A leading 15 pt icon (Contacts, Accounts).
+    var icon: PanelIcon.Name?
     @ViewBuilder var content: Content
     var body: some View {
         // `.st__r`: the text column takes all the room the control leaves
         HStack(spacing: 24) {
+            if let icon { PanelIcon(name: icon, size: 15, color: Theme.fg2).padding(.trailing, -12) }
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.textMedium).foregroundStyle(Theme.fg)
                 if let detail { Text(detail).font(.small).foregroundStyle(Theme.fg3).fixedSize(horizontal: false, vertical: true) }
@@ -351,7 +362,19 @@ struct SettingsSheet: View {
     @Environment(AppModel.self) private var model
     var body: some View {
         let s = model.settings
-        SheetFrame(title: "Settings", width: 600, bottom: 20) {
+        let page = model.services.settingsPage
+        SheetFrame(title: "Settings", width: 600, bottom: 20,
+                   accessory: AnyView(Segmented(options: SettingsPage.allCases.map { ($0, $0.title) }, selection: page) { model.services.settingsPage = $0 }
+                                        .tourAnchor("settings:pages"))) {
+            switch page {
+            case .general: general(s)
+            case .accounts: SettingsAccountsPage()
+            case .contacts: SettingsContactsPage()
+            }
+        }
+    }
+
+    @ViewBuilder private func general(_ s: AppSettings) -> some View {
             SheetLabel(text: "General").padding(.top, 16).padding(.bottom, 2)
             SettingsRow(title: "Appearance", first: true) {
                 Segmented(options: [(false, "Black"), (true, "Paper")], selection: model.isPaper) { model.settings.appearance = $0 ? .light : .dark }
@@ -374,9 +397,8 @@ struct SettingsSheet: View {
                 Segmented(options: [(MenuBarDisplay.titleAndCountdown, "Title and countdown"), (.countdown, "Countdown"), (.icon, "Icon only")],
                           selection: s.menuBarDisplay) { model.settings.menuBarDisplay = $0 }
             }
-            Text("Accounts and calendar access live in System Settings. Calendr reads what macOS knows.")
+            Text("iCloud and other calendars come through macOS Calendar. Google accounts connect under Accounts.")
                 .font(.small).foregroundStyle(Theme.fg3)
-        }
     }
 }
 

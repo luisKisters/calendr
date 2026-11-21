@@ -282,12 +282,26 @@ struct PanelGuestMenu: View {
             PopItem(key: "menu:guest:\(t.email)", highlighted: i == 0, action: { model.addGuest(t) }) {
                 PopTwoLine(title: PanelMenuContent.highlight(t.name, q.trimmingCharacters(in: .whitespaces)), sub: t.email)
             } end: {
-                PanelIcon(name: .history, size: 14).help("Recent guest")
+                switch model.peopleSource(t) {
+                case .recent: PanelIcon(name: .history, size: 14).help("Recent guest")
+                case .contacts: PanelIcon(name: .contacts, size: 14).help("macOS Contacts")
+                case .google: PanelIcon(name: .google, size: 14).help("Google contacts")
+                }
             }
         }
         PopSep()
-        PopItem(key: "menu:contacts", action: { model.closePanelMenu(); model.allowContacts() }) {
-            HStack(spacing: 10) { PanelIcon(name: .contacts, size: 15, color: Theme.fg2); Text("Allow Contacts access to find more people").foregroundStyle(Theme.fg2) }
+        if !model.services.contacts.isAllowed {
+            PopItem(key: "menu:contacts", action: { model.closePanelMenu(); model.allowContacts() }) {
+                HStack(spacing: 10) { PanelIcon(name: .contacts, size: 15, color: Theme.fg2); Text("Allow Contacts access to find more people").foregroundStyle(Theme.fg2) }
+            }
+        } else {
+            // the legend of the source icons (mockup: recent, Contacts, Google)
+            HStack(spacing: 12) {
+                HStack(spacing: 4) { PanelIcon(name: .history, size: 12, color: Theme.fg3); Text("recent") }
+                HStack(spacing: 4) { PanelIcon(name: .contacts, size: 12, color: Theme.fg3); Text("Contacts") }
+                if !model.services.googlePeople.isEmpty { HStack(spacing: 4) { PanelIcon(name: .google, size: 12, color: Theme.fg3); Text("Google") } }
+            }
+            .font(.small).foregroundStyle(Theme.fg3).padding(.horizontal, 10).frame(height: 26)
         }
     }
 }
