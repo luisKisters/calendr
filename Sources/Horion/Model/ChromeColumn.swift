@@ -13,7 +13,10 @@ extension AppModel {
     }
 
     /// The field's text. Events are searched through `searchText` (the same corpus as the command menu).
+    /// Typing a new query closes the open event so the results show (the detail view takes the column over them otherwise).
     func setColumnQuery(_ q: String) {
+        let t = q.trimmingCharacters(in: .whitespaces)
+        if !t.isEmpty, t != chromeState.columnQuery.trimmingCharacters(in: .whitespaces), selectedEventID != nil { deselect() }
         chromeState.columnQuery = q
         searchText = q.trimmingCharacters(in: .whitespaces)
     }
