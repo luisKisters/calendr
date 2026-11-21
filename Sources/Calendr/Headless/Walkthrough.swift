@@ -20,7 +20,11 @@ enum Walkthrough {
         case nil: tour(d, model)
         case "v4-a": WalkthroughV4.a(d, model)
         case "v4-b": WalkthroughV4.b(d, model)
-        case let t?: print("unknown tour \(t) (tours: v4-a, v4-b)"); return 2
+        case "v4-c-1": WalkthroughV4.c1(d, model)
+        case "v4-c-2": WalkthroughV4.c2(d, model)
+        case "v4-c-3": WalkthroughV4.c3(d, model)
+        case "v4-c-4": WalkthroughV4.c4(d, model)
+        case let t?: print("unknown tour \(t) (tours: v4-a, v4-b, v4-c-1 ... v4-c-4)"); return 2
         }
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }
@@ -81,11 +85,12 @@ enum Walkthrough {
         d.section("Create")
         d.say("Drag to create an event")
         d.zoomIn(on: CGPoint(x: 900, y: 430))
-        let before = m.layout.timedCount
+        let visible = { m.layout.timed.joined().filter { !$0.placement.hidden }.count }
+        let before = visible()
         d.drag(from: d.gridPoint(day: 3, minute: 12 * 60), to: d.gridPoint(day: 3, minute: 13 * 60))
         d.check(m.draft != nil && m.isDraftOpen, "drag opens a draft")
         d.check(m.draft.map { hhmm($0.start) == "12:00" && hhmm($0.end) == "13:00" && math.weekdayIndex($0.start) == 3 } == true, "draft is Thu 12:00-13:00 (got \(m.draft.map { m.fmt.timeRange($0.start, $0.end) } ?? "nil"))")
-        d.check(m.layout.timedCount == before + 1, "the draft shows on the grid")
+        d.check(visible() == before + 1, "the draft shows on the grid")
         d.settle(6)
         d.say("Type a title")
         d.moveCursor(to: CGPoint(x: 1150, y: 110))      // the hand moves to the panel; the camera follows it there

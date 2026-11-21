@@ -18,14 +18,22 @@ final class MonthLayoutCache {
 
 extension AppModel {
     /// The row of the all-day lane that turns into "n more", or nil when every row shows (also when the selected or new event sits there).
+    /// v4 "mix": two lanes, then "+N more", unless the section is expanded.
     var allDayFold: Int? {
         let all = layout.allDay
-        guard all.laneCount > AllDayView.maxRows else { return nil }
-        if let held = all.placements.first(where: { $0.id == selectedEventID || $0.id == draftEventID }), held.lane >= AllDayView.maxRows - 1 { return nil }
-        return AllDayView.maxRows - 1
+        guard all.laneCount > AllDayView.shownLanes, !gridState.allDayExpanded else { return nil }
+        // The selected or new event never hides behind "+N more": every lane shows while it sits below the second (v3 rule).
+        if let held = all.placements.first(where: { $0.id == selectedEventID || $0.id == draftEventID }), held.lane >= AllDayView.shownLanes { return nil }
+        return AllDayView.shownLanes
     }
 
-    /// "n more" in the all-day lane or a month cell: the day's events in a list under it. Settles the draft and the selection first.
+    /// The gutter button and "+N more": show every lane (scrolling past 4.5), or go back to two.
+    func toggleAllDayExpanded() {
+        gridState.allDayExpanded.toggle()
+        gridState.dayList = nil
+    }
+
+    /// "n more" of a month cell (and the model call the v3 snapshot uses): the day's events in a list under it. Settles the draft and the selection first.
     func openDayList(_ day: Date) {
         gridDismiss()
         gridState.dayList = GridDayList(day: math.startOfDay(day), period: periodID)
@@ -72,7 +80,7 @@ extension AppModel {
         guard let i = visibleDays.firstIndex(where: { math.isSameDay($0, l.day) }), let fold = allDayFold else { return nil }
         let f = gridState.allDayFrame
         let dw = f.width / CGFloat(max(1, visibleDays.count))
-        return CGRect(x: f.minX + CGFloat(i) * dw + 1, y: f.minY + CGFloat(fold) * AllDayView.row, width: dw - 3, height: 21)
+        return CGRect(x: f.minX + CGFloat(i) * dw + 2, y: f.minY + AllDayView.topPad + CGFloat(fold) * AllDayView.row, width: dw - 5, height: AllDayView.chip)
     }
 }
 

@@ -203,11 +203,14 @@ struct RGB: Equatable {
     func mixed(with o: RGB, _ t: Double) -> RGB { RGB(r + (o.r - r) * t, g + (o.g - g) * t, b + (o.b - b) * t) }
 }
 
-/// Colors for an event (app.css `.ev`): the calendar colour (`--cc`, darkened 22 percent toward ink on paper) as the bar, mixed over the
-/// window colour for the fill (17 / 25 / 8 percent on ink, 15 / 23 / 7 on paper), title and time tinted toward it.
+/// Colours of an event block (mockup-v4 `evVars()` :1003, the solid style with the quiet clean-up): `--cc` is the event colour (the
+/// event's own colour, else its calendar's; darkened 22 percent toward ink on paper). Fill is cc 34 percent over the window colour
+/// (22 on paper), the bar is cc, the title fg and the time fg2. Past (p2): cc 15 percent, bar cc 32 percent, fg2 and fg3. `dash` is the
+/// outline of an invitation without an answer. `EventPalette.colors(reply:past:)` picks the colours of one reply state.
 /// Both SwiftUI and CoreGraphics forms are kept because the grid paints events with CoreGraphics.
 struct EventPalette: Equatable {
     var barRGB: RGB, fillRGB: RGB, hoverFillRGB: RGB, pastFillRGB: RGB, titleRGB: RGB, timeRGB: RGB
+    var pastBarRGB: RGB, pastTitleRGB: RGB, pastTimeRGB: RGB, dashRGB: RGB, bgRGB: RGB, fg3RGB: RGB
     var bar: Color { barRGB.color }
     var fill: Color { fillRGB.color }
     var title: Color { titleRGB.color }
@@ -219,17 +222,23 @@ enum Palettes {
     static func bg(_ dark: Bool) -> RGB { InkRGB.of(dark).bg }
     static func fg(_ dark: Bool) -> RGB { InkRGB.of(dark).fg }
     static func fg2(_ dark: Bool) -> RGB { InkRGB.of(dark).fg2 }
-    /// `--cc`: the calendar colour as drawn. Paper darkens it 22 percent toward `InkRGB.paperShade`.
+    /// `--cc`: the event colour as drawn. Paper darkens it 22 percent toward `InkRGB.paperShade`.
     static func cc(_ hex: String, dark: Bool) -> RGB { dark ? RGB(hex: hex) : RGB(hex: hex).mixed(with: InkRGB.paperShade, 0.22) }
+    /// `.ev:hover { filter: brightness(1.12) }`.
+    static func brighter(_ c: RGB, _ k: Double = 1.12) -> RGB { RGB(min(1, c.r * k), min(1, c.g * k), min(1, c.b * k)) }
 
-    /// `barHex` is the calendar color, `fillHex` an optional per-event override of the tint.
+    /// `barHex` is the calendar colour, `fillHex` the event's own colour, which replaces it (mockup `colorOf`: `e.color || cal.hex`).
     static func palette(barHex: String, fillHex: String?, dark: Bool) -> EventPalette {
         let key = barHex.lowercased() + "|" + (fillHex ?? "") + (dark ? "|d" : "|l")
         if let c = cache[key] { return c }
-        let bar = cc(barHex, dark: dark), tint = fillHex.map { cc($0, dark: dark) } ?? bar, base = bg(dark)
-        let out = EventPalette(barRGB: bar, fillRGB: base.mixed(with: tint, dark ? 0.17 : 0.15), hoverFillRGB: base.mixed(with: tint, dark ? 0.25 : 0.23),
-                               pastFillRGB: base.mixed(with: tint, dark ? 0.08 : 0.07),
-                               titleRGB: fg(dark).mixed(with: bar, 0.22), timeRGB: fg2(dark).mixed(with: bar, 0.30))
+        let ink = InkRGB.of(dark)
+        let cc = cc(fillHex ?? barHex, dark: dark), base = ink.bg
+        let fill = base.mixed(with: cc, dark ? 0.34 : 0.22)
+        let out = EventPalette(barRGB: cc, fillRGB: fill, hoverFillRGB: brighter(fill),
+                               pastFillRGB: base.mixed(with: cc, (dark ? 1 : 0.65) * 0.15),
+                               titleRGB: dark ? ink.fg : InkRGB.paperShade, timeRGB: dark ? ink.fg2 : base.mixed(with: InkRGB.paperShade, 0.7),
+                               pastBarRGB: base.mixed(with: cc, 0.32), pastTitleRGB: ink.fg2, pastTimeRGB: ink.fg3,
+                               dashRGB: base.mixed(with: cc, dark ? 0.75 : 0.7), bgRGB: base, fg3RGB: ink.fg3)
         cache[key] = out
         return out
     }

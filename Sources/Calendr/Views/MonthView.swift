@@ -217,10 +217,12 @@ enum MonthPainter {
                     cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
                     ring(cg, r, ink)
                 } else {
-                    cg.addPath(shape); cg.setFillColor((past ? s.palette.pastFillRGB : hovered ? s.palette.hoverFillRGB : s.palette.fillRGB).cg); cg.fillPath()
+                    let c = s.colors
+                    cg.addPath(shape); cg.setFillColor((hovered ? Palettes.brighter(c.stripe ?? c.fill) : c.stripe ?? c.fill).cg); cg.fillPath()
+                    if let o = c.outline { cg.addPath(EventPainter.chipPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event - 0.5, squareLeft: it.openLeft, squareRight: it.openRight)); cg.setStrokeColor(o.cg); cg.setLineWidth(1); cg.strokePath() }
                 }
-                let color: CGColor = e.status == .declined || past ? ink.fg3 : e.id == draft ? ink.fg : s.palette.titleRGB.cg
-                EventPainter.truncated(cg, e.title.isEmpty ? "New event" : e.title, .title, x: r.minX + 7, top: r.minY, box: r.height, color: color, maxWidth: r.width - 13, strike: e.status == .declined)
+                let color: CGColor = e.id == draft || e.id == selected ? ink.fg : s.colors.title.cg
+                EventPainter.truncated(cg, e.title.isEmpty ? "New event" : e.title, .title, x: r.minX + 7, top: r.minY, box: r.height, color: color, maxWidth: r.width - 13, strike: s.reply == .declined)
             case .timed:
                 guard let e = it.event else { continue }
                 let s = style(e)
@@ -235,7 +237,7 @@ enum MonthPainter {
                 let tw = TextCache.line(time, .time).width
                 EventPainter.text(cg, time, .time, x: r.maxX - 6 - tw, top: r.minY, box: r.height, color: ink.fg3)
                 let tx = r.minX + 7 + 6 + 6
-                let declined = e.status == .declined
+                let declined = s.reply == .declined
                 EventPainter.truncated(cg, e.title.isEmpty ? "New event" : e.title, .monthTitle, x: tx, top: r.minY, box: r.height,
                                        color: declined || s.past ? ink.fg3 : ink.fg, maxWidth: max(1, r.maxX - 6 - tw - 6 - tx), strike: declined)
             case .more:
