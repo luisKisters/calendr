@@ -36,22 +36,28 @@ struct InkRGB: Equatable {
     let fg, fg2, fg3, fg4: RGB
     /// Hour labels (`hourc`, = fg2).
     let hourLabel: RGB
-    /// Row hover on bg and on the rail, selected row.
-    let hover, hoverRail, selected: RGB
+    /// Row hover on bg and on the rail, selected row (also the mini month's week band). Fitted, see `fitted()`.
+    var hover, hoverRail, selected: RGB
     /// Lines: `grid` hour line (≥ 1.15:1), `gridV` day divider, `hairStrong` all-day edge, `hair` pane edge. No half-hour line.
     let grid, gridV, hairStrong, hair: RGB
-    /// The today column (bg → fg 3.5 %).
-    let todayTint: RGB
+    /// The today column, header and all-day lane included. Fitted to `Contrast.todayTint` on bg.
+    var todayTint: RGB
     /// Red, only for now; `onLive` is the text of the now pill.
     let live, onLive: RGB
     /// The 2 px focus ring.
     let focus: RGB
     /// Status text.
     let ok, warn, danger: RGB
-    /// The selected segment of a `Segmented` and its edge.
-    let thumb, segRing: RGB
+    /// The selected segment of a `Segmented` and its edge. `segRing` is the edge colour, fitted to `Contrast.edge` on bg1.
+    let thumb: RGB
+    var segRing: RGB
+    /// Fitted states on the other surfaces: hover on a selected rail row (the mini month's band), hover on raised and on pop.
+    var selectedHover = RGB(0, 0, 0), raisedHover = RGB(0, 0, 0), popHover = RGB(0, 0, 0)
 
-    static let dark = InkRGB(
+    static let dark = darkBase.fitted(dark: true)
+    static let light = lightBase.fitted(dark: false)
+    /// The tables before the state fit. The event recipe (readability.js) is fitted on its own fills and starts from these.
+    static let darkBase = InkRGB(
         bg: RGB(hex: "#0B0B0C"), rail: RGB(hex: "#070708"), bg1: RGB(hex: "#151516"), bg2: RGB(hex: "#1D1D1E"), bg3: RGB(hex: "#2A2A2C"), pop: RGB(hex: "#0B0B0C"),
         fg: RGB(hex: "#EBEBED"), fg2: RGB(hex: "#CCCCCE"), fg3: RGB(hex: "#A8A8AA"), fg4: RGB(hex: "#4E4E50"), hourLabel: RGB(hex: "#CCCCCE"),
         hover: RGB(hex: "#161617"), hoverRail: RGB(hex: "#121213"), selected: RGB(hex: "#1E1E1F"),
@@ -59,7 +65,7 @@ struct InkRGB: Equatable {
         live: RGB(hex: "#FF6B5F"), onLive: RGB(hex: "#0B0B0C"), focus: RGB(hex: "#6E9BF5"),
         ok: RGB(hex: "#6CC58A"), warn: RGB(hex: "#E5B44A"), danger: RGB(hex: "#FF7B72"),
         thumb: RGB(hex: "#1D1D1E"), segRing: RGB(hex: "#6B6B6C"))
-    static let light = InkRGB(
+    static let lightBase = InkRGB(
         bg: RGB(hex: "#FBFBFB"), rail: RGB(hex: "#F4F4F5"), bg1: RGB(hex: "#F1F1F2"), bg2: RGB(hex: "#FFFFFF"), bg3: RGB(hex: "#DCDCDC"), pop: RGB(hex: "#FBFBFB"),
         fg: RGB(hex: "#1D1D20"), fg2: RGB(hex: "#4A4A50"), fg3: RGB(hex: "#606067"), fg4: RGB(hex: "#B8B8B9"), hourLabel: RGB(hex: "#4A4A50"),
         hover: RGB(hex: "#F1F1F1"), hoverRail: RGB(hex: "#EAEAEB"), selected: RGB(hex: "#EAEAEB"),
@@ -68,6 +74,30 @@ struct InkRGB: Equatable {
         ok: RGB(hex: "#2F7A4B"), warn: RGB(hex: "#8A5A00"), danger: RGB(hex: "#B4382D"),
         thumb: RGB(hex: "#FFFFFF"), segRing: RGB(hex: "#878789"))
     static func of(_ dark: Bool) -> InkRGB { dark ? .dark : .light }
+
+    /// The colour system (mockup-v16, round 3: "Fitted to a contrast target on every background"). Surfaces are fixed; what sits
+    /// on them is solved from contrast, so a state looks equally strong on every surface. Selected is the strongest neutral fill,
+    /// up to `Contrast.selected`, on which fg1, fg2 and fg3 still pass their soft-surface floors (`Contrast.textFloors`); hover is
+    /// half that step (the square root of its ratio); edges reach `Contrast.edge`.
+    func fitted(dark: Bool) -> InkRGB {
+        var t = self
+        func fit(_ bg: RGB, _ target: Double) -> RGB { Contrast.fit(bg, target, lighter: dark) }
+        let floors = Contrast.textFloors(dark: dark)
+        func readable(_ fill: RGB) -> Bool { [fg, fg2, fg3].indices.allSatisfy { ColorMath.ok([fg, fg2, fg3][$0].c8, fill.c8, floors[$0]) } }
+        // The strongest selected ratio the text allows (binary search on the target).
+        var lo = 1.0, hi = Contrast.selected
+        if readable(fit(rail, hi)) { lo = hi } else { for _ in 0..<30 { let mid = (lo + hi) / 2; if readable(fit(rail, mid)) { lo = mid } else { hi = mid } } }
+        let selected = lo, hover = min(Contrast.hover, selected.squareRoot())
+        t.selected = fit(rail, selected)
+        t.hover = fit(bg, hover)
+        t.hoverRail = fit(rail, hover)
+        t.selectedHover = fit(t.selected, hover)
+        t.raisedHover = fit(bg2, hover)
+        t.popHover = fit(pop, hover)
+        t.segRing = fit(bg1, Contrast.edge)
+        t.todayTint = fit(bg, Contrast.todayTint)
+        return t
+    }
     static let black = RGB(0, 0, 0)
     /// The neutral shadow on Paper (`rgba(20, 20, 30, …)` in the mockup's `--shadow-pop`).
     static let paperShadow = RGB(hex: "#14141E")
@@ -82,6 +112,34 @@ struct InkRGB: Equatable {
     static let neutralHex = "#888888"
     /// The dark greys the Paper / Dark event recipe starts dark text from when a fill is light (readability.js `recipe`).
     static let recipeInk = C8(hex: "#3A3A40"), recipeInkSoft = C8(hex: "#55555C")
+}
+
+/// WCAG 2 contrast and the targets of the colour system (design/mockup-v16, design/design-system/foundations.md "States").
+enum Contrast {
+    /// Upper targets: hover 1.15:1, selected 1.45:1 (lowered where the text floors need it), edges 3:1 (WCAG non-text), today column.
+    static let hover = 1.15, selected = 1.45, edge = 3.0, todayTint = 1.05
+    /// The soft-surface text floors of foundations.md (WCAG ratio, APCA Lc) for fg1, fg2, fg3: text on a hover or selected fill.
+    static func textFloors(dark: Bool) -> [ColorMath.Floor] { dark ? [(12, 85), (7, 63), (5.5, 45)] : [(12, 88), (7, 75), (5, 65)] }
+
+    static func luminance(_ c: RGB) -> Double {
+        func lin(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+    }
+    static func ratio(_ a: RGB, _ b: RGB) -> Double {
+        let x = luminance(a), y = luminance(b)
+        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+    }
+    /// The neutral grey that reaches `target` against `bg`: lighter in Dark, darker in Paper. Rounded to 8 bits.
+    static func fit(_ bg: RGB, _ target: Double, lighter: Bool) -> RGB {
+        var lo = lighter ? max(bg.r, bg.g, bg.b) : 0, hi = lighter ? 1 : min(bg.r, bg.g, bg.b)
+        for _ in 0..<40 {
+            let mid = (lo + hi) / 2
+            let ok = ratio(bg, RGB(mid, mid, mid)) >= target
+            if lighter { if ok { hi = mid } else { lo = mid } } else { if ok { lo = mid } else { hi = mid } }
+        }
+        let v = lighter ? (hi * 255).rounded(.up) / 255 : (lo * 255).rounded(.down) / 255
+        return RGB(v, v, v)
+    }
 }
 
 /// Horion v5 tokens. Dark first.
@@ -111,10 +169,12 @@ enum Theme {
     static let hover = Color.ink(\.hover)
     static let hoverRail = Color.ink(\.hoverRail)
     static let selected = Color.ink(\.selected)
+    /// Hover on a selected rail row (a day inside the mini month's week band).
+    static let selectedHover = Color.ink(\.selectedHover)
     /// Row hover and the keyboard's row on a floating surface (menus, the command menu, dialogs, toasts): fg1 6 % over `pop`
     /// (app.css `.pop, .modal, .toast { --hover: color-mix(fg1 6 %, raised) }`). `hover` is mixed over the canvas and would sit
     /// darker than the menu.
-    static let hoverPop = Color.dyn(InkRGB.dark.pop.mixed(with: InkRGB.dark.fg, 0.06).color, InkRGB.light.pop.mixed(with: InkRGB.light.fg, 0.06).color)
+    static let hoverPop = Color.ink(\.popHover)
     /// A settings group (`.sbox`): fg1 3.5 % over `pop`.
     static let groupBox = Color.dyn(InkRGB.dark.pop.mixed(with: InkRGB.dark.fg, 0.035).color, InkRGB.light.pop.mixed(with: InkRGB.light.fg, 0.035).color)
     static let scrim = Color.ink(\.bg, 0.5, 0.26)
@@ -131,9 +191,9 @@ enum Theme {
     /// The right column's search field edge: none in Dark, hair2 in Paper (`.srch label`).
     static let searchEdge = Color.dyn(.clear, InkRGB.light.hairStrong.color)
     /// The sidebar eye under the pointer (`.cal .eye:hover`: fg1 8 % over the row's rail hover).
-    static let eyeHover = Color.dyn(InkRGB.dark.hoverRail.mixed(with: InkRGB.dark.fg, 0.08).color, InkRGB.light.hoverRail.mixed(with: InkRGB.light.fg, 0.08).color)
+    static let eyeHover = Color.ink(\.selectedHover)
     /// Hover of a `raised` chrome button: fg1 mixed in by 6 % (Today) or 5 % (Join).
-    static let buttonHover = Color.dyn(InkRGB.dark.bg2.mixed(with: InkRGB.dark.fg, 0.06).color, InkRGB.light.bg2.mixed(with: InkRGB.light.fg, 0.06).color)
+    static let buttonHover = Color.ink(\.raisedHover)
     static let joinHover = Color.dyn(InkRGB.dark.bg2.mixed(with: InkRGB.dark.fg, 0.05).color, InkRGB.light.bg2.mixed(with: InkRGB.light.fg, 0.05).color)
     /// A calendar colour as a dot, square or swatch (`calDot`, the recipe's mark), in both appearances. Every place that shows a
     /// calendar's colour outside an event block uses this or `calendarBar`, never the raw hex.
@@ -332,7 +392,7 @@ enum Palettes {
         lock.lock(); defer { lock.unlock() }
         if let c = cache[key] { return c }
         let src = C8(hex: hex)
-        let out = dark ? EventRecipe.dark(src).palette(ink: InkRGB.dark) : EventRecipe.paper(src).palette(ink: InkRGB.light)
+        let out = dark ? EventRecipe.dark(src).palette(ink: InkRGB.darkBase) : EventRecipe.paper(src).palette(ink: InkRGB.lightBase)
         if cache.count > 2000 { cache.removeAll() }
         cache[key] = out
         return out
@@ -371,7 +431,7 @@ struct EventRecipe: Equatable {
 
     /// Dark (locked): fill oklch(.29, .074 × min(1, C₀/.1), H), bar oklch(.70, min(.25, 2.5 C₀), H), white title, hue-tinted time.
     static func dark(_ hex: C8) -> EventRecipe {
-        let t = InkRGB.dark, bg = t.bg.c8, fg2 = t.fg2.c8, fg3 = t.fg3.c8
+        let t = InkRGB.darkBase, bg = t.bg.c8, fg2 = t.fg2.c8, fg3 = t.fg3.c8
         let (_, C0, H) = M.oklch(hex)
         let yel = yellow(H), c = 0.08, dl = 0.1                          // chroma lever "Rich" (C .08, ΔL .1)
         func CC(_ x: Double) -> Double { min(C0, x) * (yel ? 0.85 : 1) }
@@ -402,7 +462,7 @@ struct EventRecipe: Equatable {
 
     /// Paper (derived, "Clear tint"): a light per-hue tint at ΔE_OK ≥ 9 × k from the canvas, a 4 px bar at L .57, fg1 titles.
     static func paper(_ hex: C8) -> EventRecipe {
-        let t = InkRGB.light, bg = t.bg.c8, fg1 = t.fg.c8, fg2 = t.fg2.c8, fg3 = t.fg3.c8
+        let t = InkRGB.lightBase, bg = t.bg.c8, fg1 = t.fg.c8, fg2 = t.fg2.c8, fg3 = t.fg3.c8
         let d = dark(hex)
         let (L0, C0, Hcal) = M.oklch(hex), dfill = M.oklch(d.fill), Hd = dfill.H
         let yel = yellow(Hd), C = min(dfill.C * 1.1, 0.075) * (yel ? 0.9 : 1)

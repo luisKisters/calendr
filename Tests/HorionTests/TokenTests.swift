@@ -71,7 +71,7 @@ struct TokenTests {
         #expect(Self.close(InkRGB.joinEdgeLight, InkRGB.light.rail.mixed(with: RGB(hex: "#14141E"), 0.12)))
         #expect(Self.close(Self.rgb(Theme.joinEdge, dark: true), InkRGB.joinEdgeDark))
         #expect(InkRGB.joinEdgeLight == RGB(hex: "#D9D9DB") && InkRGB.buttonEdgeLight == RGB(hex: "#E0DEDC"))
-        #expect(Self.close(Self.rgb(Theme.buttonHover, dark: true), InkRGB.dark.bg2.mixed(with: InkRGB.dark.fg, 0.06)))
+        #expect(Self.close(Self.rgb(Theme.buttonHover, dark: true), InkRGB.dark.raisedHover))   // fitted (mockup-v16)
         #expect(Self.close(Self.rgb(Theme.searchEdge, dark: false), InkRGB.light.hairStrong))
     }
 
