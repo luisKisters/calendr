@@ -70,7 +70,8 @@ extension EventPalette {
         case .maybe:
             return BlockColors(fill: past ? pastFillRGB : fillRGB, stripe: past ? nil : hoverFillRGB, bar: bar, barAlpha: 1, title: title, time: time, outline: nil, strike: false)
         case .notAnswered:
-            return BlockColors(fill: bgRGB, stripe: nil, bar: bar, barAlpha: 1, title: titleRGB, time: time, outline: edgeRGB, strike: false)
+            // `.ev.st-none`: bg fill, fg1 / fg2 text, no bar (the painter skips it when there is an outline), a 1 pt hue outline.
+            return BlockColors(fill: bgRGB, stripe: nil, bar: bar, barAlpha: 1, title: fgRGB, time: fg2RGB, outline: edgeRGB, strike: false)
         case .declined:
             return BlockColors(fill: declFillRGB, stripe: nil, bar: pastBarRGB, barAlpha: 1, title: declTitleRGB, time: declTitleRGB, outline: nil, strike: true)
         }

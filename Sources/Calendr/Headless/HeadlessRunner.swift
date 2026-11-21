@@ -29,7 +29,7 @@ enum HeadlessRunner {
     }
 
     static func makeModel(_ o: LaunchOptions, dense: Bool = false) -> AppModel {
-        let demo = DemoStore(dense: dense)
+        let demo = DemoStore(dense: dense, fixture: o.fixture)
         // PR E tours and the accounts snapshot: the demo store behind a CompositeStore, so a demo Google account can join it
         return AppModel(store: o.googleDemo ? CompositeStore(base: demo) : demo, options: o, persist: false)
     }

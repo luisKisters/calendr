@@ -35,7 +35,7 @@ struct EventsCanvas: View {
                 for i in order where !events[i].placement.hidden {
                     if ranks[i] >= 100_000 { top.append(i); continue }     // the selected block and the draft go above the "+N" buttons
                     let p = events[i]
-                    EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: styles(p), fmt: fmt, dayView: dayView)
+                    EventPainter.draw(cg, event: p, rect: g.rect(for: p), style: styles(p), fmt: fmt, dayView: dayView)
                 }
                 let ink = EventPainter.Ink.of(dark)
                 for (d, day) in groups.enumerated() {
@@ -45,18 +45,18 @@ struct EventsCanvas: View {
                 }
                 for i in top {
                     let p = events[i]
-                    EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: styles(p), fmt: fmt, dayView: dayView)
+                    EventPainter.draw(cg, event: p, rect: g.rect(for: p), style: styles(p), fmt: fmt, dayView: dayView)
                 }
                 if let p = preview {
                     if creating {
                         var s = EventStyle(palette: Palettes.palette(barHex: InkRGB.neutralHex, fillHex: nil, dark: dark), past: false, selected: false, overlapping: false)
                         s.draft = true; s.isDark = dark
-                        EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: s, fmt: fmt, dayView: dayView)
+                        EventPainter.draw(cg, event: p, rect: g.rect(for: p), style: s, fmt: fmt, dayView: dayView)
                     } else {
                         var s = styles(p)
                         s.selected = true; s.over = false; s.past = false
                         cg.saveGState(); cg.setAlpha(0.92)
-                        EventPainter.draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: g.rect(for: p), style: s, fmt: fmt, dayView: dayView)
+                        EventPainter.draw(cg, event: p, rect: g.rect(for: p), style: s, fmt: fmt, dayView: dayView)
                         cg.restoreGState()
                     }
                 }
@@ -71,7 +71,7 @@ struct EventsCanvas: View {
 @MainActor
 enum TextCache {
     enum Kind: Int {
-        case title, titleMedium, time, hour, hourBold, header, headerToday, headerNum, headerNumToday, headerPast, allDayLabel, more, monthTitle, monthNum, monthNumToday, micro, dayNum, moreChip
+        case title, titleMedium, titleSmall, time, hour, hourBold, header, headerToday, headerNum, headerNumToday, headerPast, allDayLabel, more, monthTitle, monthNum, monthNumToday, micro, dayNum, moreChip
     }
     struct Key: Hashable { var text: String; var kind: Int }
     private static var lines: [Key: (CTLine, CGFloat, CGFloat, CGFloat)] = [:]   // line, width, ascent, descent
@@ -82,6 +82,7 @@ enum TextCache {
         switch k {
         case .title: return f(TypeSize.event, 500)
         case .titleMedium: return f(TypeSize.event, 500)
+        case .titleSmall: return f(TypeSize.small, 500)            // `.ev.thin .t`
         case .time: return f(TypeSize.small, 400, true)
         case .hour: return f(TypeSize.small, 400, true)
         case .hourBold: return f(TypeSize.small, 600, true)          // the now pill (11 / 600 on live red)
@@ -131,9 +132,10 @@ enum TextCache {
             let candidate = cur.isEmpty ? w : cur + " " + w
             if fits(candidate) { cur = candidate; words.removeFirst(); continue }
             if texts.count == maxLines - 1 { break }           // the last line: the rest is cut with an ellipsis below
-            if hyphenate, let (head, tail) = hyphenSplit(w, fitting: { fits(cur.isEmpty ? $0 : cur + " " + $0) }) {
-                texts.append(cur.isEmpty ? head : cur + " " + head)
-                words[0] = tail; cur = ""
+            // As the browser does: a line breaks at a space first; only a word too wide for a line of its own breaks at a syllable.
+            if hyphenate, cur.isEmpty, let (head, tail) = hyphenSplit(w, fitting: { fits($0) }) {
+                texts.append(head)
+                words[0] = tail
                 continue
             }
             if cur.isEmpty { cur = w; words.removeFirst() }      // a word wider than the line: a line of its own
@@ -189,7 +191,7 @@ enum TextCache {
         if let hit = lines[key] { return (hit.0, hit.1, hit.2, hit.3) }
         var attrs: [NSAttributedString.Key: Any] = [.font: font(kind), NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true]
         switch kind {
-        case .title, .titleMedium: attrs[.kern] = TypeTrack.text
+        case .title, .titleMedium, .titleSmall: attrs[.kern] = TypeTrack.text
         case .time, .allDayLabel, .micro: attrs[.kern] = TypeTrack.small
         case .header, .headerToday: attrs[.kern] = TypeTrack.label
         case .headerNum, .headerNumToday, .headerPast: attrs[.kern] = TypeTrack.text
@@ -205,6 +207,14 @@ enum TextCache {
 }
 
 enum EventPainter {
+    /// Where the baseline sits in a line box of height `box`, as the browser places it (the mockup is the reference): Blink rounds
+    /// the font's ascent and descent to whole points and floors the half-leading. Geist 12 in a 15.5 box: ascent 12.06 → 12,
+    /// descent 3.54 → 4, half-leading -0.25 → -1, so the baseline is 11 pt down (CoreText's exact metrics would put it at 12).
+    static func baselineOffset(box: CGFloat, ascent: CGFloat, descent: CGFloat) -> CGFloat {
+        let a = ascent.rounded(), d = descent.rounded()
+        return ((box - (a + d)) / 2).rounded(.down) + a
+    }
+
     /// Draws `line` with its line box top at `top` (CSS-style half leading inside `box` height).
     @MainActor @discardableResult
     static func text(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, box: CGFloat = 14, color: CGColor, strike: Bool = false, kern: CGFloat = 0) -> CGFloat {
@@ -215,7 +225,7 @@ enum EventPainter {
 
     @MainActor
     private static func draw(_ cg: CGContext, _ line: CTLine, width: CGFloat, ascent: CGFloat, descent: CGFloat, x: CGFloat, top: CGFloat, box: CGFloat, color: CGColor, strike: Bool) {
-        let baseline = top + (box - (ascent + descent)) / 2 + ascent
+        let baseline = top + baselineOffset(box: box, ascent: ascent, descent: descent)
         cg.saveGState()
         cg.setFillColor(color)
         cg.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
@@ -309,10 +319,10 @@ enum EventPainter {
         static func of(_ dark: Bool) -> Ink { dark ? darkInk : lightInk }
     }
 
-    /// The 135 degree stripes of a maybe block (`repeating-linear-gradient(135deg, fill 0 6px, stripe 6px 12px)`): the band at
-    /// distance d = (x + y) / sqrt 2 from the top-left corner is `fill` when d mod 12 < 6. One path per block, drawn under its clip.
+    /// The 135 degree hatch of a maybe block (`repeating-linear-gradient(135deg, fillh 0 5px, transparent 5px 10px)` over the fill):
+    /// the band at distance d = (x + y) / sqrt 2 from the top-left corner is `color` when d mod 10 < 5. One path, under the clip.
     static func stripes(_ cg: CGContext, _ r: CGRect, color: CGColor) {
-        let step = 12 * 2.0.squareRoot(), band = 6 * 2.0.squareRoot(), h = r.height
+        let w = Double(EventShape.hatch), step = 2 * w * 2.0.squareRoot(), band = w * 2.0.squareRoot(), h = r.height
         let p = CGMutablePath()
         var a = 0.0
         while a < r.width + h {
@@ -324,14 +334,15 @@ enum EventPainter {
         cg.addPath(p); cg.setFillColor(color); cg.fillPath()
     }
 
-    /// The rings outside a block: cut (1.5 pt of window colour) and selected (that plus 1.5 pt of the bar colour,
-    /// `0 0 0 1.5px bg, 0 0 0 3px bar`).
+    /// The rings outside a block: cascaded (`.ev.stk`: `0 0 0 1px bg`) and selected (`0 0 0 1.5px bg, 0 0 0 3px bar`).
     static func rings(_ cg: CGContext, _ path: (CGFloat) -> CGPath, selected: Bool, cut: Bool, ink: Ink, ring: CGColor? = nil) {
         if selected {
             cg.addPath(path(-2.25)); cg.setStrokeColor(ring ?? ink.fg); cg.setLineWidth(1.5); cg.strokePath()
         }
-        if selected || cut {
+        if selected {
             cg.addPath(path(-0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
+        } else if cut {
+            cg.addPath(path(-0.5)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1); cg.strokePath()
         }
     }
 
@@ -346,38 +357,65 @@ enum EventPainter {
         text(cg, s, .moreChip, x: r.midX - w / 2, top: r.minY, box: r.height, color: hot ? ink.bg : ink.fg)
     }
 
-    /// Line height of event text: 11.5 pt at `line-height: 1.25`.
-    static let lineHeight: CGFloat = 14.4
+    /// Line box of event titles (12 / 15.5); event times use `BlockText.timeLine` (11 / 14).
+    static let lineHeight: CGFloat = CGFloat(BlockText.titleLine)
 
-    /// One event block (mockup-v4 `.ev`): fill in its reply state, bar, title and time as `BlockText.plan` lays them out.
+    /// The text plan of a placed block as it is drawn (the painter and the tours use the same call).
+    static func plan(_ p: PlacedEvent, rect r: CGRect, style: EventStyle) -> BlockTextPlan {
+        BlockText.plan(height: Double(r.height), width: Double(r.width), minutes: max(p.endMinute, p.placement.drawEndMinute ?? 0) - p.startMinute,
+                       isShort: style.isShort, cut: p.placement.covered, continuesFromPrevious: p.continuesFromPrevious)
+    }
+
+    /// The left edge of event text inside a block: the bar, then 6 pt (2 pt when thin). All-day chips start 1 pt further in.
+    static func textInset(dark: Bool, thin: Bool = false) -> CGFloat { EventShape.bar(dark: dark) + (thin ? 2 : CGFloat(BlockText.padX)) }
+
     @MainActor
-    static func draw(_ cg: CGContext, event e: CalendarEvent, start: Int, end: Int, rect r: CGRect, style: EventStyle, fmt: Fmt, dayView: Bool) {
+    static func draw(_ cg: CGContext, event p: PlacedEvent, rect r: CGRect, style: EventStyle, fmt: Fmt, dayView: Bool) {
+        draw(cg, event: p.event, start: p.startMinute, end: p.endMinute, rect: r, style: style, fmt: fmt, dayView: dayView, plan: plan(p, rect: r, style: style))
+    }
+
+    /// One event block (mockup-v11 `.ev`, look R · R10): fill in its reply state, the flush bar, title and time as `BlockText.plan`
+    /// lays them out. Rings: selected 1.5 pt bg + 1.5 pt bar outside with a soft shadow; a cascaded block (`over`) 1 pt bg.
+    @MainActor
+    static func draw(_ cg: CGContext, event e: CalendarEvent, start: Int, end: Int, rect r: CGRect, style: EventStyle, fmt: Fmt, dayView: Bool,
+                     plan: BlockTextPlan? = nil) {
         let ink = Ink.of(style.isDark)
-        let shape = roundedPath(r, Radius.event)
+        let radius = Radius.event
+        let shape = roundedPath(r, radius)
         let c = style.colors
+        let plan = plan ?? BlockText.plan(height: Double(r.height), width: Double(r.width), minutes: end - start, isShort: style.isShort)
         cg.saveGState()
         defer { cg.restoreGState() }
 
-        // Rings, fill, stripes, outline.
-        rings(cg, { roundedPath(r.insetBy(dx: $0, dy: $0), Radius.event - $0) }, selected: style.selected && !style.draft, cut: style.over, ink: ink, ring: c.bar.cg)
+        let selected = style.selected && !style.draft
+        if selected {
+            // `0 2px 6px rgba(0,0,0,.16)` under the rings.
+            cg.saveGState()
+            cg.setShadow(offset: CGSize(width: 0, height: 2), blur: 6, color: InkRGB.black.cg.copy(alpha: 0.16))
+            cg.addPath(roundedPath(r.insetBy(dx: -3, dy: -3), radius + 3)); cg.setFillColor(ink.bg); cg.fillPath()
+            cg.restoreGState()
+        }
+        // `.ev.stk.st-none` keeps only its inset outline: no window-coloured ring around an unanswered block.
+        rings(cg, { roundedPath(r.insetBy(dx: $0, dy: $0), radius - $0) }, selected: selected, cut: style.over && c.outline == nil, ink: ink, ring: c.bar.cg)
         if style.draft {
             cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
             cg.saveGState()
-            cg.addPath(roundedPath(r.insetBy(dx: 0.75, dy: 0.75), Radius.event - 0.75))
+            cg.addPath(roundedPath(r.insetBy(dx: 0.75, dy: 0.75), radius - 0.75))
             cg.setStrokeColor(ink.ring); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
             cg.restoreGState()
         } else {
-            cg.addPath(shape); cg.setFillColor((c.stripe ?? c.fill).cg); cg.fillPath()
+            cg.addPath(shape); cg.setFillColor(c.fill.cg); cg.fillPath()
         }
         cg.addPath(shape); cg.clip()
+        let barW = EventShape.bar(dark: style.isDark)
         if !style.draft {
-            if c.stripe != nil { stripes(cg, r, color: c.fill.cg) }
+            if let h = c.stripe { stripes(cg, r, color: h.cg) }
             if let o = c.outline {
-                cg.addPath(roundedPath(r.insetBy(dx: 0.5, dy: 0.5), Radius.event - 0.5)); cg.setStrokeColor(o.cg); cg.setLineWidth(1); cg.strokePath()
+                cg.addPath(roundedPath(r.insetBy(dx: 0.5, dy: 0.5), radius - 0.5)); cg.setStrokeColor(o.cg); cg.setLineWidth(1); cg.strokePath()
+            } else {
+                // The bar: flush left, full height, clipped by the block's corners (`.ev::before { left 0; top 0; bottom 0 }`).
+                cg.setFillColor(c.bar.cg.copy(alpha: c.barAlpha) ?? c.bar.cg); cg.fill(CGRect(x: r.minX, y: r.minY, width: barW, height: r.height))
             }
-            // Bar: 3 pt, inset 3 pt from top, bottom and left.
-            let bar = CGRect(x: r.minX + 3, y: r.minY + 3, width: 3, height: max(0, r.height - 6))
-            cg.addPath(roundedPath(bar, Radius.bar)); cg.setFillColor(c.bar.cg.copy(alpha: c.barAlpha) ?? c.bar.cg); cg.fillPath()
         }
 
         if style.unsent && r.width >= 20 {
@@ -388,31 +426,38 @@ enum EventPainter {
         let title = e.title.isEmpty ? (style.draft || e.id.isEmpty ? "New event" : "(No title)") : e.title
         let titleColor = style.draft ? ink.fg : c.title.cg, timeColor = style.draft ? ink.fg2 : c.time.cg
         let strike = c.strike && !style.draft
-        let plan = BlockText.plan(height: Double(r.height), width: Double(r.width), isShort: style.isShort)
-        let x = r.minX + 10
-        let lh = lineHeight
+        let x = r.minX + textInset(dark: style.isDark, thin: plan.thin)
+        let right = r.maxX - (plan.thin ? 2 : CGFloat(BlockText.padX))
+        let w = max(1, right - x)
+        let kind: TextCache.Kind = plan.thin ? .titleSmall : .title
         let timeText: String? = switch plan.time {
         case .range: TextCache.range(fmt, start, end)
         case .start: TextCache.time(fmt, minutes: start)
+        case .until: "\u{2192} " + TextCache.time(fmt, minutes: end)
         case .none: nil
         }
-        if plan.lines == .one {
-            let right = r.maxX - 5
-            let top = plan.centered ? r.minY + (r.height - lh) / 2 : r.minY + 3
+        if plan.narrow {
+            // `.ev.narrow .t` / `.ev.squeezed .t`: one line, cut at the content edge (no ellipsis), no time.
+            let box = plan.lines == .one ? CGFloat(BlockText.oneLineBox(height: Double(r.height))) : lineHeight
+            let top = plan.lines == .one && plan.centered ? r.minY + (r.height - box) / 2 : r.minY + CGFloat(BlockText.padTop)
+            cg.saveGState(); cg.clip(to: CGRect(x: x, y: r.minY, width: w, height: r.height))
+            text(cg, title, kind, x: x, top: top, box: box, color: titleColor, strike: strike)
+            cg.restoreGState()
+        } else if plan.lines == .one {
+            // `.ev.one`: title and time share one line box; the box shrinks to a short block, which centres it.
+            let box = CGFloat(BlockText.oneLineBox(height: Double(r.height)))
+            let top = plan.centered ? r.minY + (r.height - box) / 2 : r.minY + CGFloat(BlockText.padTop)
             let tw = timeText.map { TextCache.line($0, .time).width } ?? 0
-            let titleMax = max(1, right - x - (tw > 0 ? tw + 4 : 0))
-            let drawn = truncated(cg, title, .title, x: x, top: top, box: lh, color: titleColor, maxWidth: titleMax, strike: strike, clipped: true)
-            if let t = timeText { text(cg, t, .time, x: x + drawn + 4, top: top, box: lh, color: timeColor, strike: strike) }
+            let gap: CGFloat = 5
+            let titleMax = max(1, w - (tw > 0 ? tw + gap : 0))
+            let drawn = truncated(cg, title, kind, x: x, top: top, box: box, color: titleColor, maxWidth: titleMax, strike: strike, clipped: true)
+            if let t = timeText { text(cg, t, .time, x: x + drawn + gap, top: top, box: box, color: timeColor, strike: strike) }
         } else {
-            let w = max(1, r.maxX - 7 - x)
-            let top = r.minY + (plan.compact ? 2 : 4)
-            let lines = wrapped(cg, title, .title, x: x, top: top, width: w, maxLines: plan.maxTitleLines, lineHeight: lh, color: titleColor,
+            let top = r.minY + CGFloat(BlockText.padTop)
+            let lines = wrapped(cg, title, kind, x: x, top: top, width: w, maxLines: plan.maxTitleLines, lineHeight: lineHeight, color: titleColor,
                                 strike: strike, hyphenate: plan.hyphenate)
-            let y = top + CGFloat(lines) * lh + (plan.compact ? 0 : 1)
-            if let t = timeText {
-                if plan.narrow { text(cg, t, .time, x: x, top: y, box: lh, color: timeColor, strike: strike) }
-                else { truncated(cg, t, .time, x: x, top: y, box: lh, color: timeColor, maxWidth: w, strike: strike) }
-            }
+            let y = top + CGFloat(lines) * lineHeight + CGFloat(BlockText.timeGap)
+            if let t = timeText { truncated(cg, t, .time, x: x, top: y, box: CGFloat(BlockText.timeLine), color: timeColor, maxWidth: w, strike: strike) }
         }
     }
 }

@@ -29,17 +29,18 @@ final class DemoStore: CalendarStore {
     private(set) var refreshCount = 0
 
     /// `dense`: 300 more events a week for 120 weeks (the perf run).
-    init(dense: Bool = false, authorization: StoreAuthorization = .authorized) {
+    init(dense: Bool = false, authorization: StoreAuthorization = .authorized, fixture: LaunchOptions.Fixture = .v4) {
         self.authorization = authorization
-        accounts = DemoDataV4.accounts
-        teammates = DemoDataV4.teammates
-        defaultCalendarID = DemoDataV4.personal
+        let v11 = fixture == .v11
+        accounts = v11 ? DemoDataV11.accounts : DemoDataV4.accounts
+        teammates = v11 ? DemoDataV11.teammates : DemoDataV4.teammates
+        defaultCalendarID = v11 ? DemoDataV11.cal("personal") : DemoDataV4.personal
         let t0 = CFAbsoluteTimeGetCurrent()
-        events = (DemoDataV4.buildEvents() + (dense ? DemoDataV4.denseEvents() : [])).sorted { $0.start < $1.start }
+        events = ((v11 ? DemoDataV11.buildEvents() : DemoDataV4.buildEvents()) + (dense ? DemoDataV4.denseEvents() : [])).sorted { $0.start < $1.start }
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "buildEvents %.0f ms (%d events)", (CFAbsoluteTimeGetCurrent() - t0) * 1000, events.count)) }
         let t1 = CFAbsoluteTimeGetCurrent()
         var byMail: [String: [CalendarEvent]] = [:]
-        for e in DemoDataV4.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
+        for e in v11 ? [] : DemoDataV4.teammateEvents() { byMail[e.ownerEmail ?? "", default: []].append(e) }
         teamEvents = byMail
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "teammates %.0f ms", (CFAbsoluteTimeGetCurrent() - t1) * 1000)) }
         recomputeMax()

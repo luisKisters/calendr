@@ -2,6 +2,9 @@ import Foundation
 import CalendrKit
 
 struct LaunchOptions {
+    /// The demo data: the mockup-v4 week (default) or the mockup-v11 `?demo=1` week (`--fixture v11`, every `v11-*` snapshot).
+    enum Fixture: String { case v4, v11 }
+    var fixture: Fixture = .v4
     /// `--demo` (or its old alias `--fixture v4`): the design/mockup-v4 week (`DemoDataV4`) with its clock (Sun 4 Oct 2026 15:10) and 46 pt hours.
     var demo = false
     var now: Date?
@@ -30,12 +33,14 @@ struct LaunchOptions {
             switch args[i] {
             case "--demo": o.demo = true
             case "--now": o.now = value().flatMap(parseNow)
-            case "--snapshot": o.snapshot = value(); o.demo = true; o.freezeClock = true
+            case "--snapshot":
+                o.snapshot = value(); o.demo = true; o.freezeClock = true
+                if o.snapshot?.hasPrefix("v11-") == true { o.fixture = .v11 }
             case "--out": o.out = value()
             case "--walkthrough":
                 o.walkthrough = true; o.demo = true; o.freezeClock = true
                 if i + 1 < args.count, !args[i + 1].hasPrefix("-") { o.tour = value() }
-            case "--fixture": o.demo = true; _ = value()        // `--fixture v4`: the demo is the v4 week
+            case "--fixture": o.demo = true; if let f = value().flatMap(Fixture.init) { o.fixture = f }       // `--fixture v4` / `v11`
             case "--record": o.record = value()
             case "--perf": o.perf = true; o.demo = true; o.freezeClock = true
             case "--freeze-clock": o.freezeClock = true
@@ -47,7 +52,7 @@ struct LaunchOptions {
             }
             i += 1
         }
-        if o.demo && o.now == nil { o.now = DemoDataV4.now }
+        if o.demo && o.now == nil { o.now = o.fixture == .v11 ? DemoDataV11.now : DemoDataV4.now }
         return o
     }
 

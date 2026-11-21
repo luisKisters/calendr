@@ -235,7 +235,8 @@ struct PaletteV5Tests {
         let past = p.colors(reply: .accepted, past: true)
         #expect(past.fill == p.pastFillRGB && past.bar == p.pastBarRGB && past.title == p.pastTitleRGB && past.time == p.pastTimeRGB)
         let none = p.colors(reply: .notAnswered, past: false)
-        #expect(none.fill == InkRGB.dark.bg && none.outline == p.edgeRGB && none.title == p.titleRGB)
+        // `.ev.st-none`: bg fill, fg1 title, fg2 time and the 1 pt hue outline (the painter draws no bar with an outline).
+        #expect(none.fill == InkRGB.dark.bg && none.outline == p.edgeRGB && none.title == InkRGB.dark.fg && none.time == InkRGB.dark.fg2)
         let maybe = p.colors(reply: .maybe, past: false)
         #expect(maybe.fill == p.fillRGB && maybe.stripe == p.hoverFillRGB && p.colors(reply: .maybe, past: true).stripe == nil)
         let no = p.colors(reply: .declined, past: false)
@@ -264,13 +265,16 @@ struct PaletteV5Tests {
         #expect(EventReply.declined.label == "declined" && EventReply.notAnswered.label == "no reply" && EventReply.maybe.label == "maybe")
     }
 
-    @Test func longWordsHyphenateAtSyllablesAndTheResultIsCached() {
-        let w = TextCache.line("Research inter-", .title).width + 1
-        let lines = TextCache.wrapTexts("Research interviews", .title, width: w, maxLines: 2, hyphenate: true)
-        #expect(lines == ["Research inter-", "views"])
-        #expect(TextCache.wrapTexts("Research interviews", .title, width: w, maxLines: 2, hyphenate: false) == ["Research", "interviews"])
-        let a = TextCache.wrapped("Research interviews", .title, width: w, maxLines: 2, hyphenate: true)
-        let b = TextCache.wrapped("Research interviews", .title, width: w, maxLines: 2, hyphenate: true)
+    @Test func titlesBreakAtSpacesFirstAndLongWordsHyphenate() {
+        // As the browser does (mockup "Customer / interviews"): a space break wins when the word fits a line of its own.
+        let w = TextCache.line("interviews", .title).width + 1
+        #expect(TextCache.wrapTexts("Research interviews", .title, width: w, maxLines: 2, hyphenate: true) == ["Research", "interviews"])
+        // A word wider than the line breaks at a syllable with a hyphen.
+        let narrow = TextCache.line("Confer-", .title).width + 1
+        let lines = TextCache.wrapTexts("Conference", .title, width: narrow, maxLines: 2, hyphenate: true)
+        #expect(lines.count == 2 && lines[0].hasSuffix("-"), "\(lines)")
+        let a = TextCache.wrapped("Conference", .title, width: narrow, maxLines: 2, hyphenate: true)
+        let b = TextCache.wrapped("Conference", .title, width: narrow, maxLines: 2, hyphenate: true)
         #expect(a.count == 2 && a[0].line === b[0].line)
     }
 }

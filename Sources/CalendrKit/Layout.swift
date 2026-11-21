@@ -41,6 +41,9 @@ public struct Placement: Equatable, Sendable {
     public var hidden = false
     /// Where the block is drawn to when that differs from the event end (a short item spans 22 minutes).
     public var drawEndMinute: Int?
+    /// A later block starts on it within `RangeLayoutBuilder.coverMinutes` of its start (mockup-v11 `cut`): its text keeps to one line,
+    /// so nothing peeks out half hidden.
+    public var covered = false
     /// Paint order: the mockup's `z-index: 1 + min(level, 4)`, then the layout order.
     public var z: Int { min(level, 4) * 1000 + order }
 }
@@ -258,12 +261,13 @@ public enum RangeLayoutBuilder {
                          order: order)
     }
 
-    /// Lays out one day with `OverlapV5` and sorts it into paint order; events that do not fit are kept with `placement.hidden`
+    /// Lays out one day with `OverlapV11` (the v11 cascade) and sorts it into paint order; events that do not fit (none since v11) are kept with `placement.hidden`
     /// and listed in the returned "+N" groups (by event id). `keepVisible` (the draft, a drag preview) is never hidden: when it
     /// would overflow it gets `forcedPlacement` and stays out of the groups.
     public static func packDay(_ day: [PlacedEvent], keepVisible: Set<String> = []) -> (events: [PlacedEvent], groups: [OverflowGroup]) {
         var placed = day
-        let r = OverlapV5.layout(placed.indices.map { item(placed[$0], id: String($0)) })
+        // v11: the locked cascade (`OverlapV11`); nothing is folded into "+N" any more, so `groups` stays empty.
+        let r = OverlapV5.Result(placements: OverlapV11.layout(placed.indices.map { item(placed[$0], id: String($0)) }), groups: [])
         for i in placed.indices { placed[i].placement.hidden = true }
         for (k, p) in r.placements.enumerated() { if let i = Int(p.id) { placed[i].placement = Placement(v5: p, order: k) } }
         var kept = Set<Int>()
@@ -275,10 +279,33 @@ public enum RangeLayoutBuilder {
             let ids = g.ids.compactMap { Int($0) }.filter { !kept.contains($0) }.map { placed[$0].event.id }
             return ids.isEmpty ? nil : OverflowGroup(startMinute: g.startMinute, ids: ids)
         }
+        markCovered(&placed)
         // Sort small integer keys, not the (large) PlacedEvent values; hidden events go first.
         let keys = placed.map { $0.placement.hidden ? -1 : $0.placement.z }
         let order = (0..<placed.count).sorted { keys[$0] != keys[$1] ? keys[$0] < keys[$1] : $0 < $1 }
         return (order.map { placed[$0] }, groups)
+    }
+
+    /// A block covered by a later one within this many minutes of its start keeps one line (mockup-v11 `cascade`: `c.s - it.s < 40`).
+    public static let coverMinutes = 40
+
+    /// Sets `placement.covered` on the visible blocks: in start order (the longer first), the first later block that starts before
+    /// this one ends covers it when it starts within `coverMinutes` (mockup-v11 app.js `cascade`, the `cut` pass).
+    static func markCovered(_ placed: inout [PlacedEvent]) {
+        let vis = placed.indices.filter { !placed[$0].placement.hidden }
+        func end(_ i: Int) -> Int { max(placed[i].endMinute, placed[i].placement.drawEndMinute ?? 0) }
+        let order = vis.sorted {
+            let a = placed[$0], b = placed[$1]
+            if a.startMinute != b.startMinute { return a.startMinute < b.startMinute }
+            if end($0) - a.startMinute != end($1) - b.startMinute { return end($0) - a.startMinute > end($1) - b.startMinute }
+            return $0 < $1
+        }
+        for (k, i) in order.enumerated() {
+            placed[i].placement.covered = false
+            if let j = order[(k + 1)...].first(where: { placed[$0].startMinute < end(i) }) {
+                placed[i].placement.covered = placed[j].startMinute - placed[i].startMinute < coverMinutes
+            }
+        }
     }
 
     /// `packDay` without the groups (the drag preview).
