@@ -190,9 +190,9 @@ enum MonthPainter {
                 let out = !math.isSameMonth(it.day, month)
                 let past = it.day < today
                 if isToday {
-                    cg.addPath(EventPainter.roundedPath(r, Radius.inner)); cg.setFillColor(ink.act); cg.fillPath()
+                    cg.addPath(EventPainter.roundedPath(r, Radius.small)); cg.setFillColor(ink.act); cg.fillPath()
                 } else if hovered {
-                    cg.addPath(EventPainter.roundedPath(r, Radius.inner)); cg.setFillColor(ink.hover); cg.fillPath()
+                    cg.addPath(EventPainter.roundedPath(r, Radius.small)); cg.setFillColor(ink.hover); cg.fillPath()
                 }
                 let numColor = isToday ? ink.onAct : out ? ink.fg3 : past ? ink.fg2 : ink.fg
                 let kind: TextCache.Kind = isToday ? .monthNumToday : .monthNum

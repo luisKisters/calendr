@@ -59,10 +59,10 @@ struct SwatchGrid: View {
         let on = current?.uppercased() == hex?.uppercased()
         let name = hex.flatMap { h in EventColors.google.first { $0.hex == h }?.name } ?? "Calendar colour"
         return Button { pick(hex) } label: {
-            RoundedRectangle(cornerRadius: Radius.small).fill(Theme.calendarMark(hex ?? calendarHex))
+            RoundedRectangle(cornerRadius: Radius.mark).fill(Theme.calendarMark(hex ?? calendarHex))
                 .frame(width: 20, height: 20)
                 .overlay {
-                    if on { RoundedRectangle(cornerRadius: Radius.small + 3.5).strokeBorder(Theme.fg, lineWidth: 1.5).padding(-3.5) }
+                    if on { RoundedRectangle(cornerRadius: Radius.mark + 3.5).strokeBorder(Theme.fg, lineWidth: 1.5).padding(-3.5) }
                 }
                 .contentShape(Rectangle())
         }

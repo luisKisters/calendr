@@ -48,6 +48,9 @@ private enum NativeMenu {
     static let time = Color.white.opacity(0.62)
     static let separator = Color.white.opacity(0.11)
     static let soon = Color(hex: "#FF6B61")
+    /// The system menu's corners: 12 for the menu, 8 for a highlighted row and a button. Fixed; not the app's `Radius` scale.
+    static let radius: CGFloat = 12
+    static let rowRadius: CGFloat = 8
     static let rowHeight: CGFloat = 22
     static let separatorHeight: CGFloat = 11
     static let padding: CGFloat = 5
@@ -169,7 +172,7 @@ struct MenuBarSubmenuPreview: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 9).frame(height: NativeMenu.rowHeight)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: Radius.row).fill(highlight == i ? NativeMenu.highlight : .clear))
+                    .background(RoundedRectangle(cornerRadius: NativeMenu.rowRadius).fill(highlight == i ? NativeMenu.highlight : .clear))
                 }
             }
         }
@@ -231,7 +234,7 @@ private struct MenuEventRow: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 9).frame(height: NativeMenu.rowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Radius.row).fill(hl ? NativeMenu.highlight : .clear))
+        .background(RoundedRectangle(cornerRadius: NativeMenu.rowRadius).fill(hl ? NativeMenu.highlight : .clear))
     }
 }
 
@@ -262,9 +265,9 @@ private struct MenuBarStripes: View {
 
 private extension View {
     func menuSurface() -> some View {
-        background(RoundedRectangle(cornerRadius: Radius.surface).fill(NativeMenu.surface))
-            .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5))
-            .overlay(RoundedRectangle(cornerRadius: Radius.surface).inset(by: -1).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
+        background(RoundedRectangle(cornerRadius: NativeMenu.radius).fill(NativeMenu.surface))
+            .overlay(RoundedRectangle(cornerRadius: NativeMenu.radius).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: NativeMenu.radius).inset(by: -1).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 25, y: 18)
     }
 }
@@ -323,8 +326,8 @@ struct MenuBarScreenPreview: View {
             desktop
             if let backdrop {
                 Image(nsImage: backdrop).resizable().frame(width: 1150, height: 1150 * 900 / 1440)
-                    .clipShape(RoundedRectangle(cornerRadius: Radius.surface))
-                    .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: NativeMenu.radius))
+                    .overlay(RoundedRectangle(cornerRadius: NativeMenu.radius).strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
                     .saturation(open ? 0.8 : 1).opacity(open ? 0.5 : 1)
                     .shadow(color: .black.opacity(0.6), radius: 40, y: 30)
                     .offset(x: 80, y: 64)
@@ -402,7 +405,7 @@ struct MenuBarScreenPreview: View {
             Spacer(minLength: 0)
             MenuBarItemPreview(menu: menu, display: display)
                 .padding(.horizontal, 9).frame(height: 22)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(Color.white.opacity(open ? 0.2 : 0)))
+                .background(RoundedRectangle(cornerRadius: NativeMenu.rowRadius).fill(Color.white.opacity(open ? 0.2 : 0)))
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { itemX = $0 }
             ForEach(["wifi", "battery.100percent", "switch.2"], id: \.self) {
                 Image(systemName: $0).font(.system(size: 14)).opacity(0.92).padding(.horizontal, 7)
@@ -464,8 +467,8 @@ struct MenuJoinRow: View {
                         Text("Join").font(.system(size: 12, weight: .semibold)).foregroundStyle(.black)
                     }
                     .padding(.horizontal, 10).frame(height: Dim.row)
-                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(Color.white.opacity(onJoin ? 1 : 0.92)))
-                    .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.white.opacity(onJoin ? 0.9 : 0), lineWidth: 1.5).padding(-2.5))
+                    .background(RoundedRectangle(cornerRadius: NativeMenu.rowRadius).fill(Color.white.opacity(onJoin ? 1 : 0.92)))
+                    .overlay(RoundedRectangle(cornerRadius: NativeMenu.rowRadius).strokeBorder(Color.white.opacity(onJoin ? 0.9 : 0), lineWidth: 1.5).padding(-2.5))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -476,7 +479,7 @@ struct MenuJoinRow: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 9).frame(height: Self.height)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Radius.row).fill(hl ? NativeMenu.highlight : .clear))
+        .background(RoundedRectangle(cornerRadius: NativeMenu.rowRadius).fill(hl ? NativeMenu.highlight : .clear))
         .padding(.horizontal, interactive ? NativeMenu.padding : 0)
         .contentShape(Rectangle())
         .onTapGesture { open() }

@@ -39,7 +39,7 @@ struct IconButton: View {
             SFIcon(name: name, size: glyph * 0.75, color: hover ? Theme.fg : color)
                 .frame(width: glyph, height: glyph)
                 .frame(width: box, height: box)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? wash : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? wash : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -85,7 +85,7 @@ struct Keycap: View {
     let text: String
     var onAct = false
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 4)
+        let shape = RoundedRectangle(cornerRadius: Radius.mark)
         HStack(spacing: 1) {
             // Geist draws ↩ as a thin squiggle: the SF Symbol, at the cap's text size, reads as the Return key.
             ForEach(Array(Self.parts(text).enumerated()), id: \.offset) { _, p in

@@ -47,7 +47,7 @@ struct TokenTests {
 
     @Test func metricsAreTheDesignSystemScale() {
         #expect(Dim.row == 28 && Dim.field == 32 && Dim.iconButton == 26 && Dim.iconButtonSmall == 22 && Dim.hourGutter == 56)
-        #expect(Radius.small == 4 && Radius.row == 8 && Radius.control == 8 && Radius.surface == 12)
+        #expect(Radius.small == 5 && Radius.row == 9 && Radius.control == 9 && Radius.surface == 13 && Radius.mark == 4)
         // v5 I chrome (mockup-v11 computed CSS): header 48, day header 32, sidebar 236 / right column 320, sidebar rows 26 and
         // group headers 24, names at 38, mini-month cells 24 on a 26 pitch, right-column rows 26 with a 36 pt time column.
         #expect(Dim.toolbarHeight == 48 && ChromeDim.headerHeight == 48 && Dim.dayHeaderHeight == 32 && DayHeaderView.height == 32)

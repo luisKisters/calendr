@@ -46,10 +46,10 @@ struct DayHeaderView: View {
                                                    color: today || hot ? ink.fg : ink.fg3)
                         let nx = x + w1 + Self.gap
                         if today {
-                            // `.dh .c.today .n`: line-height 18, padding 0 5, Radius.inner (6 pt, locked round 1).
+                            // `.dh .c.today .n`: line-height 18, padding 0 5, Radius.small.
                             let nw = TextCache.line(num, .headerNumToday).width
                             let pill = Self.todayPill(x: nx, numeralWidth: nw, height: size.height)
-                            cg.addPath(EventPainter.roundedPath(pill, Radius.inner)); cg.setFillColor(ink.act); cg.fillPath()
+                            cg.addPath(EventPainter.roundedPath(pill, Radius.small)); cg.setFillColor(ink.act); cg.fillPath()
                             EventPainter.text(cg, num, .headerNumToday, x: pill.minX + (pill.width - nw) / 2, top: pill.minY, box: pill.height, color: ink.onAct)
                         } else {
                             EventPainter.text(cg, num, .headerNum, x: nx, top: 0, box: size.height, color: past && !hot ? ink.fg2 : ink.fg)
@@ -122,7 +122,7 @@ struct AllDayView: View {
                                                                      style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
                             .frame(width: Dim.iconGlyphSmall, height: Dim.iconGlyphSmall)
                             .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
-                            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hoverToggle ? Theme.hover : .clear))
+                            .background(RoundedRectangle(cornerRadius: Radius.small).fill(hoverToggle ? Theme.hover : .clear))
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
