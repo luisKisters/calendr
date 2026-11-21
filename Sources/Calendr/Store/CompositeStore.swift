@@ -107,6 +107,7 @@ final class CompositeStore: CalendarStore {
     func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent { try route(event).update(event, span: span, notify: notify) }
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws { try route(event).delete(event, span: span, notify: notify) }
     func series(of event: CalendarEvent) -> [CalendarEvent] { route(event).series(of: event) }
+    func repeats(_ event: CalendarEvent) -> Bool { route(event).repeats(event) }
 
     /// An existing event belongs to the store whose id it carries (a move to another calendar is that store's business).
     private func route(_ e: CalendarEvent) -> CalendarStore {

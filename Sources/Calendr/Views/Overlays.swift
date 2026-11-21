@@ -407,20 +407,18 @@ struct SettingsSheet: View {
 struct DeleteRecurringDialog: View {
     @Environment(AppModel.self) private var model
     let eventID: String
-    /// An event I organise with guests (Google): whether they get the cancellation email.
-    @State private var notify = true
     var body: some View {
         let guests = model.event(id: eventID).map { model.deleteNeedsGuestDialog($0) } ?? false
         SheetFrame(title: "Delete recurring event", width: 400, closable: false, bottom: 20) {
             Text("This event repeats. Which events should be deleted?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
             if guests {
-                PanelSwitch(label: "Send the guests a cancellation email", isOn: notify) { notify.toggle() }.padding(.top, 10)
+                PanelSwitch(label: "Send the guests a cancellation email", isOn: model.deleteNotify) { model.deleteNotify.toggle() }.padding(.top, 10)
             }
             HStack(spacing: 8) {
                 Spacer()
                 SecondaryButton(title: "Cancel") { model.closeOverlay() }
-                SecondaryButton(title: "This event") { model.deleteRecurring(eventID, span: .this, notify: notify) }
-                PrimaryButton(title: "All events") { model.deleteRecurring(eventID, span: .all, notify: notify) }
+                SecondaryButton(title: "All events") { model.deleteRecurring(eventID, span: .all, notify: model.deleteNotify) }
+                PrimaryButton(title: "This event", keys: ["↩"]) { model.deleteRecurring(eventID, span: .this, notify: model.deleteNotify) }
             }
             .padding(.top, 16)
         }
