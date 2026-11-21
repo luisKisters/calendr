@@ -72,12 +72,14 @@ Already done in the app: the "Start transcription" button is removed from the me
 
 The no-calendar-access empty state and recurrence editing are unchanged from v2.
 
-## Call link (design/call-link, round 3, 21 Nov 2026)
+## Call link (design/call-link, rounds 3 and 4, 21 Nov 2026)
 
 - Join is the filled ink button, both in the event (32 pt) and on the Now / Up next card (30 pt). It has an act fill, onAct 600 text, the tool logo and "Join Google Meet".
 - The ⌘ and J keycaps are separate 18 pt caps in an onAct tint. This replaces the calm v11 Join at the owner's request ("i like ours way more").
 - Copy on the link row is a small 22 pt icon in fg3 on the right, always shown. Hovering shows a "Copy link" tip above it. A click copies the plain link, and the icon turns into a check with the tip "Copied" for 1.5 s. There is no toast.
 - On the Up next / Now card, the same Copy sits beside the wide Join.
+- Round 4 (21 Nov 2026): the link sits on the camera row in fg text, click to edit, with ✕ (Remove call) and Copy always shown on the right. The wide Join is under it, its contents centred.
+- On the Up next / Now card, Join runs from the card's left edge (the "Up next" label), not from the title.
 - Snapshot states: `call-link`, `call-link-card`.
 
 ## Verifying an implementation

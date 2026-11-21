@@ -5,7 +5,9 @@ Drawn on the v3 look; only these two places are in this mockup. Built into the c
 
 Open with `python3 -m http.server 8811 --bind 127.0.0.1` in `design/`, then http://127.0.0.1:8811/call-link/.
 
-## Round 4 (21 Nov 2026), open
+## Round 4 (21 Nov 2026), locked
+
+Picks: link on the camera row with Join under it; click the link to edit, ✕ and Copy always shown; Join's contents centred (as built, not the recommendation); on the Up next card Join runs the card's full width with Copy beside it. Built in the app.
 
 The mockup now uses the current Horion look (Geist, Theme.swift colours, radius 5 · 9 · 13), not the v3 one.
 

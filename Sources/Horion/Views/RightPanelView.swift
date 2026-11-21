@@ -174,7 +174,6 @@ struct PanelNextCard: View {
         let mark = Palettes.cc(model.hexColor(of: event), dark: dark).color
         let length = Int(event.end.timeIntervalSince(event.start) / 60)
         let guests = event.attendees.filter { !$0.isMe }.count
-        let textEdge = ColumnDim.timeColumn + ColumnDim.barColumn + 2 * ColumnDim.gap
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Space.s) {
                 Text(live ? "Now" : "Up next").font(.smallMedium).tracking(TypeTrack.small).foregroundStyle(Theme.fg3)
@@ -208,12 +207,12 @@ struct PanelNextCard: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
             if let call = CallLink.parse(event) {
-                // design/call-link round 3: Copy beside the wide Join.
+                // design/call-link round 4: Join across the card's full width from its left edge (the "Up next" label), Copy beside it.
                 HStack(spacing: Space.xs) {
                     JoinCallButton(event: event, call: call)
                     CopyLinkButton { model.copyCallLink(event) }.padding(.trailing, -4)   // the glyph on the column's edge
                 }
-                .padding(.top, Space.m).padding(.leading, textEdge)
+                .padding(.top, Space.m)
             }
         }
         // `.card.dc.lead`: margin 2 20 6, padding 10 0 16, a pane edge below; the others margin 0 20 4, padding 8 0 10.
