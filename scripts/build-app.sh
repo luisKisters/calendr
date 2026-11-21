@@ -11,7 +11,7 @@ APP=build/Calendr.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Calendr"
-scripts/make-icon.sh   # no-op when design/icon/AppIcon.icns exists
+scripts/make-icon.sh   # no-op when design/icon/AppIcon.icns is newer than the SVGs
 cp design/icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 # Geist (variable, SIL OFL 1.1) and its licence; Typeface.swift looks in Contents/Resources/Fonts first
 mkdir -p "$APP/Contents/Resources/Fonts"
