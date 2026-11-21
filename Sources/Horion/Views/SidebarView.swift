@@ -157,7 +157,7 @@ struct MiniMonth: View {
                         HStack(spacing: 0) {
                             ForEach(0..<7, id: \.self) { c in
                                 let d = week[c]
-                                MiniDay(today: math.isSameDay(d, now), selected: selectedDay.map { math.isSameDay(d, $0) } == true, hovered: hoverDay == d,
+                                MiniDay(today: math.isSameDay(d, now), selected: selectedDay.map { math.isSameDay(d, $0) } == true, hovered: hoverDay == d, banded: banded,
                                         action: { model.go(to: shown.grid[r][c]) },
                                         onHover: { on in
                                             let d = shown.grid[r][c]
@@ -169,7 +169,7 @@ struct MiniMonth: View {
                             }
                         }
                         // `.mm .wk`: the visible week's seven cells on one band, rounded at its ends.
-                        .background(RoundedRectangle(cornerRadius: Radius.small).fill(banded ? Theme.hoverRail : .clear))
+                        .background(RoundedRectangle(cornerRadius: Radius.small).fill(banded ? Theme.selected : .clear))
                     }
                     .frame(height: Self.cell)
                     .padding(.top, Self.rowGap)
@@ -197,16 +197,18 @@ private struct MiniDay: View, Equatable {
     let today: Bool
     let selected: Bool
     let hovered: Bool
+    /// In the visible week's band: hover is fitted on the band, not on the rail.
+    var banded = false
     let action: () -> Void
     let onHover: (Bool) -> Void
 
-    static func == (a: Self, b: Self) -> Bool { a.today == b.today && a.selected == b.selected && a.hovered == b.hovered }
+    static func == (a: Self, b: Self) -> Bool { a.today == b.today && a.selected == b.selected && a.hovered == b.hovered && a.banded == b.banded }
 
     var body: some View {
         Button(action: action) {
             RoundedRectangle(cornerRadius: Radius.small)
-                .fill(today ? Theme.selected : hovered ? Theme.hoverRail : .clear)
-                .overlay(RoundedRectangle(cornerRadius: Radius.small).strokeBorder(today ? Theme.segRing : selected ? Theme.fg3 : .clear, lineWidth: 1))
+                .fill(today ? Theme.act : hovered ? (banded ? Theme.selectedHover : Theme.hoverRail) : .clear)
+                .overlay(RoundedRectangle(cornerRadius: Radius.small).strokeBorder(selected && !today ? Theme.fg3 : .clear, lineWidth: 1))
                 .frame(maxWidth: .infinity).frame(height: MiniMonth.cell)
                 .contentShape(Rectangle())
         }
@@ -286,7 +288,7 @@ private struct MiniMonthNumerals: View, Equatable, Animatable {
             ForEach(1...31, id: \.self) { n in numeral(n, today: false, color: Theme.fg2).tag(n) }
             ForEach(101...131, id: \.self) { code in numeral(code - 100, today: false, color: Theme.fg3).tag(code) }
             ForEach(301...331, id: \.self) { code in numeral(code - 300, today: false, color: Theme.fg).tag(code) }
-            numeral(todayNumber, today: true, color: Theme.fg).tag(200 + todayNumber)
+            numeral(todayNumber, today: true, color: Theme.onAct).tag(200 + todayNumber)
         }
         .allowsHitTesting(false)
     }

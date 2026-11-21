@@ -144,6 +144,10 @@ struct AllDayView: View {
                 let canvas = Canvas { ctx, size in
                     ctx.withCGContext { cg in
                         let ink = EventPainter.Ink.of(dark)
+                        // The today column's tint runs through the all-day lane (mockup-v16 round 1: one unbroken column).
+                        if let t = model.visibleDays.firstIndex(where: { model.math.isSameDay($0, model.now) }) {
+                            cg.setFillColor(ink.todayTint); cg.fill(CGRect(x: CGFloat(t) * dw, y: 0, width: dw, height: size.height))
+                        }
                         // `.ad .cols i { border-left-color: var(--grid-v) }`: the day dividers of the grid continue up.
                         cg.setFillColor(ink.dayDivider)
                         for d in 0..<n { cg.fill(CGRect(x: CGFloat(d) * dw, y: 0, width: 1, height: size.height)) }

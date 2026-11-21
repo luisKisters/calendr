@@ -15,8 +15,8 @@ Neutral, with no hue cast. The Dark greys are solved for APCA targets: fg1 Lc �
 | `rail` | `#070708` | `#F4F4F5` | Sidebar, right column | new `InkRGB.rail` |
 | `surface` | `#151516` | `#F1F1F2` | Cards, all-day lane, segmented track | `InkRGB.bg1` |
 | `raised` | `#1D1D1E` | `#FFFFFF` | Fields, buttons, menus, Join | `InkRGB.bg2` / `pop` |
-| `hover` | `#161617` (bg → fg1 5 %) | `#F1F1F1` (4.5 %) | Row hover | `Theme.hover` |
-| `selected` | `#1E1E1F` (8.5 %) | `#EAEAEB` (7.5 %) | Selected row | new |
+| `hover` | `#1C1C1C` (fitted, see States) | `#F4F4F4` | Row hover on the canvas | `Theme.hover` |
+| `selected` | `#2A2A2A` (fitted) | `#E8E8E8` | Selected row, the mini month's week band | `Theme.selected` |
 | `fg1` | `#EBEBED` | `#1D1D20` | Titles, values, event titles, today pill | `InkRGB.fg` |
 | `fg2` | `#CCCCCE` | `#4A4A50` | Times, secondary rows, hour labels | `InkRGB.fg2` |
 | `fg3` | `#A8A8AA` | `#606067` | Labels, hints, group headers, icons | `InkRGB.fg3` |
@@ -35,8 +35,16 @@ Lines are mixes from `bg` toward `fg1`.
 | `gridV` (day divider) | `#1B1B1C` | `#EBEBEC` | 7 %, capped at Lc 15 | decoration |
 | `hairStrong` (all-day edge) | `#2A2A2C` | `#DCDCDC` | 14 %, raised to 1.17:1 | ≥ 1.15:1 |
 | `hair` (pane edge) | `#1C1C1D` | `#E8E8E8` | 7.5–8.5 %, capped at Lc 15 | decoration |
-| `todayTint` (today column) | `#131314` | `#F3F3F3` | 3.5 % (slider "Today column lightness") | Text and the hour line on it pass |
+| `todayTint` (today column, header and all-day lane included) | `#121212` | `#F5F5F5` | fitted to 1.05:1 on bg | Text and the hour line on it pass |
 | half-hour line | off | off | none | |
+
+## States (mockup-v16 round 3, locked)
+One rule on every surface, so a state is equally strong wherever it sits. Surfaces are fixed (`bg`, `rail`, `surface`, `raised`, `pop`); what sits on them is solved in code (`InkRGB.fitted`, `enum Contrast` in Theme.swift), as neutral greys:
+- **Selected**: the strongest fill up to 1.45:1 on the rail on which fg1, fg2 and fg3 still pass the soft-surface floors (Dark fg1 12 / Lc 85, fg2 7 / 63, fg3 5.5 / 45; Paper 12 / 88, 7 / 75, 5 / 65). Dark gets 1.40:1, Paper about 1.15:1 (fg1's Lc 88 caps it).
+- **Hover**: half the selected step (square root of its ratio, at most 1.15:1), on every surface: canvas, rail, raised (`raisedHover`), pop (`popHover`), and inside a selected band (`selectedHover`).
+- **Edge** (`segRing`): 3:1 on `surface` (WCAG non-text).
+- Today, the selected view and the selected segment of every segmented control use the filled `accent` pill. The mini month's today too.
+- Never pick a hover or selected hex by hand: add the surface and fit it. `ContrastSystemTests` checks the rule.
 
 ## Event recipe (bar + tint)
 The calendar colour goes in as an OKLCH hue H, with its own chroma C₀ as the upper limit. The same recipe applies to every calendar, so no calendar looks louder than another.

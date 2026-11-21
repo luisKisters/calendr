@@ -237,14 +237,13 @@ struct SegmentButton: View {
     var body: some View {
         let h = (hover || HoverProbe.shared.target == title) && enabled && !on
         Button { if enabled { action() } } label: {
-            // `.segc button`: 12 / 400 fg2 (fg1 on hover, no fill), the selected segment 12 / 500 fg1 on raised with a 1 px
-            // `seg-ring` edge; Paper adds `0 1px 2px rgba(60,50,35,.10)`. Disabled (`.segc.off`): fg4, the selected one fg3 with a hair2 edge.
+            // `.segc button`: 12 / 400 fg2 (fg1 on hover, no fill). The selected segment is the today mark (mockup-v16 round 1):
+            // a filled `act` pill with `onAct` text, 500. Disabled (`.segc.off`): fg4, the selected one fg3 with a hair2 edge.
             Text(title).font(on ? .textMedium : .text).tracking(TypeTrack.text)
-                .foregroundStyle(!enabled ? (on ? Theme.fg3 : Theme.fg4) : on || h ? Theme.fg : Theme.fg2)
+                .foregroundStyle(!enabled ? (on ? Theme.fg3 : Theme.fg4) : on ? Theme.onAct : h ? Theme.fg : Theme.fg2)
                 .padding(.horizontal, 10).frame(minWidth: minWidth, minHeight: Dim.segment, maxHeight: Dim.segment)
-                .background(RoundedRectangle(cornerRadius: Radius.inner).fill(on && enabled ? Theme.thumb : Color.clear)
-                    .shadow(color: on && enabled && scheme == .light ? InkRGB.segShadow.color.opacity(0.10) : .clear, radius: 1, y: 1))
-                .overlay(RoundedRectangle(cornerRadius: Radius.inner).strokeBorder(on ? (enabled ? Theme.segRing : Theme.hair2) : Color.clear, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: Radius.inner).fill(on && enabled ? Theme.act : Color.clear))
+                .overlay(RoundedRectangle(cornerRadius: Radius.inner).strokeBorder(on && !enabled ? Theme.hair2 : Color.clear, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
