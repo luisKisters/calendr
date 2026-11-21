@@ -127,19 +127,25 @@ struct PanelSwitch: View {
     let label: String
     let isOn: Bool
     let action: () -> Void
+    @State private var hover = false
+    /// v11 `.sw`: a 26 x 16 track, `surface` with a hairStrong edge when off, inverted ink when on; a 12 pt knob (fg3, then onAccent)
+    /// that travels 10; the label in `small` fg2, fg1 under the pointer. An empty label leaves the switch alone.
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 ZStack(alignment: .leading) {
-                    Capsule().fill(isOn ? Theme.act : Theme.bg3).frame(width: 26, height: 15)
-                    Circle().fill(isOn ? Theme.onAct : Theme.fg2).frame(width: 11, height: 11).offset(x: isOn ? 13 : 2)
+                    Capsule().fill(isOn ? Theme.act : Theme.bg1)
+                        .overlay(Capsule().strokeBorder(isOn ? Color.clear : Theme.hair2, lineWidth: 1))
+                        .frame(width: 26, height: 16)
+                    Circle().fill(isOn ? Theme.onAct : Theme.fg3).frame(width: 12, height: 12).offset(x: isOn ? 12 : 2)
                 }
-                Text(label).font(.text).foregroundStyle(Theme.fg2)
+                if !label.isEmpty { Text(label).font(.small).foregroundStyle(hover ? Theme.fg : Theme.fg2) }
             }
             .frame(height: 26).contentShape(Rectangle())
             .animation(Motion.base, value: isOn)
         }
         .buttonStyle(.plain)
+        .onHover { hover = $0 }
     }
 }
 

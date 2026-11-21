@@ -176,7 +176,7 @@ private struct TeammateLayer: View {
                 let x = Double(p.dayIndex + 1) * g.dayWidth - 2 - w
                 let y = g.yPos(p.startMinute)
                 let r = CGRect(x: x, y: y, width: w, height: max(4, g.yPos(p.endMinute) - y - 1))
-                TeammateCell(size: r.size, hue: Color(hex: model.teammateColor(p.event.ownerEmail))).equatable().placed(r)
+                TeammateCell(size: r.size, hue: Theme.calendarMark(model.teammateColor(p.event.ownerEmail))).equatable().placed(r)
             }
         }
         .allowsHitTesting(false)

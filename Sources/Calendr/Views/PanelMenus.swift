@@ -120,6 +120,7 @@ struct PopItem<Label: View, End: View>: View {
     @ViewBuilder var label: Label
     @ViewBuilder var end: End
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
 
     var body: some View {
         let h = hover || highlighted || (!key.isEmpty && HoverProbe.shared.target == key)
@@ -135,7 +136,7 @@ struct PopItem<Label: View, End: View>: View {
             .font(.text).foregroundStyle(danger ? Theme.replyNo : Theme.fg)
             .padding(.horizontal, 10).padding(.vertical, alignTop ? 7 : 4)
             .frame(maxWidth: .infinity, minHeight: Dim.row, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(h ? Theme.hover : Color.clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(h ? wash : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

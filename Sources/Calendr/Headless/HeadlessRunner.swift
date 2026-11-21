@@ -34,8 +34,11 @@ enum HeadlessRunner {
         return AppModel(store: o.googleDemo ? CompositeStore(base: demo) : demo, options: o, persist: false)
     }
 
-    static func runSnapshot(_ state: String, _ o: LaunchOptions) -> Int32 {
+    static func runSnapshot(_ requested: String, _ o: LaunchOptions) -> Int32 {
         Motion.forcedInstant = true
+        // any window state in Paper: "<state>~paper" (v4-calendar~paper, v4-settings~paper)
+        let forcePaper = requested.hasSuffix("~paper")
+        let state = forcePaper ? String(requested.dropLast(6)) : requested
         let model = state == "empty-access" ? AppModel(store: DemoStore(authorization: .notDetermined), options: o, persist: false) : makeModel(o)
         guard let out = o.out else { print("--snapshot needs --out"); return 2 }
         KeyRouter.shared.install(model: model)
@@ -46,7 +49,8 @@ enum HeadlessRunner {
         w.settle(6)
         model.gridGeometry = model.gridGeometry
         guard SnapshotStates.apply(state, to: model) else { print("unknown state \(state)"); return 2 }
-        if SnapshotGrid.paper.contains(state) { w.setDark(false) }
+        if forcePaper { model.settings.appearance = .light }
+        if forcePaper || SnapshotGrid.paper.contains(state) { w.setDark(false) }
         w.settle(8)
         let ok = w.writePNG(to: out, scale: o.scale)
         print(ok ? "wrote \(out)" : "failed \(out)")

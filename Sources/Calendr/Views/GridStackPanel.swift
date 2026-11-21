@@ -45,6 +45,7 @@ struct GridStackPanel: View {
         .padding(Space.xs)
         .frame(width: width, alignment: .top)
         .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.pop))
+        .environment(\.hoverWash, Theme.hoverPop)
         .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
         .popShadow()
         .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { model.gridState.stackBox.frame = $0 }

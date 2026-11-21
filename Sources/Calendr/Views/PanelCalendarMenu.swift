@@ -5,7 +5,6 @@ import CalendrKit
 /// their account (name without the domain), then "Event colour" with the calendar's colour and the 11 Google colours, 6 to a row.
 struct PanelCalendarMenu: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         if let e = model.selectedEvent {
@@ -16,7 +15,7 @@ struct PanelCalendarMenu: View {
                     ForEach(cals) { c in
                         PopItem(check: e.calendarID == c.id, key: "menu:cal:\(c.id)", action: { model.setSelectedCalendar(c.id) }) {
                             HStack(spacing: 10) {
-                                RoundedRectangle(cornerRadius: Radius.swatch).fill(Palettes.cc(c.colorHex, dark: scheme == .dark).color).frame(width: 12, height: 12)
+                                RoundedRectangle(cornerRadius: Radius.swatch).fill(Theme.calendarMark(c.colorHex)).frame(width: 12, height: 12)
                                 Text(c.title).lineLimit(1).truncationMode(.tail)
                             }
                         }
@@ -31,8 +30,10 @@ struct PanelCalendarMenu: View {
     }
 }
 
-/// `.sw11`: 20 pt swatches (radius 6) in 6 columns, spread across the row, 8 between rows. The first is the calendar's own colour
-/// (an outline); the chosen one has a ring.
+/// `.sw12`: 20 pt swatches (radius 4, like the calendar squares) in 6 columns, spread across the row, 8 between rows. Every swatch is drawn in the calendar-colour
+/// recipe (`Theme.calendarMark`), the same colour the sidebar, the calendar rows above and the settings show, so a colour picked
+/// here looks like the calendar it matches. The first is the calendar's own colour (no event colour); the chosen one has a ring:
+/// 2 pt of the menu, then 1.5 pt fg1.
 struct SwatchGrid: View {
     let current: String?
     let calendarHex: String
@@ -58,19 +59,12 @@ struct SwatchGrid: View {
         let on = current?.uppercased() == hex?.uppercased()
         let name = hex.flatMap { h in EventColors.google.first { $0.hex == h }?.name } ?? "Calendar colour"
         return Button { pick(hex) } label: {
-            ZStack {
-                if let hex {
-                    RoundedRectangle(cornerRadius: Radius.row).fill(Color(hex: hex))
-                } else {
-                    RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Theme.fg3, lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: Radius.small).fill(Theme.calendarMark(hex ?? calendarHex))
+                .frame(width: 20, height: 20)
+                .overlay {
+                    if on { RoundedRectangle(cornerRadius: Radius.small + 3.5).strokeBorder(Theme.fg, lineWidth: 1.5).padding(-3.5) }
                 }
-                if on { PanelIcon(name: .check, size: 11, color: hex == nil ? Theme.fg3 : Theme.onDanger) }
-            }
-            .frame(width: 20, height: 20)
-            .overlay {
-                if on { RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.fg2, lineWidth: 1.5).padding(-3) }
-            }
-            .contentShape(Rectangle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(name)
