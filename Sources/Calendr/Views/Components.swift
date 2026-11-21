@@ -81,7 +81,12 @@ struct Keycap: View {
     let text: String
     var onAct = false
     var body: some View {
-        Text(text).font(.smallTab).foregroundStyle(onAct ? Theme.onAct.opacity(0.6) : Theme.fg3).fixedSize()
+        Group {
+            // Geist draws ↩ as a thin squiggle: the SF Symbol, at the cap's text size, reads as the Return key.
+            if text == "\u{21A9}" { Image(systemName: "return").font(.system(size: TypeSize.small - 1, weight: .semibold)) }
+            else { Text(text).font(.smallTab) }
+        }
+        .foregroundStyle(onAct ? Theme.onAct.opacity(0.6) : Theme.fg3).fixedSize()
     }
 }
 
