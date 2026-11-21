@@ -409,6 +409,8 @@ final class AppModel {
 
     // MARK: Navigation
 
+    /// Shows the day that contains `d` (the menu bar's "Show the day in Horion").
+    func goTo(day d: Date) { settleDraft(); let day = math.startOfDay(d); setDirection(to: day); anchor = day; leftAligned = false; reload() }
     func goToToday() { settleDraft(); setDirection(to: math.startOfDay(now)); anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
     private func setDirection(to d: Date) { navDirection = d > anchor ? 1 : (d < anchor ? -1 : 0) }
     func leftAlignToday() {

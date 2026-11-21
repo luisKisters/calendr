@@ -201,7 +201,7 @@ extension WalkthroughV4 {
         d.recordClick()
         d.play(0.3) { show(menu, open: true) }
         d.hold(0.8)
-        let rowY = 32 + Double(MenuBarMenuPreview.rowTop(ji, in: menu)) + Double(MenuJoinRow.height) / 2
+        let rowY = 32 + Double(MenuBarMenuPreview.rowTop(ji, in: menu)) + Double(MenuBarMenu.rowHeight) / 2
         d.say("Today's rows with a call get Join and the call logo")
         d.moveCursor(to: CGPoint(x: 1150, y: rowY), duration: 0.5)
         show(menu, open: true, highlight: ji)
@@ -234,7 +234,7 @@ extension WalkthroughV4 {
         d.recordClick()
         d.play(0.3) { show(menu, open: true) }
         d.hold(0.8)
-        let headY = 32 + Double(MenuBarMenuPreview.rowTop(0, in: menu)) + Double(MenuJoinRow.height) / 2
+        let headY = 32 + Double(MenuBarMenuPreview.rowTop(0, in: menu)) + Double(MenuBarMenu.rowHeight) / 2
         d.say("The head row: the countdown, Join with the Zoom logo")
         d.moveCursor(to: CGPoint(x: 1309, y: headY), duration: 0.5)
         show(menu, open: true, join: true)

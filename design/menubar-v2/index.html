@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horion menu bar v2</title>
+<!-- designr round mockup: the Horion menu bar menu, focused on size, the row arrows, end times, duplicates and the countdown. Opens from disk. -->
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+/* ================= the app: the macOS screen and the Horion menu ================= */
+/* Tokens. Every value in the app CSS below is a token. Native NSMenu metrics (macOS 26, dark). */
+.desk { --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; --fs: 13px; --fs-s: 12px;
+  --menu: rgba(38, 37, 44, .9); --hl: #0A66E0; --sep: rgba(255,255,255,.11);
+  --fg: #fff; --dim: rgba(255,255,255,.5); --dim2: rgba(255,255,255,.32); --soon: #FF6B61;
+  --h-row: 22px; --r-row: 5px; --r-menu: 10px; --pad: 9px; --gap: 8px; --title-max: 260px; }
+.desk { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; color: var(--fg); font: var(--fs)/1.3 var(--font); -webkit-font-smoothing: antialiased; user-select: none;
+  background: radial-gradient(90% 80% at 12% 0%, #3B2A6B 0%, transparent 60%), radial-gradient(80% 70% at 92% 8%, #16405C 0%, transparent 58%), radial-gradient(110% 90% at 60% 110%, #5B2C48 0%, transparent 60%), linear-gradient(160deg, #13111C, #1D1A2B 50%, #0D0C13); }
+.desk button { cursor: default; }
+.num { font-variant-numeric: tabular-nums; }
+.mbar { position: absolute; left: 0; right: 0; top: 0; height: 30px; display: flex; align-items: center; gap: 2px; padding: 0 12px 0 16px; background: rgba(20,18,28,.45); backdrop-filter: blur(30px); }
+.mbar > * { height: 22px; padding: 0 9px; border-radius: 5px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.mbar .sp { flex: 1; padding: 0; }
+.mbar .os { opacity: .9; }
+.item { font-weight: 500; }
+.item:hover { background: rgba(255,255,255,.1); }
+.item.open { background: rgba(255,255,255,.2); }
+.bar { width: 3px; height: 14px; border-radius: 1.5px; background: var(--c); flex: none; }
+.bar.two { background: linear-gradient(180deg, var(--c) 0 50%, var(--c2) 50% 100%); }
+.soon { color: inherit; }   /* "x left" is not red (round 2) */
+
+/* the menu: one grid, every row a subgrid, so times, titles and ends share columns */
+.mn { position: absolute; padding: 5px; border-radius: var(--r-menu); background: var(--menu); backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow: 0 0 0 .5px rgba(255,255,255,.22), 0 0 0 1px rgba(0,0,0,.5), 0 18px 50px rgba(0,0,0,.5);
+  display: grid; grid-template-columns: 1px 3px auto fit-content(var(--title-max)) auto 1px; column-gap: var(--gap); max-height: 860px; overflow: hidden; }
+.mn.chev { grid-template-columns: 1px 3px auto fit-content(var(--title-max)) auto 8px 1px; }
+.mn > * { grid-column: 1 / -1; }
+.mi { display: grid; grid-template-columns: subgrid; align-items: center; height: var(--h-row); padding: 0; margin: 0; border-radius: var(--r-row); white-space: nowrap; width: 100%; text-align: left; }
+.mn.chev .mi .e { margin-right: 22px; }
+.mi.hl { background: var(--hl); }
+.mi.hl .bar { background: #fff; }
+.mi .t { color: var(--dim); }
+.mi .n { overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mi .n span { overflow: hidden; text-overflow: ellipsis; }
+.mi .e { color: var(--dim); font-size: var(--fs-s); justify-self: end; display: flex; align-items: center; gap: 6px; }
+.mi .k { color: var(--dim); justify-self: end; }
+.mi .left { color: var(--dim); font-size: var(--fs-s); flex: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }
+/* between a title and its time left (round 3) */
+.cd { display: inline-flex; align-items: center; gap: 6px; }
+.cd .dot { opacity: .45; }
+.cd .vl { width: 1px; height: 12px; background: currentColor; opacity: .3; }
+.cd .tx { opacity: .72; }
+.cd.dim .tx { opacity: .55; }
+.cd.pill .tx { opacity: 1; padding: 1px 7px; border-radius: 5px; background: rgba(255,255,255,.14); }
+.cd.line .tx { opacity: .72; }
+.mi .ic { color: var(--dim); flex: none; display: grid; }
+.mi .cv { color: var(--dim); display: grid; justify-self: end; }
+.mi.hl .t, .mi.hl .e, .mi.hl .k, .mi.hl .ic, .mi.hl .cv, .mi.hl .left { color: rgba(255,255,255,.86); }
+.mi .join { height: 18px; padding: 0 8px; border-radius: 9px; background: rgba(255,255,255,.24); font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; color: #fff; }
+.mi .join kbd { font: inherit; opacity: .6; }
+.mi.cmd { grid-template-columns: 1fr auto; grid-column: 1 / -1; padding: 0 var(--pad); column-gap: 24px; }
+.mi.cmd .n { grid-column: 1; }
+.mi.day .n { color: var(--fg); }
+.hd { height: var(--h-row); padding: 0 var(--pad); grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; color: var(--dim); }
+.sep { height: 1px; margin: 5px var(--pad); background: var(--sep); }
+.sub { z-index: 3; }
+.sub .mi.cmd { min-width: 190px; }
+.chk { width: 12px; display: inline-grid; }
+.toast { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); padding: 8px 14px; border-radius: 10px; background: rgba(30,30,36,.92); box-shadow: 0 0 0 .5px rgba(255,255,255,.2); font-size: var(--fs-s); color: var(--dim); }
+.toast b { color: var(--fg); font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Horion menu bar', VERSION = 'v2', ROUND = 3;
+const DESK = { w: 1440, h: 900 };            // the real screen size
+const SCENES = [['busy', 'Busy Saturday'], ['rowmenu', 'A row with a call'], ['tomorrow', 'Tomorrow, more than fits'], ['quiet', 'Quiet evening']];
+const HOWTO = ['The menu is open. Hover rows like in macOS; a row with a menu opens it after a short pause. Click the item in the menu bar to close and open it.', 'Keys: G alignment guides, B before / after (the menu as it is in the app today).', 'Scene buttons only jump to a starting state.', 'Notes on one element: turn on Agentation below, click the element, write.'];
+const READ = 'Reading this as: a preserve-redesign of a native macOS menu for one daily user, in a quiet Apple / Notion Calendar language, on NSMenu metrics and SF Pro. Dials: variance 2, motion 2, density 6.';
+const LOCKED = {'mark': 'dot', 'arrow': 'icon', 'end': 'none', 'ahead': 'half', 'dupes': 'two', 'count': 'head', 'cut': '220', 'keys': 'std'};
+// B: the menu as the app draws it today (screenshot 21 Nov).
+const BEFORE = { arrow: 'today', end: 'today', ahead: 'today', dupes: 'today', count: 'today' };
+const TODAY = ['today', 'As it is today', 'What the app draws now, for comparison.'];
+const DECISIONS = [
+  { g: 'Round 3', id: 'mark', lock: true, name: 'Between the title and the time left', fb: 'there needs to be a good sepeator between event name and the time thing', note: 'The menu bar item, "Clean the flat 2 h 3 min left". In the menu it shows when The countdown is "Only on the row".', scene: 'busy', hl: '.item, .mi .left', opts: [
+    ['dot', 'A middle dot, the time a little dimmer', '"Clean the flat · 2 h 3 min left". The dot at 45 %, the time at 72 % white, so the title reads first.'],
+    ['line', 'A thin vertical line', 'A 1 px line, 12 px high, between the title and the time. The time at 72 % white.'],
+    ['pill', 'The time in a soft capsule', 'The time left sits in a light grey capsule, like a tag.'],
+    ['dim', 'No mark, only a dimmer time', 'A wider gap and the time at 55 % white.'],
+  ] },
+  { g: 'Round 1', id: 'arrow', lock: true, name: 'The arrow on some rows', fb: 'also this thing with the arrow looks off', note: 'Busy Saturday: only some rows carry a ›, in its own column far from the end times, so the right edge is ragged and there is a dead gap.', scene: 'busy', hl: '.mi .cv, .mi .ic, .mi .join', opts: [
+    ['icon', 'No arrows. A small icon after the title says what is inside', 'A camera for a call, two people for guests, grey, right after the title. End times sit on the right edge. Hovering the row still opens its menu after a short pause. Needs a custom row view in the app (NSMenuItem.view), which also draws the highlight.'],
+    ['join', 'No row menus. The highlighted row shows Join', 'A click opens the event in Horion; a call gets a Join pill (J) on the highlighted row. Responding and emailing move to the window. Fewest parts; also needs a custom row view.'],
+    ['hover', 'Arrow only on the highlighted row', 'The › column stays, but empty until you hover a row that has a menu. Calm at rest, still says "there is more". Custom row view.'],
+    ['all', 'Every event row has an arrow', 'Every row gets a menu (at least Show in Horion and Copy), so the › column is full and even. Works with the plain native NSMenu, no custom views.'],
+    TODAY,
+  ] },
+  { g: 'Round 2', id: 'end', lock: true, name: 'End time', fb: 'what is this fkn time there ? i dont like that i think', note: 'The grey end time on the right of "Call with Jo" (round 1: "this looks bad and buggy").', scene: 'busy', hl: '.mi .e, .mi .t', opts: [
+    ['none', 'Start only', 'Just the start, like Notion Calendar. Nothing on the right of a row. How long something runs is in the window.'],
+    ['hover', 'Start only; the end shows on the highlighted row', 'Rows show only the start. The row under the mouse shows its end on the right, so you can still check it without a column of numbers.'],
+    ['range', 'Next to the start: 21:30–22:15', 'One time column as a range, nothing on the right. No length shows only the start.'],
+    ['right', 'On the right edge (round 1)', 'End times right-aligned to the menu edge; none when the event has no length.'],
+    TODAY,
+  ] },
+  { id: 'cut', lock: true, name: 'Where long titles are cut', fb: 'btw generally make sure the text doesnt expand too much here it is fine but for some of my events it clipped way too late', note: 'Look at "[P1] Take vitamin D – every day until done" and, tomorrow, "[P0?] Sunday: task list and calendar clean-up with Henrik". The longest title sets the width of the whole menu.', scene: 'busy', hl: '.mi .n', opts: [
+    ['220', 'At 220 px (about 32 characters)', 'Titles longer than 220 px end in "…". The menu is about 300 px wide at most.'],
+    ['180', 'At 180 px (about 26 characters)', 'The same cut as the menu bar item. Narrowest; long task titles lose their second half.'],
+    ['260', 'At 260 px (round 1)', 'What round 1 did.'],
+    ['330', 'At 330 px (today)', 'What the app does now.'],
+  ] },
+  { id: 'keys', lock: true, name: 'Shortcuts in the menu', fb: 'we cant just simply blatantly copy the same shortcuts they need to be ones that arent reserved but this is too much', note: 'The keys on the right: ⌘1, ⌘, and ⌘Q, and J, Y, N, M, E in a row\'s menu, all taken from Notion Calendar.', scene: 'rowmenu', hl: '.mi .k', opts: [
+    ['std', 'Only the macOS standard ones: ⌘, and ⌘Q', 'Settings ⌘, and Quit ⌘Q, which every Mac app has. Open Horion and the row menus show no keys; arrows and Return still work.'],
+    ['own', 'Open Horion shows Horion\'s own hotkey ⌃⌘K', 'Like "std", plus ⌃⌘K on Open Horion: the global hotkey Horion already has, so the menu teaches it.'],
+    ['none', 'No shortcuts shown', 'A plain list: no keys anywhere in the menu.'],
+    TODAY,
+  ] },
+  { id: 'ahead', lock: true, name: 'How much the menu lists', fb: 'generally show tmr as well only do the show x more when the thing take up more than 50% of the macs screen (round 2: but this is too much)', note: 'Busy Saturday: three full days, about 35 rows, taller than the screen. Daily repeats (vitamin D, evening prayer, bedtime) fill most of it.', scene: 'busy', hl: '.mn > *', opts: [
+    ['half', 'Today and tomorrow in full; "x more" only past half the screen', 'Today and tomorrow are listed in full, the day after is one row. Only when the menu would be taller than half the screen (450 px of 900 here; in the app, half of the screen it opens on) the rest goes into "6 more ›", whose submenu lists them.'],
+    ['next', 'The next 2 events, then one row per day (round 2)', 'Today shows only its next 2 rows, then "Later today  2 events ›". Tomorrow and Monday are one row each. The menu stays about 12 rows on any day.'],
+    ['fold', 'The rest of today, then one row per day (round 1)', '"Tomorrow  13 events ›" and "Mon 23 Nov  15 events ›": each day\'s list is in its submenu. Today never gets longer than what is left of it.'],
+    ['two', 'Today and tomorrow, 6 rows each (round 1)', 'Tomorrow shows its first 6 events, then "7 more in Horion". No third day.'],
+    TODAY,
+  ] },
+  { id: 'dupes', lock: true, name: 'The same event in two calendars', fb: 'this looks bad and buggy', note: 'Tomorrow: "Totensonntag" twice; Monday: "Father & son" twice (blue and red).', scene: 'tomorrow', hl: '.bar.two', opts: [
+    ['two', 'One row, its bar in both colours', 'Same title, start and end become one row. The bar is split top and bottom in the two calendar colours, so you still see it is in both.'],
+    ['one', 'One row, the first calendar\'s colour', 'Same title, start and end become one row in the colour of the calendar listed first.'],
+    TODAY,
+  ] },
+  { id: 'count', lock: true, name: 'The countdown', fb: 'way to big', note: 'Today the countdown is in the menu bar, in the "Now" line and again in red on the row.', scene: 'busy', hl: '.hd, .mi .left', opts: [
+    ['head', 'Once, in the "Now" line', '"Now  2 h 3 min left" above the event; the row itself is a normal row.'],
+    ['row', 'Only on the row', 'The line above says just "Now"; the red text sits after the title.'],
+    TODAY,
+  ] },
+];
+
+// ================= demo data (invented) =================
+const CAL = { me: ['Personal', '#3D8BFD'], tasks: ['Tasks', '#D4D4D8'], fam: ['Family', '#FF5F57'], hol: ['Holidays', '#34C759'], hol2: ['Holidays (DE)', '#AF52DE'], hol3: ['Church year', '#FF9F0A'] };
+const M = (h, m = 0) => h * 60 + m;
+const ev = (day, cal, title, s, e, x = {}) => ({ day, cal, title, s, e: e ?? s, ...x });
+const ALL = (day, cal, title, x) => ({ day, cal, title, all: true, ...x });
+function daily(day) { return [
+  ev(day, 'tasks', '[P1] Take vitamin D – every day until done', M(18)),
+  ev(day, 'me', 'Call with Jo', M(21, 30), M(22, 15), { call: 'meet.example.com/jo', guests: 1, who: 'Jo' }),
+  ev(day, 'tasks', 'Evening prayer for Dana & Sam', M(22, 49)),
+]; }
+function fresh() {
+  const busy = [
+    ALL(0, 'me', 'Nora\'s birthday'),
+    ev(0, 'me', 'Clean the flat', M(12, 30), M(18, 30)),
+    ...daily(0),
+    ALL(1, 'tasks', '22.11. Club anniversary'), ALL(1, 'hol', 'Sunday of the Dead'), ALL(1, 'hol2', 'Totensonntag'), ALL(1, 'hol3', 'Totensonntag'),
+    ev(1, 'tasks', '[P1] Text Dana when I get to church', M(9, 45)),
+    ev(1, 'me', 'Church service', M(9, 45), M(11, 30), { guests: 3 }),
+    ev(1, 'tasks', '[P0?] Sunday: task list and calendar clean-up with Henrik', M(17), M(17, 30)),
+    ev(1, 'me', 'Clean the flat properly', M(17), M(19), { guests: 4 }),
+    ev(1, 'me', 'Flat meeting & card games', M(19), M(20), { guests: 4 }),
+    ev(1, 'me', 'Bedtime: in bed by 23:10', M(23, 10), M(23, 20)),
+    ...daily(1),
+    ALL(2, 'tasks', '[P1] Work on the loops with stable internet'), ALL(2, 'me', 'Class trip to Berlin'),
+    ev(2, 'me', 'English', M(8), M(9, 45)), ev(2, 'me', 'Politics', M(10, 10), M(11, 50)), ev(2, 'me', 'Maths', M(12, 55), M(14, 30)),
+    ev(2, 'me', 'Biology', M(14, 35), M(16, 10)), ev(2, 'me', 'Art', M(16, 15), M(17, 50)),
+    ev(2, 'me', 'Father & son', M(20, 10), M(21, 30), { call: 'zoom.us/j/1', guests: 1, who: 'Dad' }), ev(2, 'fam', 'Father & son', M(20, 10), M(21, 30), { call: 'zoom.us/j/1', guests: 1, who: 'Dad' }),
+    ev(2, 'tasks', '[P0] Meditate for 10 minutes', M(23), M(23, 15)), ev(2, 'me', 'Bedtime: in bed by 23:10', M(23, 10), M(23, 20)),
+    ...daily(2),
+  ];
+  return { open: true, hl: null, sub: null, toast: '', now: M(16, 27), events: busy };
+}
+const SCENE_NOW = { busy: M(16, 27), rowmenu: M(16, 27), tomorrow: M(16, 27), quiet: M(22, 55) };
+
+// ================= the app =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const hm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const span = m => { const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h} h ${r} min` : h ? `${h} h` : `${r} min`; };
+const DAYS = ['Today', 'Tomorrow', 'Mon 23 Nov'];
+const FOLD = ['Later today', 'Tomorrow', 'Mon 23 Nov'];
+let MORE = [];   // "half": the rows that did not fit
+const LATER = 2;   // "next": today rows before the Later today fold
+const SVG = {
+  chev: '<svg width="7" height="11" viewBox="0 0 7 11"><path d="M1.5 1.5 5.5 5.5 1.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  cam: '<svg width="15" height="11" viewBox="0 0 15 11"><rect x=".75" y="1.25" width="9.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10.5 4.4 14 2.4v6.2l-3.5-2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  ppl: '<svg width="15" height="11" viewBox="0 0 15 11"><circle cx="5" cy="3.4" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1 10c.4-2.2 2-3.3 4-3.3S8.6 7.8 9 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="10.6" cy="3.8" r="1.8" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10.4 6.9c1.8 0 3 .9 3.4 3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  check: '<svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4.2 3.7 7 9 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+const hasMenu = e => !!(e.call || e.guests);
+const colour = c => CAL[c][1];
+
+// One day's rows, sorted all-day first; duplicates merged unless the option keeps them.
+function dayRows(k) {
+  let list = A.events.filter(e => e.day === k).map(e => ({ ...e, cals: [e.cal] }));
+  if (k === 0) list = list.filter(e => e.all || e.e > A.now || (e.e === e.s && e.s > A.now));
+  if (C('dupes') !== 'today') {
+    const out = [];
+    for (const e of list) {
+      const d = out.find(o => o.title === e.title && o.s === e.s && o.e === e.e && o.all === e.all);
+      if (d) d.cals.push(e.cal); else out.push(e);
+    }
+    list = out;
+  }
+  return list.sort((a, b) => (b.all ? 1 : 0) - (a.all ? 1 : 0) || (a.s ?? 0) - (b.s ?? 0) || (a.e ?? 0) - (b.e ?? 0));
+}
+function focusOf() {
+  const t = dayRows(0).filter(e => !e.all && e.e > e.s);
+  const run = t.filter(e => e.s <= A.now && e.e > A.now).pop(), next = t.find(e => e.s > A.now);
+  if (run && (!next || next.s - A.now > 15)) return { e: run, running: true, text: `${span(run.e - A.now)} left` };
+  if (next) return { e: next, running: false, text: `in ${span(next.s - A.now)}` };
+  return null;
+}
+const chevMode = () => ['today', 'all', 'hover'].includes(C('arrow'));
+function rowHasSub(e) { const a = C('arrow'); return a === 'join' ? false : a === 'all' ? true : hasMenu(e); }
+
+function evRow(e, key, o = {}) {
+  const a = C('arrow'), en = C('end'), cnt = C('count'), hl = A.hl === key;
+  const zero = e.e === e.s;
+  const t = e.all ? 'all-day' : en === 'range' && !zero ? `${hm(e.s)}–${hm(e.e)}` : hm(e.s);
+  const end = e.all ? '' : (en === 'today' || (en === 'right' && !zero) || (en === 'hover' && hl && !zero)) ? hm(e.e) : '';
+  const left = o.running && (cnt === 'row' || cnt === 'today') ? `<b class="left">${cdHTML(`${span(e.e - A.now)} left`)}</b>` : '';
+  const icon = a === 'icon' && hasMenu(e) ? `<i class="ic">${e.call ? SVG.cam : SVG.ppl}</i>` : '';
+  const join = a === 'join' && hl && e.call ? `<span class="join">Join${K('join') ? ' <kbd>J</kbd>' : ''}</span>` : '';
+  const sub = rowHasSub(e);
+  const cv = chevMode() ? `<i class="cv">${sub && (a !== 'hover' || hl) ? SVG.chev : ''}</i>` : '';
+  const two = e.cals.length > 1 && C('dupes') === 'two';
+  const bar = `<i class="bar ${two ? 'two' : ''}" style="--c:${colour(e.cals[0])};--c2:${colour(e.cals[1] || e.cals[0])}"></i>`;
+  return `<button class="mi ${hl ? 'hl' : ''}" data-k="${key}" data-sub="${sub ? 1 : 0}"><i></i>${bar}<span class="t num">${t}</span><span class="n"><span>${esc(e.title)}</span>${left}${icon}</span><span class="e num">${join}${end}</span>${cv}</button>`;
+}
+function dayFold(k, list, key) {
+  const hl = A.hl === key, a = chevMode();
+  const cv = `<i class="cv">${SVG.chev}</i>`;
+  return `<button class="mi day ${hl ? 'hl' : ''}" data-k="${key}" data-sub="1"><i></i><i></i><span class="n" style="grid-column: 3 / 5"><span${k === 9 ? ' style="color:var(--dim)"' : ''}>${k === 9 ? `${list.length} more${list.every(e => e.from === 1) ? ' tomorrow' : list.every(e => e.from === 0) ? ' today' : ''}` : FOLD[k]}</span></span><span class="e num">${k === 9 ? '' : `${list.length} event${list.length === 1 ? '' : 's'}`}${a ? '' : ' ' + SVG.chev}</span>${a ? cv : ''}</button>`;
+}
+// The key shown on a command, per "Shortcuts in the menu".
+function K(id) { const m = C('keys'); if (m === 'today') return { open: '⌘1', set: '⌘,', quit: '⌘Q', join: 'J', yes: 'Y', no: 'N', maybe: 'M', mail: 'E', show: '↩', copy: '⌘C' }[id] || '';
+  if (m === 'none') return ''; return { open: m === 'own' ? '⌃⌘K' : '', set: '⌘,', quit: '⌘Q' }[id] || ''; }
+const cdHTML = text => { const m = C('mark'); return `<span class="cd ${m}">${m === 'dot' ? '<span class="dot">·</span>' : m === 'line' ? '<i class="vl"></i>' : ''}<span class="tx num">${text}</span></span>`; };
+const cmd = (label, key, k) => `<button class="mi cmd ${A.hl === k ? 'hl' : ''}" data-k="${k}"><span class="n">${label}</span><span class="k">${key}</span></button>`;
+
+// The main menu. Keys: h (head), d<k>-<i> (event), f<k> (fold), m<k> (more), c-* (commands).
+function menuHTML() {
+  const f = focusOf(), cnt = C('count'), ahead = C('ahead');
+  let h = '';
+  if (f) {
+    const line = cnt === 'row' ? '' : ` <span class="${f.running ? 'soon' : ''} num">${f.text}</span>`;
+    h += `<div class="hd">${f.running ? 'Now' : 'Up next'}${line}</div>${evRow(f.e, 'h', { running: f.running })}<div class="sep"></div>`;
+  } else h += `<div class="hd">Nothing else today</div><div class="sep"></div>`;
+  MORE = [];
+  if (ahead === 'half') {
+    // Heights as NSMenu draws them: rows and headers 22, separators 11, padding 10. Budget: half the screen.
+    let used = 10 + (f ? 55 : 33) + 88;
+    const mon = dayRows(2), days = [todayList(), dayRows(1)];
+    if (mon.length) used += 22;
+    const total = days.reduce((a, l) => a + (l.length ? 22 + l.length * 22 : 0), 0);
+    let room = DESK.h * .5 - used - (used + total > DESK.h * .5 ? 22 : 0);
+    days.forEach((list, k) => {
+      if (!list.length) return;
+      const fit = room >= 44 ? Math.min(list.length, Math.floor((room - 22) / 22)) : 0;
+      if (fit) { h += `<div class="hd">${DAYS[k]}</div>` + list.slice(0, fit).map((e, i) => evRow(e, `d${k}-${i}`)).join(''); room -= 22 + fit * 22; }
+      MORE.push(...list.slice(fit).map(e => ({ ...e, from: k })));
+    });
+    if (MORE.length) h += dayFold(9, MORE, 'f9');
+    if (mon.length) h += dayFold(2, mon, 'f2');
+  }
+  for (let k = 0; k < 3 && ahead !== 'half'; k++) {
+    let list = dayRows(k);
+    if (k === 0) list = todayList();
+    if (!list.length) continue;
+    if (ahead === 'fold' && k > 0) { h += dayFold(k, list, 'f' + k); continue; }
+    if (ahead === 'two' && k > 1) continue;
+    if (ahead === 'next' && k > 0) { h += dayFold(k, list, 'f' + k); continue; }
+    if (ahead === 'next' && list.length > LATER + 1) { h += `<div class="hd">${DAYS[0]}</div>` + list.slice(0, LATER).map((e, i) => evRow(e, `d0-${i}`)).join('') + dayFold(0, list.slice(3), 'f0'); continue; }
+    const cap = ahead === 'two' && k === 1 ? 6 : 99;
+    h += `<div class="hd">${DAYS[k]}</div>` + list.slice(0, cap).map((e, i) => evRow(e, `d${k}-${i}`)).join('');
+    if (list.length > cap) h += `<button class="mi cmd ${A.hl === 'm' + k ? 'hl' : ''}" data-k="m${k}"><span class="n" style="color:var(--dim)">${list.length - cap} more in Horion…</span><span></span></button>`;
+  }
+  if (ahead === 'fold') h += '';
+  h += `<div class="sep"></div>${cmd('Open Horion', K('open'), 'c-open')}${cmd('Settings…', K('set'), 'c-set')}<div class="sep"></div>${cmd('Quit Horion', K('quit'), 'c-quit')}`;
+  return `<div class="mn ${chevMode() ? 'chev' : ''}" id="mn" data-area="menu" style="--title-max:${C('cut')}px">${h}</div>`;
+}
+// Today without the focus event, which has its own row at the top.
+function todayList() { const f = focusOf(); return dayRows(0).filter(e => !f || !(e.title === f.e.title && e.s === f.e.s && e.all === f.e.all)); }
+function foldRows(k) { return k === 9 ? MORE : k === 0 ? todayList().slice(LATER) : dayRows(k); }
+function eventOf(key) {
+  if (key === 'h') return focusOf()?.e;
+  const m = /^d(\d)-(\d+)$/.exec(key) || /^s(\d)-(\d+)$/.exec(key);
+  if (!m) return null;
+  const list = m[0][0] === 's' ? foldRows(+m[1]) : +m[1] === 0 ? todayList() : dayRows(+m[1]);
+  return list[+m[2]];
+}
+function subHTML() {
+  if (!A.sub) return '';
+  const fm = /^f(\d)$/.exec(A.sub);
+  if (fm) { const k = +fm[1], rows = foldRows(k); return `<div class="mn sub ${chevMode() ? 'chev' : ''}" id="sub" data-area="submenu" style="--title-max:${C('cut')}px">${k === 9 ? [...new Set(rows.map(e => e.from))].map(d => `<div class="hd">${['Later today', 'Sun 22 Nov'][d]}</div>` + rows.map((e, i) => e.from === d ? evRow(e, `s9-${i}`) : '').join('')).join('') : `<div class="hd">${['Later today', 'Sun 22 Nov', 'Mon 23 Nov'][k]}</div>` + rows.map((e, i) => evRow(e, `s${k}-${i}`)).join('')}<div class="sep"></div>${cmd('Show the day in Horion', K('show'), 'c-day')}</div>`; }
+  const e = eventOf(A.sub); if (!e) return '';
+  let h = '';
+  if (e.call) h += cmd('Join call', K('join'), 'x-join');
+  if (e.guests) h += (h ? '<div class="sep"></div>' : '') + `<div class="hd">Going?</div>${cmd(`<i class="chk">${SVG.check}</i> Yes`, K('yes'), 'x-yes')}${cmd('<i class="chk"></i> No', K('no'), 'x-no')}${cmd('<i class="chk"></i> Maybe', K('maybe'), 'x-maybe')}<div class="sep"></div>${cmd(e.guests > 1 ? `Email ${e.guests} guests` : `Email ${e.who || 'guest'}`, K('mail'), 'x-mail')}`;
+  h += (h ? '<div class="sep"></div>' : '') + cmd('Copy details', K('copy'), 'x-copy') + cmd('Show in Horion', K('show'), 'x-show');
+  return `<div class="mn sub" id="sub" data-area="submenu">${h}</div>`;
+}
+function deskClass() { return ''; }
+function app() {
+  const f = focusOf();
+  const it = f ? `<i class="bar" style="--c:${colour(f.e.cal)}"></i><span>${esc(f.e.title.length > 26 ? f.e.title.slice(0, 25) + '…' : f.e.title)}</span>${cdHTML(f.text)}` : '<span>◎</span>';
+  const bar = `<div class="mbar" data-os><span class="os"></span><b class="os" style="font-weight:700"></b><span class="sp"></span><button class="item ${A.open ? 'open' : ''}" id="item" data-a="item">${it}</button><span class="os">Wi‑Fi</span><span class="os">⌁</span><span class="os">▭</span><span class="os">Sat 21 Nov  ${hm(A.now)}</span></div>`;
+  return bar + (A.open ? menuHTML() + subHTML() : '') + (A.toast ? `<div class="toast" data-os>${A.toast}</div>` : '');
+}
+// After each render: the menu under the item; a submenu beside its row (left when there is no room on the right).
+function afterApp() {
+  const item = desk.querySelector('#item'), mn = desk.querySelector('#mn');
+  if (!item || !mn) return;
+  let x = item.offsetLeft; if (x + mn.offsetWidth > DESK.w - 8) x = DESK.w - 8 - mn.offsetWidth;
+  mn.style.left = x + 'px'; mn.style.top = '33px';
+  const sub = desk.querySelector('#sub'), row = A.sub && mn.querySelector(`[data-k="${A.sub}"]`);
+  if (sub && !row) sub.remove();
+  if (sub && row) {
+    let sx = x + mn.offsetWidth - 2; if (sx + sub.offsetWidth > DESK.w - 8) sx = x - sub.offsetWidth + 2;
+    sub.style.left = sx + 'px'; sub.style.top = Math.min(33 + row.offsetTop - 5, DESK.h - sub.offsetHeight - 8) + 'px';
+  }
+}
+function sceneStart(id) {
+  A = fresh(); A.now = SCENE_NOW[id] ?? A.now;
+  if (id === 'rowmenu') { const k = 'd0-' + todayList().findIndex(e => e.call); A.hl = k; A.sub = rowHasSub(eventOf(k) || {}) ? k : null; }
+  if (id === 'tomorrow') { if (['fold', 'next'].includes(C('ahead'))) { A.hl = 'f1'; A.sub = 'f1'; } else if (C('ahead') === 'half') { A.hl = 'f9'; A.sub = 'f9'; } }
+}
+function appClick(t) {
+  const k = t.dataset.k;
+  if (t.dataset.go) S.scene = t.dataset.go;
+  else if (t.dataset.a === 'item') { A.open = !A.open; A.sub = null; A.hl = null; A.toast = ''; }
+  else if (k && /^f\d$/.test(k)) A.sub = A.sub === k ? null : k;
+  else if (k) {
+    const e = eventOf(k);
+    const what = e ? `Opens <b>${esc(e.title)}</b> in Horion` : k === 'x-join' ? 'Opens the call' : `<b>${esc(t.innerText.split('\n')[0])}</b>`;
+    A.toast = what + ' · the menu closes'; A.open = false; A.sub = null; A.hl = null;
+  } else return false;
+  return true;
+}
+// Hover like NSMenu: highlight follows the mouse; a row with a menu opens it after 180 ms.
+let HT = null;
+function appHover(t) {
+  const k = t?.dataset.k; if (!k || A.hl === k) return;
+  const inSub = !!t.closest('#sub');
+  A.hl = inSub ? A.hl : k; if (inSub) { t.classList.add('hl'); [...t.parentElement.children].forEach(x => x !== t && x.classList.remove('hl')); return; }
+  clearTimeout(HT);
+  if (A.sub && A.sub !== k) A.sub = null;
+  render(); 
+  if (t.dataset.sub === '1') HT = setTimeout(() => { A.sub = k; render(); }, 180);
+}
+
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+// Scripts: #scene&shot&o=arrow.all,end.range sets picks.
+(location.hash.match(/&o=([^&]+)/)?.[1] || '').split(',').filter(Boolean).forEach(p => { const [d, v] = p.split('.'); S.c[d] = v; });
+sceneStart(S.scene);
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  const st = document.getElementById('stage').getBoundingClientRect();
+  // Scale so the real window fits, then grow the app to fill the stage: no empty space.
+  // Shots (#scene&shot) keep the exact DESK size.
+  const k = shot ? 1 : Math.min(st.width / DESK.w, st.height / DESK.h, 1);
+  desk.style.width = (shot ? DESK.w : st.width / k) + 'px'; desk.style.height = (shot ? DESK.h : st.height / k) + 'px';
+  desk.style.transform = `scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  afterApp();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; sceneStart(id); save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p>${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${notes ? `\n## Notes on elements\n${notes}` : ''}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') sceneStart(S.scene);
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+desk.addEventListener('mouseover', ev => appHover(ev.target.closest('.mi')));
+desk.addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-k', 'data-d', 'data-v', 'data-go'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>

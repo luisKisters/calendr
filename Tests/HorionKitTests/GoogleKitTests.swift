@@ -278,6 +278,6 @@ struct GoogleMappingFixTests {
         let ek = CalendarEvent(id: "e", calendarID: "ek", title: "E", start: now.addingTimeInterval(9000), end: now.addingTimeInterval(9600), status: .needsAction, attendees: [org, me])
         let m = MenuBarMenu.build(events: [google, ek], now: now, fmt: fmt, canRespondTo: { $0.calendarID == "google" }, guestAddresses: { _ in [] }) { _ in "#000000" }
         let rows = m.rows
-        #expect(rows.first { $0.event.id == "g" }?.hasSubmenu == true && rows.first { $0.event.id == "e" }?.hasSubmenu == false)
+        #expect(rows.first { $0.event.id == "g" }?.hint == .guests && rows.first { $0.event.id == "e" }?.hint == nil)
     }
 }
