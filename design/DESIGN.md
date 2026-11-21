@@ -1,11 +1,11 @@
-# Calendr design system (v2)
+# Horion design system (v2)
 
 > **Superseded (2026-11-20) by `design/mockup-v11/DECISIONS.md` and `design/design-system/`.** Kept for history.
 
 
 > Superseded by `design/mockup-v4/DECISIONS.md` and `design/mockup-v4/` (v4), which build on `design/LOCKED.md` (v3). Kept for history; where they disagree, DECISIONS.md wins.
 
-v1 was a pixel copy of Notion Calendar. v2 keeps what makes Notion Calendar good (layout, density, keyboard-first flows, command palette, right-hand inspector, menu bar list) and gives Calendr its own identity, borrowing the NoteTakr design language (`/tmp/notetakr/design/DESIGN-SYSTEM.md`) so both apps feel like siblings.
+v1 was a pixel copy of Notion Calendar. v2 keeps what makes Notion Calendar good (layout, density, keyboard-first flows, command palette, right-hand inspector, menu bar list) and gives Horion its own identity, borrowing the NoteTakr design language (`/tmp/notetakr/design/DESIGN-SYSTEM.md`) so both apps feel like siblings.
 
 ## Rules
 
@@ -44,7 +44,7 @@ Calendar colour drives a tint fill (colour at ~22% over ink-900), a 3pt leading 
 
 ## Identity
 
-- App name Calendr. Wordmark in the sidebar top: small purple ring-and-dot glyph (echoing NoteTakr's record-ring icon, turned into a calendar dot) + "Calendr".
+- App name Horion. Wordmark in the sidebar top: small purple ring-and-dot glyph (echoing NoteTakr's record-ring icon, turned into a calendar dot) + "Horion".
 - App icon: ink-900 rounded tile, act-purple ring, a small live-red dot at the "now" position on the ring, plus a subtle 7-column grid hint. Generate `.icns` (1024 master drawn in code or SVG → iconutil).
 - Proper empty states (no calendar access, no search results, no events today in menu bar) with a one-line explanation and a primary action.
 - Toasts (undo, link copied) bottom-center, ink-700, with keycap hints.

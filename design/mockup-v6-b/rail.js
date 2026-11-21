@@ -1,4 +1,4 @@
-// Calendr mockup v6 · B: the picker rail (outside the app). Tabs by app area, 2-4 variants per open choice,
+// Horion mockup v6 · B: the picker rail (outside the app). Tabs by app area, 2-4 variants per open choice,
 // REC on the recommended one, WAS on what the installed v4 build does. The combination lives in the URL hash.
 'use strict';
 
@@ -151,7 +151,7 @@ function railBody() {
 }
 function renderRail() {
   const r = document.getElementById('rail');
-  r.innerHTML = `<div class="rh"><span class="tt">Calendr <em>v6</em> · B Structured contrast</span><button class="x" data-r="hide" title="Hide the picker">${ic('x', 14)}</button></div>
+  r.innerHTML = `<div class="rh"><span class="tt">Horion <em>v6</em> · B Structured contrast</span><button class="x" data-r="hide" title="Hide the picker">${ic('x', 14)}</button></div>
     <div class="rtabs">${TABS.map(([k, l]) => `<button class="${TAB === k ? 'on' : ''}" data-r="tab" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="rbody">${railBody()}</div>
     <div class="rstat"><code id="rcode">${esc(location.hash)}</code><button class="rbtn" data-r="copy">Copy link</button><button class="rbtn" data-r="reset">Reset</button></div>`;

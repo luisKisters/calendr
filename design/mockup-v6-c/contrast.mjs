@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Contrast check for Calendr v6 · C "Warm editorial".
+// Contrast check for Horion v6 · C "Warm editorial".
 //   node design/mockup-v6-c/contrast.mjs          table of every token pair, exit 1 if a pair misses its target
 //   node design/mockup-v6-c/contrast.mjs --fails  only the misses
 // WCAG 2.x relative-luminance ratio and APCA-W3 0.0.98G-4g (Lc; negative = light text on dark, size matters only).

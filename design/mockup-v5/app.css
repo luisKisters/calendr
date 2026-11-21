@@ -1,4 +1,4 @@
-/* Calendr mockup v5. The app part bakes in every locked v4 decision (design/mockup-v4/DECISIONS.md):
+/* Horion mockup v5. The app part bakes in every locked v4 decision (design/mockup-v4/DECISIONS.md):
    OLED black, Ink accent, SF Pro + Instrument Sans titles, 18 / 12.5 / 11.5 px, events 500, quiet chrome,
    surfaces --bg / --pop / --bg2 / --hover, heights 28 / 32, radius 6 / 8 / 12, spacing 4 8 12 16 24. */
 @font-face { font-family: "Instrument Sans"; src: url("fonts/instrument-sans.woff2") format("woff2"); font-weight: 400 700; }

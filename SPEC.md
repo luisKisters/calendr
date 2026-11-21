@@ -1,4 +1,4 @@
-# Calendr — spec
+# Horion — spec
 
 A native macOS SwiftUI calendar (dark appearance first). `design/mockup-v4/` and `design/mockup-v4/DECISIONS.md` are the visual truth (v4; the "copy Notion Calendar 1:1" rule ended with v3). When this spec and the mockup disagree, the mockup wins. Type (v5): Geist only, bundled, in three sizes (15 month title, 12 text, 11 secondary) and three weights (400 / 500 / 600); colours and the event recipe come from `design/design-system/` (locked v11, Dark + derived Paper). Light theme: Paper, with the same token roles.
 
@@ -8,10 +8,10 @@ Owner: the maintainer. Priorities, in order: 1) it works, 2) it is fast, 3) it l
 
 - Swift 6 toolchain, Swift Package Manager, macOS 15+ deployment target. No Xcode project, no third-party packages.
 - `Package.swift` with:
-  - `CalendrKit` library: Foundation-only models and pure logic (event model, week/day math, overlap layout, all-day lane packing, command registry + fuzzy filter, natural-language "go to date" parser, upcoming-events grouping for the menu bar, search, recurrence description text, duration formatting). All logic lives here first, with tests.
-  - `Calendr` executable: SwiftUI + AppKit shell, EventKit store, views. Views are thin bindings over an `@Observable` app model.
-  - `CalendrKitTests`: Swift Testing (`import Testing`) tests. Add tests for named failures with observable results, not tests that restate implementation.
-- `scripts/build-app.sh`: `swift build -c release`, assemble `build/Calendr.app` (Info.plist with `NSCalendarsFullAccessUsageDescription`, `NSContactsUsageDescription` not needed, bundle id `com.luiskisters.calendr`, `LSApplicationCategoryType` productivity), ad-hoc `codesign --force --deep -s -`.
+  - `HorionKit` library: Foundation-only models and pure logic (event model, week/day math, overlap layout, all-day lane packing, command registry + fuzzy filter, natural-language "go to date" parser, upcoming-events grouping for the menu bar, search, recurrence description text, duration formatting). All logic lives here first, with tests.
+  - `Horion` executable: SwiftUI + AppKit shell, EventKit store, views. Views are thin bindings over an `@Observable` app model.
+  - `HorionKitTests`: Swift Testing (`import Testing`) tests. Add tests for named failures with observable results, not tests that restate implementation.
+- `scripts/build-app.sh`: `swift build -c release`, assemble `build/Horion.app` (Info.plist with `NSCalendarsFullAccessUsageDescription`, `NSContactsUsageDescription` not needed, bundle id `com.luiskisters.horion`, `LSApplicationCategoryType` productivity), ad-hoc `codesign --force --deep -s -`.
 - `scripts/verify.sh`: `swift build`, `swift test`, build-app, then the snapshot run (below). Must pass before any step is called done.
 
 ## Data

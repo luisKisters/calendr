@@ -1,4 +1,4 @@
-// Calendr mockup v5: state, theme, layout, views. Editor/search/menus live in panel.js, input in input.js, the picker in rail.js.
+// Horion mockup v5: state, theme, layout, views. Editor/search/menus live in panel.js, input in input.js, the picker in rail.js.
 'use strict';
 
 // ================================================================ icons (from mockup v4)

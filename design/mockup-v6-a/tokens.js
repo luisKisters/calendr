@@ -1,4 +1,4 @@
-// Calendr v6 · A "Calm graphite": the design tokens. One source for the page (app.js turns them into CSS
+// Horion v6 · A "Calm graphite": the design tokens. One source for the page (app.js turns them into CSS
 // custom properties) and for contrast.mjs (node design/mockup-v6-a/contrast.mjs prints WCAG + APCA for every pair).
 // Brief: design/mockup-v5/READABILITY-BRIEF.md §5 and §6 A.
 'use strict';

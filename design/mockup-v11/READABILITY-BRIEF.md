@@ -1,4 +1,4 @@
-# Calendr readability brief and design system (v5 to v6)
+# Horion readability brief and design system (v5 to v6)
 
 Written 2026-11-04 after looking at `r2-*.png` and `r3-*.png` and the tokens in `app.js` (`PAL`, `themeVars`, `evVars`) and `app.css`.
 All contrast values below were computed with the WCAG 2.x relative-luminance formula and APCA 0.0.98G-4g. The script is in the scratchpad (`brief/c.py`).
@@ -25,14 +25,14 @@ Sign convention: APCA Lc is negative for light text on a dark background, so onl
 ## 1. Readability rules
 
 ### WCAG 2.2 (the legal floor)
-- **1.4.3 Contrast (Minimum), AA:** text needs **4.5:1**. "Large" text needs 3:1, and large means at least 18 pt (24 px) regular or 14 pt (18.66 px) bold. **Every 11–13 pt UI label in Calendr counts as normal text, so it needs 4.5:1.** Disabled controls and pure decoration are exempt. Placeholders are not.
+- **1.4.3 Contrast (Minimum), AA:** text needs **4.5:1**. "Large" text needs 3:1, and large means at least 18 pt (24 px) regular or 14 pt (18.66 px) bold. **Every 11–13 pt UI label in Horion counts as normal text, so it needs 4.5:1.** Disabled controls and pure decoration are exempt. Placeholders are not.
 - **1.4.6 Enhanced, AAA:** 7:1 for text. Use this as the target for event titles and times.
 - **1.4.11 Non-text Contrast:** **3:1** for the parts of a control you need to identify it (field borders when they are the only cue, focus rings, checkbox outlines, the selected segment, the now line) and for meaningful graphics. Grid hairlines are decoration and are exempt.
 
 ### APCA (the perceptual target, better on dark)
 The levels come from the APCA "Bronze" guidance. In CSS, px matches macOS pt at 1x.
 
-| Lc | Use | Calendr mapping |
+| Lc | Use | Horion mapping |
 | --- | --- | --- |
 | **90** | Preferred for body text. Minimum for *non-body* text at **12 px/400**. | Event titles, row titles, field values: `--fg1`. |
 | **75** | Minimum for body text at 18/400, 16/500 or 14/700. Non-body text from 15 px/400. | Text that is read on paper. On dark it is hard to reach without halation, so 11–13 px text uses Lc 70+ with weight 500. |
@@ -77,7 +77,7 @@ Note that APCA is asymmetric. On dark, the same "grey level" reads weaker than o
 | Subheadline | 11 / 14 | Regular |
 | Footnote / Caption 1 / 2 | 10 / 13 | Regular / Regular / Medium |
 
-Calendr's 12.5 / 11.5 sizes sit *between* Apple's steps. That is legal, but it gives up native alignment with menus and the system. **Proposal: 13 body, 11 small, with events at 12/500.** In practice 10 pt is the minimum for anything that is read, and Calendr should not go below 11.
+Horion's 12.5 / 11.5 sizes sit *between* Apple's steps. That is legal, but it gives up native alignment with menus and the system. **Proposal: 13 body, 11 small, with events at 12/500.** In practice 10 pt is the minimum for anything that is read, and Horion should not go below 11.
 
 ### SF Pro tracking at small sizes
 SF tracks by size, in 1/1000 em at the given pt size. The system font applies this automatically in SwiftUI and AppKit. **The HTML mockup does not**, so set it there by hand:
@@ -153,7 +153,7 @@ Never letter-space body text. ALL-CAPS labels would need +0.04–0.06 em, so use
 | **Amie** | Pastel, rounded, fully tinted blocks | Dark text | Big rounded radius and lots of white space. Density is traded for friendliness. |
 | **Linear** (not a calendar, but the reference for calm dense UI) | n/a | n/a | Themes are generated in LCH from base, accent and contrast. Its stated goal is "reduce visual noise, maintain visual alignment, increase hierarchy and density". Accent leaks less into neutrals. Labels, icons and buttons are aligned with care. |
 
-The common pattern: **neutral chrome, low-saturation tinted event fills, high-contrast event text, faint grid, one family, and colour only on events.** Calendr already does the tinted fill, but at 34 % it is too saturated on black, and it adds a bar, outlines and pills on top.
+The common pattern: **neutral chrome, low-saturation tinted event fills, high-contrast event text, faint grid, one family, and colour only on events.** Horion already does the tinted fill, but at 34 % it is too saturated on black, and it adds a bar, outlines and pills on top.
 
 ---
 
@@ -170,7 +170,7 @@ The common pattern: **neutral chrome, low-saturation tinted event fills, high-co
 
 ---
 
-## 5. Proposed Calendr design system (base = direction A; B and C list their deltas)
+## 5. Proposed Horion design system (base = direction A; B and C list their deltas)
 
 ### Colour tokens: dark
 

@@ -1,4 +1,4 @@
-// Calendr v11: the picker rail (outside the app). The Look switch (L0 = v8, L1–L4) and the Dark/Paper preview switch sit on top of
+// Horion v11: the picker rail (outside the app). The Look switch (L0 = v8, L1–L4) and the Dark/Paper preview switch sit on top of
 // every tab; the combination lives in the URL hash (look=…&appear=…). v10: the Designer tab (look=D&d=…, one digit per control).
 // v11: the Readability tab first (look=R&r=…, one character per lever, Dark only; rp = the preset it started from).
 'use strict';
@@ -77,7 +77,7 @@ const SCENES = {
   NC: ['The right column: Now and Up next, then Later today. No shortcut list (press ? or ⌘K).', () => { base(); A.reveal = { from: 17 * 60, to: 20 * 60 }; }],
   ND: ['"Subscribed calendars" is folded (it shows how many it holds). Point at any group header: the chevron appears; click to fold or unfold.', () => { base(); A.grpClosed = ['subs']; }],
   NE: ['Point at a calendar row: an eye at the right hides it. "Family" is hidden: it stays in the list, dimmed, with an eye-slash that shows it again. The colour square toggles too.', () => { base(); A.hidden = ['family']; }],
-  NF: ['The place is plain text. Point at it: it underlines. Click it: the first time Calendr asks which maps app to use ("Remember my choice"). The copy icon copies the address; the pencil edits it.', () => { base(); openEv(find('Long walk', 6), { locHot: true }); }],
+  NF: ['The place is plain text. Point at it: it underlines. Click it: the first time Horion asks which maps app to use ("Remember my choice"). The copy icon copies the address; the pencil edits it.', () => { base(); openEv(find('Long walk', 6), { locHot: true }); }],
   NF2: ['The one-time question after the first click on a location. With "Remember my choice" on, later clicks open the app directly; Settings → General → Default maps app changes it.', () => { base(); openEv(find('Long walk', 6), { locHot: true }); A.pop = { k: 'maps', id: find('Long walk', 6).id }; }],
   NG: ['"Add conferencing" was clicked: a paste field that names the service (Zoom, Teams, Meet), and separately "Create Google Meet". Turn Google off in the Preview tab to see the explanation instead.', () => { base(); openEv(find('Build: search v2', 2), { confOpen: true, focusKey: 'link' }); }],
   NG2: ['An event with a call: the call row shows the service and the link as text, with Join (⌘J). Join is the only way to open the link.', () => { base(); openEv(find('Founder circle', 3)); }],
@@ -208,7 +208,7 @@ function railBody() {
 }
 function renderRail() {
   const r = document.getElementById('rail');
-  r.innerHTML = `<div class="rh"><span class="tt">Calendr <em>v11</em></span><button class="rbtn sm" data-r="fs" title="Full screen (F) · Esc leaves">${V.fs === '1' ? 'Exit full screen' : 'Full screen'}</button><button class="x" data-r="hide" title="Hide the picker">${ic('x', 14)}</button></div>
+  r.innerHTML = `<div class="rh"><span class="tt">Horion <em>v11</em></span><button class="rbtn sm" data-r="fs" title="Full screen (F) · Esc leaves">${V.fs === '1' ? 'Exit full screen' : 'Full screen'}</button><button class="x" data-r="hide" title="Hide the picker">${ic('x', 14)}</button></div>
     ${themeStrip()}
     <div class="rtabs">${TABS.map(([k, l]) => `<button class="${TAB === k ? 'on' : ''}" data-r="tab" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="rbody">${railBody()}</div>

@@ -1,4 +1,4 @@
-# Calendr v12: corner radii
+# Horion v12: corner radii
 
 Scale (`Theme.swift` `enum Radius`): 4 for events and chips, 8 for controls, 12 for surfaces. A shape nested in a padded parent uses the parent's radius minus the padding (6 = a row inside a 12 pt surface with 6 pt padding).
 

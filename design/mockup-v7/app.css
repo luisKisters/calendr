@@ -1,5 +1,5 @@
-/* Calendr v7 · base stylesheet for pack C (v6 C Warm editorial) and, with pack-d.css on top, packs D1–D4 — copied verbatim from the v6 stylesheet; only the page shell and the picker rail moved to shell.css. */
-/* Calendr mockup v6 · C "Warm editorial".
+/* Horion v7 · base stylesheet for pack C (v6 C Warm editorial) and, with pack-d.css on top, packs D1–D4 — copied verbatim from the v6 stylesheet; only the page shell and the picker rail moved to shell.css. */
+/* Horion mockup v6 · C "Warm editorial".
    Visual system only; every locked behaviour of v5 (FEEDBACK.md) stays. Colours: tokens.js (themeVars / evVars).
    Type: Geist 13 / 12 / 11 for the UI, Newsreader (serif) for page titles only, Geist Mono 11 in time columns.
    5 sizes: 22 title · 15 heading · 13 body · 12 event · 11 small. Weights 400 / 500, 600 only for the one dominant title per area.

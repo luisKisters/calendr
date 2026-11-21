@@ -3,7 +3,7 @@
 What the maintainer likes in other calendar apps, as input for design and feature work.
 
 The screenshots are **not in this repo**. The repo is public and the screenshots show private
-calendar data. They live on the maintainer's Mac in `~/Documents/calendr-inspo/`, one folder per app,
+calendar data. They live on the maintainer's Mac in `~/Documents/horion-inspo/`, one folder per app,
 with a README listing every file. Never add them (or any other screenshot of real calendar data) to the repo.
 
 ## Fantastical (`fantastical/`)
@@ -32,7 +32,7 @@ with a README listing every file. Never add them (or any other screenshot of rea
 
 ## Notion Calendar (`notion-calendar/`)
 
-The app Calendr is based on (see `SPEC.md`).
+The app Horion is based on (see `SPEC.md`).
 
 - **Show teammate calendar:** other people's calendars overlaid on yours. Liked most.
 - **Time zone travel / extra time zones:** a second hour column for another time zone.

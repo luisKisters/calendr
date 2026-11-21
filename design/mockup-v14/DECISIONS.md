@@ -1,4 +1,4 @@
-# Calendr v14: busy hours without "+N"
+# Horion v14: busy hours without "+N"
 
 Replaces design/mockup-v13 (superseded). Scope: only the time-grid "+N" chip goes. The all-day "+N more" and the month "N more" stay.
 The user said: "yourt examples are perhaps a bit etreme … create actually realisitc scnerarios many of them and gimme actual things i can adjust and change an argue your decisions".

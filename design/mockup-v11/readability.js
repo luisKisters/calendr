@@ -1,4 +1,4 @@
-// Calendr v11 · the Readability designer (round 2026-11-20 d). Dark only; Paper stays the v10 Designer output.
+// Horion v11 · the Readability designer (round 2026-11-20 d). Dark only; Paper stays the v10 Designer output.
 // 18 levers in six groups (Background · Text levels · Events · Type · Lines · States), each a short list of options built from
 // READABILITY-BRIEF.md (v10). A design is one base-36 character per lever, kept in the hash (look=R&r=…).
 // READ.look(code) returns a look with the interface of DESIGNER.look (vars, ev, evVars, adVars, calDot, check, gap, H, cls, geo, o):

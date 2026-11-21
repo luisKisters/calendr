@@ -1,4 +1,4 @@
-# Calendr v7 · Packs: designer notes
+# Horion v7 · Packs: designer notes
 
 Status: built and checked. Tailnet: https://<tailnet-host>:8799/ (opens on D1, Dark).
 Serve: `node design/mockup-v7/serve.mjs 8799`. Contrast: `node design/mockup-v7/contrast.mjs` (`--all`, `--fails`, `--pack D3`).

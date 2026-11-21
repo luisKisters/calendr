@@ -1,4 +1,4 @@
-// Calendr v10 · the Designer tab in the picker rail (round 2026-11-20 c). Sections with headings, one row per control: label, current value,
+// Horion v10 · the Designer tab in the picker rail (round 2026-11-20 c). Sections with headings, one row per control: label, current value,
 // "changed from preset" dot, lock (Randomize skips locked controls), a one-line hint, and the widget that fits the control:
 //   swatch  colour chips drawn with the real tokens (canvas = sidebar | canvas | surface stripes of the current mode + the other mode's corner)
 //   preview a tiny mock event / chip / date / grid drawn with the real tokens of that option

@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Calendr v4 mockup (interactive)</title>
+<title>Horion v4 mockup (interactive)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- <link rel="preconnect" href="https://fonts.googleapis.com"> -->
 <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
 <style>
-@font-face { font-family: "Instrument Sans"; src: url("../../Sources/Calendr/Resources/Fonts/InstrumentSans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Instrument Sans"; src: url("../../Sources/Horion/Resources/Fonts/InstrumentSans.ttf"); font-weight: 400 700; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; }
@@ -973,13 +973,13 @@ const DECISIONS = [
 ];
 DECISIONS.forEach(d => { d.lock = d.id in LOCKED; });
 
-const S = JSON.parse(localStorage.getItem('calendr-v4') || 'null') || { c: {} };
+const S = JSON.parse(localStorage.getItem('horion-v4') || 'null') || { c: {} };
 if ((S.v || 0) < 7) { S.c = { ...LOCKED }; S.v = 7; S.hover = true; S.before = false; }
 DECISIONS.forEach(d => { if (!d.opts.some(o => o[0] === S.c[d.id])) S.c[d.id] = d.opts[0][0]; });
 const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
 const DS = () => C('ds') !== 'off';
 // a hovered (previewed) option is never stored as the pick
-const save = () => localStorage.setItem('calendr-v4', JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S));
+const save = () => localStorage.setItem('horion-v4', JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S));
 if (location.hash) location.hash.slice(1).split('&').slice(1).forEach(x => { const [k, v] = x.split('='); if (k in S.c) S.c[k] = decodeURIComponent(v); });
 
 // ================================================================ colour
@@ -1590,7 +1590,7 @@ function modalHTML() {
     const txt = (v, n, use) => `<div class="tok"><b style="color:var(${v})">${n}</b><span>${use}</span></div>`;
     const evb = (id, label) => { const x = get(id); return `<div><button class="ev ${isPast(x) ? 'past' : ''} ${myResp(x) && myResp(x) !== 'yes' ? 'st-' + myResp(x) : ''}" style="${evVars(colorOf(x))}"><div class="t">${esc(x.t)}</div><div class="m tab">${fmt(x.s)}–${fmt(x.e)}</div></button><small>${label}</small></div>`; };
     return `<div class="scrim" data-a="closeModal"></div><div class="modal dsys"><button class="ibtn" style="position:absolute;right:14px;top:14px" data-a="closeModal" ${tip('Close', 'esc')}>${ic('x')}</button>
-      <h3>Calendr design system</h3><p>Every screen uses only these values. B in the picker switches to round 3 to compare.</p>
+      <h3>Horion design system</h3><p>Every screen uses only these values. B in the picker switches to round 3 to compare.</p>
       <div class="grid2"><div><h4>Type</h4>
         <div class="tok"><b style="font:600 18px var(--head);width:auto">Title 18</b><span>month, event, Today, dialogs</span></div>
         <div class="tok"><b style="font-size:12.5px;width:auto;font-weight:400">Text 12.5</b><span>everything you read: fields, rows, menus</span></div>
@@ -1610,7 +1610,7 @@ function modalHTML() {
   }
   if (md === 'icon') {
     const cur = C('icon');
-    return `<div class="scrim" data-a="closeModal"></div><div class="modal iconshow"><div class="big">${iconSVG(cur, 180)}<div><b style="font-family:var(--head);font-size:22px;font-weight:600;display:block">Calendr</b><span class="sub">${ICONS.find(i => i[0] === cur)[1]} · Dock, Finder, menu bar</span>
+    return `<div class="scrim" data-a="closeModal"></div><div class="modal iconshow"><div class="big">${iconSVG(cur, 180)}<div><b style="font-family:var(--head);font-size:22px;font-weight:600;display:block">Horion</b><span class="sub">${ICONS.find(i => i[0] === cur)[1]} · Dock, Finder, menu bar</span>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-top:18px">${[128, 64, 32, 16].map(s => `<div style="text-align:center">${iconSVG(cur, s)}<div class="sub tab">${s}</div></div>`).join('')}<div style="text-align:center;padding:0 8px"><span style="display:inline-flex;padding:4px 6px;border-radius:5px;background:var(--bg2)">${glyph(cur, 16)}</span><div class="sub">menu bar</div></div></div></div></div>
       <div class="dock" style="margin-bottom:20px">${['#3d7ef0', '#f2f2f2', '#34c759'].map(c => `<i style="background:${c}"></i>`).join('')}${iconSVG(cur, 52)}${['#ff9f0a', '#5e5ce6'].map(c => `<i style="background:${c}"></i>`).join('')}</div>
       <div class="opts">${ICONS.map(([id, n]) => `<button class="${id === cur ? 'on' : ''}" data-a="pickIcon" data-k="${id}">${iconSVG(id, 72)}${n}</button>`).join('')}</div></div>`;
@@ -1638,7 +1638,7 @@ function settingsHTML() {
     A.accts.map(a => `<div class="sbox"><div class="shd"><span class="pv">${a.kind.startsWith('Google') ? ic('google', 15) : a.kind === 'Subscriptions' ? ic('calendar', 15) : ic('globe', 15)}</span><div style="flex:1;min-width:0"><b>${esc(a.email)}</b><span>${esc(a.kind)}</span></div>${a.kind !== 'Subscriptions' ? `<button class="btn sm" data-a="newCal" data-k="${a.id}">${ic('plus', 13)} New calendar</button>` : ''}<button class="btn sm ghost" data-a="removeAcct" data-k="${a.id}">Remove</button></div>` +
       Object.entries(A.cals).filter(([, c]) => c.acct === a.id).map(([k, c]) => `<div class="srow"><button class="sdot" style="--cc:${c.hex};width:14px;height:14px;border-radius:4px" data-pop="calmore" data-i="${k}" ${tip('Colour')}></button><input class="in" data-f="calname:${k}" value="${esc(c.name)}" ${a.kind === 'Subscriptions' ? 'readonly' : ''}><button class="sw ${A.hidden.includes(k) ? '' : 'on'}" data-a="togCal" data-k="${k}" style="margin:0;width:80px"><i></i>${A.hidden.includes(k) ? 'Hidden' : 'Shown'}</button></div>`).join('') + `</div>`).join('') +
     (A.subUrl !== null ? `<div class="sbox"><div class="srow" style="padding:10px 14px"><span class="pv">${ic('link', 15)}</span><input class="in" data-f="subUrl" placeholder="Paste an .ics address, then Return" value="${esc(A.subUrl)}"><button class="btn act sm" data-a="subscribe">Subscribe</button></div></div>` : '');
-  if (t === 'contacts') body = `<h3>Contacts</h3><p class="lede2">Where “Add participant” finds people. Today Calendr never asks for these, so lookup finds nobody.</p><div class="sbox">
+  if (t === 'contacts') body = `<h3>Contacts</h3><p class="lede2">Where “Add participant” finds people. Today Horion never asks for these, so lookup finds nobody.</p><div class="sbox">
     <div class="srow"><span class="pv">${ic('contacts', 15)}</span><span class="grow">macOS Contacts<small>${A.contactsAllowed ? 'Allowed. Names, addresses and phone numbers.' : 'Not allowed yet. macOS asks once.'}</small></span>${A.contactsAllowed ? '<span class="sub">Allowed</span>' : '<button class="btn act sm" data-a="allowContacts">Allow access…</button>'}</div>
     ${A.accts.filter(a => a.kind.startsWith('Google')).map(a => `<div class="srow"><span class="pv">${ic('google', 15)}</span><span class="grow">Google contacts · ${esc(a.email)}<small>Contacts and “other contacts” (people you emailed)</small></span><span class="sub">${C('source') === 'google' ? 'Connected' : 'Needs the Google API'}</span></div>`).join('')}
     <div class="srow"><span class="pv">${ic('history', 15)}</span><span class="grow">Recent guests<small>People from your last 200 events</small></span><span class="sub">On</span></div></div>`;
@@ -1666,7 +1666,7 @@ function menubarPop() {
     ${rows.map(e => `<div class="mbr" style="${evVars(colorOf(e))};${e === next ? 'background:var(--hover)' : ''}"><span class="tm tab">${fmt(e.s)}</span><span class="b"></span><button class="ti" data-a="select" data-id="${e.id}" data-close="mb" style="text-align:left"><b>${esc(e.t)}</b><span class="tab">${e.s < NOW ? `${e.e - NOW} min left` : e === next ? `in ${Math.floor((e.s - NOW) / 60)} h ${(e.s - NOW) % 60} min${others(e).length ? ` · ${e.guests.length} people` : ''}` : `${fmt(e.s)}–${fmt(e.e)}`}</span></button>${e.call ? join(e) : '<span></span>'}</div>`).join('')}
     <div class="sec" style="margin-top:6px"><span>Tomorrow</span><span class="tab">Mon 5 Oct</span></div>
     <div class="mbr" style="${evVars('#5B8DEF')}"><span class="tm tab">08:00</span><span class="b"></span><span class="ti"><b>Deep work</b><span class="tab">08:00–09:45</span></span><span></span></div>
-    <div class="ft"><button data-a="togMenubar">Open Calendr</button><span style="display:flex;gap:3px">${kb('⌃', '⌘', 'K')}</span></div></div>`;
+    <div class="ft"><button data-a="togMenubar">Open Horion</button><span style="display:flex;gap:3px">${kb('⌃', '⌘', 'K')}</span></div></div>`;
 }
 
 // ================================================================ render
@@ -1686,7 +1686,7 @@ function render() {
   const searchTop = C('search') === 'right' ? `<div class="srch"><label>${ic('search', 15)}<input data-f="search" placeholder="Search events" value="${esc(A.q.search)}" autocomplete="off"></label><button class="ibtn" data-a="togRight" ${tip('Hide right column')}>${ic('sideR')}</button></div>` : `<div class="srch" style="justify-content:flex-end"><button class="ibtn" data-a="togRight" ${tip('Hide right column')}>${ic('sideR')}</button></div>`;
   const status = A.settings.countdown === 'Icon only' ? '' : A.settings.countdown === 'Countdown' ? '3 h 50 min' : 'Flat dinner in 3 h 50 min';
   host.innerHTML = `<div class="desk ${pal().dark ? '' : 'light'} f-${C('font')} s-${C('size')} rs-${C('status')} rd-${C('read')} po-${C('polish')} ${C('polish') !== 'off' ? 'po-on' : ''} ${DS() ? 'ds' : ''}" style="${themeVars()}">
-    <div class="macbar"><b>Calendr</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><div class="sp"></div>
+    <div class="macbar"><b>Horion</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><div class="sp"></div>
       <button class="si ${A.menubar ? 'on' : ''}" id="statusitem" data-a="togMenubar">${glyph(C('icon'), 15)}${status ? `<span class="tab">${status}</span>` : ''}</button><span>${ic('search', 14)}</span><span class="tab">Sun 4 Oct 15:10</span></div>
     <div class="win">${sidebar()}
       <main class="center" data-a="gridBg">${hdr()}${dayHeaders()}${allDay()}${grid()}</main>
@@ -2187,7 +2187,7 @@ const optLabel = d => { const o = d.opts.find(o => o[0] === C(d.id)); return o ?
 function renderPicker() {
   const newD = DECISIONS.filter(d => !d.lock), lockD = DECISIONS.filter(d => d.lock);
   const radios = d => d.opts.map(([v, l, help], i) => { const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : ''; return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${l}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`; }).join('');
-  let h = `<h1>Calendr v4 · round 6</h1><p class="lede">All picks from rounds 1 to 5 are locked. Nothing is open. ? explains an option.</p>`;
+  let h = `<h1>Horion v4 · round 6</h1><p class="lede">All picks from rounds 1 to 5 are locked. Nothing is open. ? explains an option.</p>`;
   h += `<div class="pk-ba"><button class="${S.before ? 'on' : ''}" data-a="togBefore" data-v="before">Before (round 3)</button><button class="${S.before ? '' : 'on'}" data-a="togBefore" data-v="after">After (now)</button><span>B</span></div>`;
   h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
   h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
@@ -2262,7 +2262,7 @@ function audit() {
 }
 function picksText() {
   const line = d => { const v = d.kind === 'palette' ? pal().name : optLabel(d); return `- ${d.name}: ${v}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`; };
-  return '# Calendr v4 round 6 picks\n## New\n' + (DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open') + '\n## Locked\n' + DECISIONS.filter(d => d.lock).map(line).join('\n');
+  return '# Horion v4 round 6 picks\n## New\n' + (DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open') + '\n## Locked\n' + DECISIONS.filter(d => d.lock).map(line).join('\n');
 }
 function pickerClick(ev) {
   const t = ev.target.closest('button'); if (!t) return;

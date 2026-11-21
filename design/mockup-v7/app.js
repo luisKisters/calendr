@@ -1,4 +1,4 @@
-// Calendr v7 · Packs: state, theme, layout, views. Every colour, font and structure flag comes from the active pack (packs.js, PK()).
+// Horion v7 · Packs: state, theme, layout, views. Every colour, font and structure flag comes from the active pack (packs.js, PK()).
 // Editor/search/menus live in panel.js, input in input.js, the picker (with the Pack switch) in rail.js.
 'use strict';
 

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Calendr Overflow</title>
-<!-- Calendr v13 round 1: the time grid without the "+N" chip. -->
+<title>Horion Overflow</title>
+<!-- Horion v13 round 1: the time grid without the "+N" chip. -->
 <style>
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
@@ -138,7 +138,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 <div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
 <script>
 // ================= edit for each round =================
-const PRODUCT = 'Calendr', VERSION = 'v13', ROUND = 2;
+const PRODUCT = 'Horion', VERSION = 'v13', ROUND = 2;
 const DESK = { w: 1440, h: 900 };
 const SCENES = [['week', 'Busy Wednesday, week'], ['day', 'Busy Wednesday, day'], ['light', 'Same week, Paper']];
 const HOWTO = ['Wednesday has 8 events at 9–11 and 4 at 13–15. Today the app hides some behind "+N".', 'Hover an option to see it; click to pick. Click an event to bring it to the front.', 'Ink / Paper (bottom left) switches the theme.'];
@@ -180,7 +180,7 @@ function fresh() {
 
 // ================= layout =================
 const SHORT = 15, SPAN = 22, JOIN = 30, STEP = 14, UNL = 0.5, HEAD = 0.66;
-// A port of CalendrKit/OverlapV5.swift. mode: now (overflow to "+N"), cascade, split. Returns placements + "+N" groups.
+// A port of HorionKit/OverlapV5.swift. mode: now (overflow to "+N"), cascade, split. Returns placements + "+N" groups.
 function v5(items, mode) {
   const w = items.map((it, i) => ({ it, id: it.id, o: i, s: it.s, en: it.e - it.s <= SHORT ? it.s + SPAN : it.e, short: it.e - it.s <= SHORT, un: it.un, left: 0, width: 1, px: 0, level: 0, cut: false, grp: -1 }));
   w.sort((a, b) => a.s - b.s || (b.en - b.s) - (a.en - a.s) || a.o - b.o);

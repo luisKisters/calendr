@@ -3,8 +3,8 @@
 ok
 
 == swift build
-[5/7] Linking Calendr
-[6/7] Applying Calendr
+[5/7] Linking Horion
+[6/7] Applying Horion
 Build complete! (1.15s)
 
 == swift test
@@ -16,8 +16,8 @@ Build complete! (1.15s)
 ✔ Test run with 195 tests in 35 suites passed after 5.043 seconds.
 
 == build app bundle
-build/Calendr.app: replacing existing signature
-Built build/Calendr.app
+build/Horion.app: replacing existing signature
+Built build/Horion.app
 signature ok
 
 == snapshots (every state in design/states.json)

@@ -1,4 +1,4 @@
-# Calendr v13: the time grid without "+N"
+# Horion v13: the time grid without "+N"
 
 > Superseded by design/mockup-v14.
 

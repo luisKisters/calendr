@@ -1,4 +1,4 @@
-/* Calendr v8 · base stylesheet. D3 "Graphite timetable" is the one theme (locked 2026-11-05); theme.css adds its structure
+/* Horion v8 · base stylesheet. D3 "Graphite timetable" is the one theme (locked 2026-11-05); theme.css adds its structure
    and the v8 changes on top, shell.css the page shell and the picker rail. Colours and the font come as custom properties from tokens.js.
    Type: Inter, 5 sizes: 18 title · 14 heading · 13 body · 12 event · 11 small. Weights 400 / 450 (events) / 500, 600 only for the one title per area.
    Spacing 4 8 12 16 24 · rows 26 / 28 / 32 · radius 4 events · 6 rows · 8 fields · 12 cards · hour 44 px with hour and half-hour lines. */

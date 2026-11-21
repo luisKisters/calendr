@@ -1,7 +1,7 @@
-// Prints the CGWindowID of the first on-screen window owned by the given process name: swift scripts/window-id.swift Calendr
+// Prints the CGWindowID of the first on-screen window owned by the given process name: swift scripts/window-id.swift Horion
 import CoreGraphics
 import Foundation
-let name = CommandLine.arguments.dropFirst().first ?? "Calendr"
+let name = CommandLine.arguments.dropFirst().first ?? "Horion"
 let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
 for w in list where (w[kCGWindowOwnerName as String] as? String) == name && (w[kCGWindowLayer as String] as? Int) == 0 {
     let b = w[kCGWindowBounds as String] as? [String: Any] ?? [:]

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Calendr Busy Hours</title>
-<!-- Calendr v14 round 1: the time grid without "+N", in realistic weeks, with knobs. -->
+<title>Horion Busy Hours</title>
+<!-- Horion v14 round 1: the time grid without "+N", in realistic weeks, with knobs. -->
 <style>
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
@@ -152,7 +152,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 <div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
 <script>
 // ================= edit for each round =================
-const PRODUCT = 'Calendr', VERSION = 'v14', ROUND = 1;
+const PRODUCT = 'Horion', VERSION = 'v14', ROUND = 1;
 const DESK = { w: 1440, h: 900 };
 const SCENES = [
   ['typical', 'A normal week'], ['double', 'Double-booked'], ['holds', 'Invites not answered'], ['manager', 'Manager’s Wednesday'],
@@ -248,7 +248,7 @@ function fresh() { return { sel: null }; }
 // ================= layout =================
 const SHORT = 15, SPAN = 22, JOIN = 30, STEP = 14, UNL = 0.5, HEAD = 0.66;
 const drawnEnd = it => it.e - it.s <= SHORT ? it.s + SPAN : it.e;
-// A port of CalendrKit/OverlapV5.swift. mode 'now' sends what does not fit to "+N"; 'cascade' keeps cascading.
+// A port of HorionKit/OverlapV5.swift. mode 'now' sends what does not fit to "+N"; 'cascade' keeps cascading.
 function v5(items, mode) {
   const w = items.map((it, i) => ({ it, id: it.id, o: i, s: it.s, en: drawnEnd(it), short: it.e - it.s <= SHORT, un: it.un, left: 0, width: 1, px: 0, level: 0, cut: false, grp: -1 }));
   w.sort((a, b) => a.s - b.s || (b.en - b.s) - (a.en - a.s) || a.o - b.o);

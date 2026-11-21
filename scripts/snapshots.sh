@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 CONFIG="${CONFIG:-release}"
 swift build -c "$CONFIG" >/dev/null
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/Calendr"
+BIN="$(swift build -c "$CONFIG" --show-bin-path)/Horion"
 OUT=artifacts/snapshots
 mkdir -p "$OUT"
 fail=0

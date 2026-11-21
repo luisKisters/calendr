@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Contrast check for Calendr v9: every look (L0 = v8, L1–L4) × Dark and Paper (READABILITY-BRIEF.md §1 and §5).
+// Contrast check for Horion v9: every look (L0 = v8, L1–L4) × Dark and Paper (READABILITY-BRIEF.md §1 and §5).
 // The targets are the v8 targets, unchanged.
 //   node design/mockup-v9/contrast.mjs              summary per look: pairs, misses and the tightest pair per theme
 //   node design/mockup-v9/contrast.mjs --all        every pair

@@ -1,4 +1,4 @@
-// Calendr v11 · round g (designr step 4 and 5): the counter (X), the alignment guides (G), the "Design system" sheet and Before / After (B).
+// Horion v11 · round g (designr step 4 and 5): the counter (X), the alignment guides (G), the "Design system" sheet and Before / After (B).
 // Hash keys: cnt=1 counter, gd=1 guides, ds=1 design-system sheet, ba=a (after: the recommended type scale) or b / empty (before: your link).
 'use strict';
 const DSYS = (() => {

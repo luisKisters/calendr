@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Calendr Corners</title>
-<!-- Calendr v12 round 1: corner radii. Every spot the radius audit changes, zoomed. -->
+<title>Horion Corners</title>
+<!-- Horion v12 round 1: corner radii. Every spot the radius audit changes, zoomed. -->
 <style>
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
@@ -172,7 +172,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 <div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
 <script>
 // ================= edit for each round =================
-const PRODUCT = 'Calendr', VERSION = 'v12', ROUND = 2;
+const PRODUCT = 'Horion', VERSION = 'v12', ROUND = 2;
 const DESK = { w: 1440, h: 900 };
 const SCENES = [['today', 'Today numbers'], ['more', '"+N" and "more"'], ['menus', 'Menus and lists'], ['inrow', 'Buttons inside rows'], ['skel', 'Loading sidebar'], ['eyectx', 'Eye in context'], ['all', 'All spots']];
 const HOWTO = ['Each tile shows one corner at 3× and at real size.', 'Hover an option to see it; click to pick.', 'Ink / Paper (left) switches the theme.', 'Scale: 4 events and chips · 8 controls · 12 surfaces · 6 = a row inside a 12 surface with 6 padding.'];
@@ -241,9 +241,9 @@ const SPOTS = {
   pal: () => `<div class="spot" style="padding:10px;background:var(--bg)"><div class="pop pal"><div class="it hot"><span class="ic"></span>Go to date…<span class="k">⌘ G</span></div><div class="it"><span class="ic"></span>New event<span class="k">⌘ N</span></div></div></div>`,
   undo: () => `<div class="spot" style="padding:10px;background:var(--bg)"><div class="toast">Moved to Thu 1 Oct, 12:00<span class="undo">Undo <span class="kc">⌘ Z</span></span><span class="x">✕</span></div></div>`,
   eye: () => `<div class="spot side"><div class="cal"><i class="cb"></i>Personal</div><div class="cal hot"><i class="cb" style="background:var(--orangeBar)"></i>Family<span class="eye hot">${EYE}</span></div></div>`,
-  eyectx: () => `<div class="spot side ctx">${[['Personal', '#6E9BF2'], ['Work', '#9A92F0', 'hot'], ['Calendr', '#9A92F0'], ['Family', '#5A2E2A', 'off'], ['Holidays', '#B48CF0'], ['Sport', '#E8874B']].map(([n, c, st]) => `<div class="cal ${st === 'hot' ? 'hot' : ''} ${st === 'off' ? 'off' : ''}"><i class="cb" style="background:${c}"></i>${n}${st === 'hot' ? `<span class="eye hot">${EYE}</span>` : st === 'off' ? `<span class="eye">${EYEOFF}</span>` : ''}</div>`).join('')}</div>`,
+  eyectx: () => `<div class="spot side ctx">${[['Personal', '#6E9BF2'], ['Work', '#9A92F0', 'hot'], ['Horion', '#9A92F0'], ['Family', '#5A2E2A', 'off'], ['Holidays', '#B48CF0'], ['Sport', '#E8874B']].map(([n, c, st]) => `<div class="cal ${st === 'hot' ? 'hot' : ''} ${st === 'off' ? 'off' : ''}"><i class="cb" style="background:${c}"></i>${n}${st === 'hot' ? `<span class="eye hot">${EYE}</span>` : st === 'off' ? `<span class="eye">${EYEOFF}</span>` : ''}</div>`).join('')}</div>`,
   rx: () => `<div class="spot rems"><div class="rem">10 min <span class="dim">before</span></div><div class="rem hot">1 hour <span class="dim">before</span><span class="rx">✕</span></div></div>`,
-  skel: () => `<div class="spot" style="padding:10px;background:var(--rail)"><div class="skel"><i style="width:132px"></i><i style="width:96px"></i><i style="width:118px"></i><p>Your calendars appear here once Calendr can read them.</p></div></div>`,
+  skel: () => `<div class="spot" style="padding:10px;background:var(--rail)"><div class="skel"><i style="width:132px"></i><i style="width:96px"></i><i style="width:118px"></i><p>Your calendars appear here once Horion can read them.</p></div></div>`,
 };
 const EYE = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>', EYEOFF = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/><path d="M2.5 2.5l11 11"/></svg>';
 const VARS = { hdr: '--r-hdr', mon: '--r-mon', pn: '--r-pn', adm: '--r-adm', mm: '--r-mm', sk: '--r-sk', menu: '--r-menu', pal: '--r-pal', undo: '--r-undo', eye: '--r-eye', rx: '--r-rx', skel: '--r-skel' };
