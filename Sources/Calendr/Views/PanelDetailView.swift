@@ -352,7 +352,7 @@ struct ReminderRow: View {
             if removable {
                 Button { model.removeReminder(minutes) } label: {
                     PanelIcon(name: .x, size: 11, color: Theme.fg2).frame(width: 20, height: 20)
-                        .background(RoundedRectangle(cornerRadius: Radius.row).fill(Theme.hoverRail)).contentShape(Rectangle())
+                        .background(RoundedRectangle(cornerRadius: Radius.small).fill(Theme.hoverRail)).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).help("Remove").opacity(h ? 1 : 0)
             }

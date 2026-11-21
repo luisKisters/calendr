@@ -136,7 +136,7 @@ struct PopItem<Label: View, End: View>: View {
             .font(.text).foregroundStyle(danger ? Theme.replyNo : Theme.fg)
             .padding(.horizontal, 10).padding(.vertical, alignTop ? 7 : 4)
             .frame(maxWidth: .infinity, minHeight: Dim.row, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(h ? wash : Color.clear))
+            .background(RoundedRectangle(cornerRadius: Radius.inner).fill(h ? wash : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

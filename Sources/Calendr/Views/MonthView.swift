@@ -190,9 +190,9 @@ enum MonthPainter {
                 let out = !math.isSameMonth(it.day, month)
                 let past = it.day < today
                 if isToday {
-                    cg.addPath(EventPainter.roundedPath(r, 11)); cg.setFillColor(ink.act); cg.fillPath()
+                    cg.addPath(EventPainter.roundedPath(r, Radius.small)); cg.setFillColor(ink.act); cg.fillPath()
                 } else if hovered {
-                    cg.addPath(EventPainter.roundedPath(r, 11)); cg.setFillColor(ink.hover); cg.fillPath()
+                    cg.addPath(EventPainter.roundedPath(r, Radius.small)); cg.setFillColor(ink.hover); cg.fillPath()
                 }
                 let numColor = isToday ? ink.onAct : out ? ink.fg3 : past ? ink.fg2 : ink.fg
                 let kind: TextCache.Kind = isToday ? .monthNumToday : .monthNum
@@ -242,7 +242,7 @@ enum MonthPainter {
                 EventPainter.truncated(cg, e.title.isEmpty ? "New event" : e.title, .monthTitle, x: tx, top: r.minY, box: r.height,
                                        color: declined || s.past ? ink.fg3 : ink.fg, maxWidth: max(1, r.maxX - 6 - tw - 6 - tx), strike: declined)
             case .more:
-                if hovered { cg.addPath(EventPainter.roundedPath(r, 5)); cg.setFillColor(ink.hover); cg.fillPath() }
+                if hovered { cg.addPath(EventPainter.roundedPath(r, Radius.small)); cg.setFillColor(ink.hover); cg.fillPath() }
                 EventPainter.text(cg, it.text, .more, x: r.minX + 7, top: r.minY, box: r.height, color: hovered ? ink.fg : ink.fg3)
             }
         }

@@ -186,7 +186,7 @@ struct PanelIconButton: View {
         Button(action: action) {
             PanelIcon(name: icon, size: Dim.iconGlyph, color: hover ? Theme.fg : Theme.fg2)
                 .frame(width: Dim.iconButton, height: Dim.iconButton)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hoverRail : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? Theme.hoverRail : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())

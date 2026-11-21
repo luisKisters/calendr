@@ -65,7 +65,7 @@ struct SidebarSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach([132, 96, 118], id: \.self) { w in
-                RoundedRectangle(cornerRadius: Radius.row).fill(Theme.hair).frame(width: CGFloat(w), height: 10).padding(.bottom, 9)
+                RoundedRectangle(cornerRadius: Radius.mark).fill(Theme.hair).frame(width: CGFloat(w), height: 10).padding(.bottom, 9)
             }
             Text("Your calendars appear here once Calendr can read them.").font(.text).foregroundStyle(Theme.fg2).lineSpacing(3).padding(.top, 4)
         }
@@ -169,7 +169,7 @@ struct MiniMonth: View {
                             }
                         }
                         // `.mm .wk`: the visible week's seven cells on one band, rounded at its ends.
-                        .background(RoundedRectangle(cornerRadius: Radius.row).fill(banded ? Theme.hoverRail : .clear))
+                        .background(RoundedRectangle(cornerRadius: Radius.small).fill(banded ? Theme.hoverRail : .clear))
                     }
                     .frame(height: Self.cell)
                     .padding(.top, Self.rowGap)
@@ -204,9 +204,9 @@ private struct MiniDay: View, Equatable {
 
     var body: some View {
         Button(action: action) {
-            RoundedRectangle(cornerRadius: Radius.row)
+            RoundedRectangle(cornerRadius: Radius.small)
                 .fill(today ? Theme.selected : hovered ? Theme.hoverRail : .clear)
-                .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(today ? Theme.segRing : selected ? Theme.fg3 : .clear, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Radius.small).strokeBorder(today ? Theme.segRing : selected ? Theme.fg3 : .clear, lineWidth: 1))
                 .frame(maxWidth: .infinity).frame(height: MiniMonth.cell)
                 .contentShape(Rectangle())
         }
@@ -313,7 +313,7 @@ private struct MiniWeekNumber: View, Equatable {
             Text(verbatim: String(number)).font(.smallLabelTab(dark: dark)).tracking(TypeTrack.small)
                 .foregroundStyle(hovered ? Theme.fg : Theme.fg3)
                 .frame(width: MiniMonth.weekColumn, height: MiniMonth.cell)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hovered ? Theme.hoverRail : .clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hovered ? Theme.hoverRail : .clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -408,7 +408,7 @@ struct CalendarRow: View {
             Button { model.toggleCalendar(cal.id) } label: {
                 ChromeIcon(name: off ? .eyeOff : .eye, size: 15, color: eyeHot ? Theme.fg : Theme.fg3)
                     .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
-                    .background(RoundedRectangle(cornerRadius: Radius.row).fill(eyeHot ? Theme.eyeHover : .clear))
+                    .background(RoundedRectangle(cornerRadius: Radius.small).fill(eyeHot ? Theme.eyeHover : .clear))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

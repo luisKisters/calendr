@@ -205,27 +205,30 @@ enum Space {
     static let xl: CGFloat = 24
 }
 
-/// Corners: one scale, three steps. 4 for small marks (events, all-day chips, calendar squares, checkboxes, swatches, the now
-/// pill) · 8 for everything you click in a list or a form (rows, buttons, fields, icon buttons, tiles, segmented tracks, chips) ·
-/// 12 for surfaces (menus, dialogs, the toast, cards, settings groups). A shape nested inside another with padding p uses the outer
-/// radius minus p (`inner`: a segment in its track), so the two corners stay parallel. The 3 pt colour bars are rounded to half
-/// their width (`bar`). The switch track is the one pill.
+/// Corners: one scale, three steps (v13 "Round" minus 1 pt). 5 for events, all-day chips and the today numbers · 9 for
+/// everything you click in a list or a form (rows, buttons, fields, tiles, segmented tracks) · 13 for surfaces (menus, dialogs, the
+/// toast, cards, settings groups). A shape nested inside another with padding p uses the outer radius minus p: a segment in its 2 pt
+/// track and a row in a menu's 6 pt padding are both 7 (`inner`). Marks of 10 to 16 pt (calendar squares, checkboxes, swatches, the
+/// now pill, the "+N" chip) stay at 4 (`mark`) so they never turn into circles. The 3 pt colour bars are rounded to half their
+/// width (`bar`). The switch track is the one pill.
 enum Radius {
-    static let small: CGFloat = 4
-    static let control: CGFloat = 8
-    static let surface: CGFloat = 12
-    /// A segment inside its 2 pt padded track.
+    static let small: CGFloat = 5
+    static let control: CGFloat = 9
+    static let surface: CGFloat = 13
+    /// A segment inside its 2 pt padded track; a row inside a menu's 6 pt padding.
     static let inner: CGFloat = control - 2
+    /// Squares and labels 10 to 16 pt high: 4, so they stay squares, not circles.
+    static let mark: CGFloat = 4
     static let row: CGFloat = control
     static let event: CGFloat = small
     static let card: CGFloat = surface
     /// The 3 pt calendar colour bar.
     static let bar: CGFloat = 1.5
-    static let nowPill: CGFloat = small
+    static let nowPill: CGFloat = mark
     /// Rules and the now line.
     static let rule: CGFloat = 1
-    static let check: CGFloat = small
-    static let swatch: CGFloat = small
+    static let check: CGFloat = mark
+    static let swatch: CGFloat = mark
     static let leadBar: CGFloat = bar
 }
 

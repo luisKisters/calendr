@@ -39,7 +39,7 @@ struct IconButton: View {
             SFIcon(name: name, size: glyph * 0.75, color: hover ? Theme.fg : color)
                 .frame(width: glyph, height: glyph)
                 .frame(width: box, height: box)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? wash : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? wash : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())

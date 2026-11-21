@@ -350,8 +350,8 @@ enum EventPainter {
     /// The "+N" button (`.evmore`): bg3 with fg text, a 1.5 pt bg ring; inverted (fg with bg text) when hovered or open.
     @MainActor
     static func more(_ cg: CGContext, _ grp: OverflowGroup, rect r: CGRect, hot: Bool, ink: Ink) {
-        let shape = roundedPath(r, r.height / 2)
-        cg.addPath(roundedPath(r.insetBy(dx: -0.75, dy: -0.75), r.height / 2 + 0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
+        let shape = roundedPath(r, Radius.mark)
+        cg.addPath(roundedPath(r.insetBy(dx: -0.75, dy: -0.75), Radius.mark + 0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
         cg.addPath(shape); cg.setFillColor(hot ? ink.fg : ink.bg3); cg.fillPath()
         let s = GridGeometry.moreLabel(grp)
         let w = TextCache.line(s, .moreChip).width
