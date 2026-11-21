@@ -16,9 +16,6 @@ struct EventsCanvas: View {
     let preview: PlacedEvent?
     let creating: Bool
     let rank: (PlacedEvent) -> Int
-    /// "+N" groups per day, and the buttons drawn inverted (hovered or open).
-    var groups: [[OverflowGroup]] = []
-    var hotMore: [GridMoreRef] = []
     let styles: (PlacedEvent) -> EventStyle
     /// Read once: `ProcessInfo.environment` builds a dictionary per call, and this ran on every draw.
     private static let profiling = ProcessInfo.processInfo.environment["HORION_PROF"] != nil
@@ -32,16 +29,10 @@ struct EventsCanvas: View {
                 let ranks = events.map(rank)
                 let order = events.indices.sorted { ranks[$0] != ranks[$1] ? ranks[$0] < ranks[$1] : $0 < $1 }
                 var top: [Int] = []
-                for i in order where !events[i].placement.hidden {
-                    if ranks[i] >= 100_000 { top.append(i); continue }     // the selected block and the draft go above the "+N" buttons
+                for i in order {
+                    if ranks[i] >= 100_000 { top.append(i); continue }     // the selected block and the draft go on top
                     let p = events[i]
                     EventPainter.draw(cg, event: p, rect: g.rect(for: p), style: styles(p), fmt: fmt, dayView: dayView)
-                }
-                let ink = EventPainter.Ink.of(dark)
-                for (d, day) in groups.enumerated() {
-                    for (k, grp) in day.enumerated() {
-                        EventPainter.more(cg, grp, rect: g.moreRect(day: d, group: grp), hot: hotMore.contains(GridMoreRef(day: d, group: k)), ink: ink)
-                    }
                 }
                 for i in top {
                     let p = events[i]
@@ -71,7 +62,7 @@ struct EventsCanvas: View {
 @MainActor
 enum TextCache {
     enum Kind: Int {
-        case title, titleMedium, titleSmall, time, hour, hourBold, header, headerLight, headerToday, headerNum, headerNumToday, headerPast, allDayLabel, more, monthTitle, monthNum, monthNumToday, micro, dayNum, moreChip
+        case title, titleMedium, titleSmall, time, hour, hourBold, header, headerLight, headerToday, headerNum, headerNumToday, headerPast, allDayLabel, more, monthTitle, monthNum, monthNumToday, micro, dayNum
     }
     struct Key: Hashable { var text: String; var kind: Int }
     private static var lines: [Key: (CTLine, CGFloat, CGFloat, CGFloat)] = [:]   // line, width, ascent, descent
@@ -100,7 +91,6 @@ enum TextCache {
         case .monthNumToday: return f(TypeSize.small, 600, true)
         case .micro: return f(TypeSize.small, 500)
         case .dayNum: return f(TypeSize.small, 500, true)
-        case .moreChip: return f(TypeSize.small, 500, true)
         }
     }
 
@@ -347,24 +337,16 @@ enum EventPainter {
         }
     }
 
-    /// The "+N" button (`.evmore`): bg3 with fg text, a 1.5 pt bg ring; inverted (fg with bg text) when hovered or open.
-    @MainActor
-    static func more(_ cg: CGContext, _ grp: OverflowGroup, rect r: CGRect, hot: Bool, ink: Ink) {
-        let shape = roundedPath(r, r.height / 2)
-        cg.addPath(roundedPath(r.insetBy(dx: -0.75, dy: -0.75), r.height / 2 + 0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
-        cg.addPath(shape); cg.setFillColor(hot ? ink.fg : ink.bg3); cg.fillPath()
-        let s = GridGeometry.moreLabel(grp)
-        let w = TextCache.line(s, .moreChip).width
-        text(cg, s, .moreChip, x: r.midX - w / 2, top: r.minY, box: r.height, color: hot ? ink.bg : ink.fg)
-    }
-
     /// Line box of event titles (12 / 15.5); event times use `BlockText.timeLine` (11 / 14).
     static let lineHeight: CGFloat = CGFloat(BlockText.titleLine)
 
     /// The text plan of a placed block as it is drawn (the painter and the tours use the same call).
     static func plan(_ p: PlacedEvent, rect r: CGRect, style: EventStyle) -> BlockTextPlan {
-        BlockText.plan(height: Double(r.height), width: Double(r.width), minutes: max(p.endMinute, p.placement.drawEndMinute ?? 0) - p.startMinute,
-                       isShort: style.isShort, cut: p.placement.covered, continuesFromPrevious: p.continuesFromPrevious)
+        let minutes = max(p.endMinute, p.placement.drawEndMinute ?? 0) - p.startMinute
+        // The part above the first block drawn over it, in points (the block spans `minutes`).
+        let shown = p.placement.visibleMinutes.map { Double(r.height) * Double($0) / Double(max(minutes, 1)) }
+        return BlockText.plan(height: Double(r.height), width: Double(r.width), minutes: minutes,
+                              isShort: style.isShort, visibleHeight: shown, continuesFromPrevious: p.continuesFromPrevious)
     }
 
     /// The left edge of event text inside a block: the bar, then 6 pt (2 pt when thin). All-day chips start 1 pt further in.

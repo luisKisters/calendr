@@ -32,7 +32,6 @@ struct TimeGridView: View {
                         NowLines(g: g, gutter: gutter)
                         GridGestureLayer(g: g).offset(x: gutter)
                         HourGutter(g: g, dark: dark).frame(width: gutter, height: CGFloat(g.totalHeight))
-                        GridStackHost(g: g, gutter: gutter, width: geo.size.width)
                     }
                     .frame(width: geo.size.width, height: CGFloat(g.totalHeight), alignment: .topLeading)
                     .animation(Motion.base, value: model.periodID)
@@ -193,10 +192,8 @@ private struct EventsLayer: View {
         let m = model
         let selected = model.selectedEventID, draft = model.draftEventID, hovered = model.gridState.pointer.hoveredEventID
         let now = model.now
-        let open = model.visibleStack.map { s in GridMoreRef(day: s.ref.day, group: model.layout.groups(day: s.ref.day).firstIndex(of: s.group) ?? -1) }
         return EventsCanvas(events: drag.events, geometry: g, dark: dark, fmt: model.fmt, dayView: model.viewMode == .day,
                             preview: drag.preview, creating: model.dragPreview?.kind == .create, rank: { m.paintRank($0) },
-                            groups: drag.groups, hotMore: [model.gridState.pointer.hoveredMore, open].compactMap { $0 },
                             styles: { p in
                                 var s = m.style(for: p.event, dark: dark, now: now, selected: p.event.id == selected, overlapping: p.placement.over)
                                 s.isDark = dark
@@ -241,17 +238,9 @@ private struct GridGestureLayer: View {
                         if edge != nil { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() }
                         if pointer.hoveredEventID != id { pointer.hoveredEventID = id }
                         if pointer.minute != nil { pointer.minute = nil }
-                        if pointer.hoveredMore != nil { pointer.hoveredMore = nil }
-                    case .more(let d, let i)?:
-                        NSCursor.arrow.set()
-                        let ref = GridMoreRef(day: d, group: i)
-                        if pointer.hoveredMore != ref { pointer.hoveredMore = ref }
-                        if pointer.hoveredEventID != nil { pointer.hoveredEventID = nil }
-                        if pointer.minute != nil { pointer.minute = nil }
                     case .empty(_, let m)?:
                         NSCursor.arrow.set()
                         if pointer.hoveredEventID != nil { pointer.hoveredEventID = nil }
-                        if pointer.hoveredMore != nil { pointer.hoveredMore = nil }
                         let snap: Int? = model.draftEventID == nil ? g.snapped(m) : nil
                         if pointer.minute != snap { pointer.minute = snap }
                     case nil: break
@@ -260,7 +249,6 @@ private struct GridGestureLayer: View {
                     NSCursor.arrow.set()
                     if model.press == nil { pointer.minute = nil }
                     pointer.hoveredEventID = nil
-                    pointer.hoveredMore = nil
                 }
             }
     }

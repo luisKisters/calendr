@@ -65,7 +65,7 @@ struct SidebarSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach([132, 96, 118], id: \.self) { w in
-                RoundedRectangle(cornerRadius: Radius.row).fill(Theme.hair).frame(width: CGFloat(w), height: 10).padding(.bottom, 9)
+                RoundedRectangle(cornerRadius: Radius.small).fill(Theme.hair).frame(width: CGFloat(w), height: 10).padding(.bottom, 9)
             }
             Text("Your calendars appear here once Horion can read them.").font(.text).foregroundStyle(Theme.fg2).lineSpacing(3).padding(.top, 4)
         }
@@ -408,7 +408,7 @@ struct CalendarRow: View {
             Button { model.toggleCalendar(cal.id) } label: {
                 ChromeIcon(name: off ? .eyeOff : .eye, size: 15, color: eyeHot ? Theme.fg : Theme.fg3)
                     .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
-                    .background(RoundedRectangle(cornerRadius: Radius.row).fill(eyeHot ? Theme.eyeHover : .clear))
+                    .background(RoundedRectangle(cornerRadius: Radius.inner).fill(eyeHot ? Theme.eyeHover : .clear))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
