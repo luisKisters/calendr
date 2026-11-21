@@ -170,6 +170,13 @@ final class EventKitStore: CalendarStore {
         teammates = seen.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    /// From the rule alone: `series(of:)` would load two years of events first (about a second on a full calendar).
+    /// `seriesID` is only set when the event has recurrence rules.
+    func repeats(_ event: CalendarEvent) -> Bool {
+        guard event.seriesID != nil else { return false }
+        return cache[event.id]?.recurrenceRules?.first?.recurrenceEnd?.occurrenceCount != 1
+    }
+
     func series(of event: CalendarEvent) -> [CalendarEvent] {
         guard let sid = event.seriesID else { return [event] }
         return events(in: DateInterval(start: math.addDays(event.start, -365), end: math.addDays(event.start, 365))).filter { $0.seriesID == sid }

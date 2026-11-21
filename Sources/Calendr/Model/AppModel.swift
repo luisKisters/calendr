@@ -70,6 +70,8 @@ final class AppModel {
     // MARK: Chrome
     var sidebarVisible = true
     var rightColumnVisible = true
+    /// The recurring-delete dialog's "send the guests a cancellation email" switch; reset each time the dialog opens.
+    var deleteNotify = true
     var overlay: Overlay? {
         didSet {
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
@@ -590,8 +592,8 @@ final class AppModel {
     func requestDeleteSelected() {
         guard let e = selectedEvent, isWritable(e) else { return }
         if isDraftOpen { discardDraft(); return }
-        if deleteNeedsGuestDialog(e) && !(e.isRecurring && store.series(of: e).count > 1) { overlay = .deleteWithGuests(e.id); return }
-        if e.isRecurring && store.series(of: e).count > 1 { overlay = .deleteRecurring(e.id) } else { delete(e, span: .this) }
+        if store.repeats(e) { deleteNotify = true; overlay = .deleteRecurring(e.id); return }
+        if deleteNeedsGuestDialog(e) { overlay = .deleteWithGuests(e.id) } else { delete(e, span: .this) }
     }
 
     @discardableResult

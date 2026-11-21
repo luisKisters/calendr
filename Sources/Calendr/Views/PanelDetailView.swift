@@ -139,18 +139,20 @@ struct PanelDetailView: View {
         let editing = focus == .notes
         return VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
-                if editing {
-                    TextField("", text: Binding(get: { MeetNotes.visible(model.selectedEvent?.notes ?? "").text }, set: { model.setSelectedNotes($0) }), axis: .vertical)
-                        .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineLimit(1...14)
-                        .focused($focus, equals: .notes)
-                } else {
+                // One field, always in the hierarchy; only its visibility follows the focus. Swapping a placeholder field for the real
+                // one on focus (as this did) sent Tab into a loop: the focused field left the hierarchy, focus fell back, the
+                // placeholder came back and took it again, and SwiftUI never finished the update (the app hung).
+                TextField("", text: Binding(get: { MeetNotes.visible(model.selectedEvent?.notes ?? "").text }, set: { model.setSelectedNotes($0) }), axis: .vertical)
+                    .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineLimit(1...14)
+                    .focused($focus, equals: .notes).disabled(!canEdit)
+                    .opacity(editing ? 1 : 0)
+                    .allowsHitTesting(editing)
+                if !editing {
                     Text(v.text.isEmpty ? EditorRow.notes.placeholder! : v.text).font(.text).foregroundStyle(v.text.isEmpty ? Theme.fg3 : Theme.fg)
                         .lineSpacing(3.75).fixedSize(horizontal: false, vertical: true)
                         .padding(.vertical, -1.9)
                         .contentShape(Rectangle())
                         .onTapGesture { if canEdit { focus = .notes } }
-                    // keeps the focus target alive so a click can move the keyboard here
-                    TextField("", text: .constant("")).focused($focus, equals: .notes).opacity(0).frame(width: 1, height: 1).allowsHitTesting(false)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 20, alignment: .topLeading)
