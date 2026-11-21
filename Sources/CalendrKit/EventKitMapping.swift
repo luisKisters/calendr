@@ -7,6 +7,24 @@ public enum RawSourceType: Sendable { case local, exchange, calDAV, mobileMe, su
 public enum RawCalendarType: Sendable { case local, calDAV, exchange, subscription, birthday }
 public enum RawParticipantStatus: Sendable { case unknown, pending, accepted, declined, tentative, delegated, completed, inProcess }
 
+public enum RawParticipantRole: Sendable { case unknown, required, optional, chair, nonParticipant }
+public enum RawParticipantKind: Sendable { case unknown, person, room, resource, group }
+
+/// An `EKAlarm` as plain data: a relative offset in seconds (negative before the start), or an absolute date.
+public struct RawAlarm: Sendable, Equatable {
+    public var relativeOffset: Double, isAbsolute: Bool
+    public init(relativeOffset: Double, isAbsolute: Bool = false) { self.relativeOffset = relativeOffset; self.isAbsolute = isAbsolute }
+}
+
+/// An `EKParticipant` as plain data. `email` is the `mailto:` address, or nil when the URL is not one.
+public struct RawParticipant: Sendable {
+    public var name: String?, email: String?, isCurrentUser: Bool, role: RawParticipantRole, status: RawParticipantStatus, kind: RawParticipantKind
+    public init(name: String?, email: String?, isCurrentUser: Bool = false, role: RawParticipantRole = .required, status: RawParticipantStatus = .unknown,
+                kind: RawParticipantKind = .person) {
+        self.name = name; self.email = email; self.isCurrentUser = isCurrentUser; self.role = role; self.status = status; self.kind = kind
+    }
+}
+
 public struct RawSource: Sendable {
     public var id: String, title: String, type: RawSourceType
     public init(id: String, title: String, type: RawSourceType) { self.id = id; self.title = title; self.type = type }
@@ -66,21 +84,79 @@ public enum EventKitMapping {
         return result
     }
 
-    /// The event's own status wins for tentative/cancelled; otherwise the current user's attendee response decides.
-    public static func responseStatus(myStatus: RawParticipantStatus?, eventTentative: Bool, eventCanceled: Bool) -> ResponseStatus {
+    /// A cancelled event reads as declined. My own events (I organise them) are accepted. Otherwise my answer decides (`myAnswer`):
+    /// not answered is `needsAction`, but only when I am on the guest list (`myStatus` not nil). The event's own tentative flag
+    /// turns an accepted (or guest-less) event into tentative.
+    public static func responseStatus(myStatus: RawParticipantStatus?, iAmOrganizer: Bool = false, eventTentative: Bool, eventCanceled: Bool) -> ResponseStatus {
         if eventCanceled { return .declined }
-        switch myStatus {
-        case .declined: return .declined
-        case .tentative: return .tentative
-        default: return eventTentative ? .tentative : .confirmed
+        if iAmOrganizer { return .confirmed }
+        let mine = myStatus.map(myAnswer) ?? .confirmed
+        return mine == .confirmed && eventTentative ? .tentative : mine
+    }
+
+    /// My own answer: as a guest's (`status(of:)`), except that delegating the invitation means I am not going.
+    public static func myAnswer(_ p: RawParticipantStatus) -> ResponseStatus { p == .delegated ? .declined : status(of: p) }
+
+    /// One guest's answer. Not answered (or unknown, or in process) is `needsAction`.
+    public static func status(of p: RawParticipantStatus) -> ResponseStatus {
+        switch p {
+        case .accepted, .completed, .delegated: .confirmed
+        case .declined: .declined
+        case .tentative: .tentative
+        case .unknown, .pending, .inProcess: .needsAction
         }
     }
 
-    /// EventKit stores the reminder as a negative offset in seconds.
-    public static func reminderMinutes(alarmOffsetSeconds: [Double]) -> Int? {
-        alarmOffsetSeconds.filter { $0 <= 0 }.map { Int((-$0 / 60).rounded()) }.min()
+    /// The guest list from the attendees and the organizer (which EventKit keeps apart; it may or may not be among the attendees).
+    /// Only `ev.organizer` is the organizer; it comes first and counts as accepted. Rooms and resources are not guests.
+    /// Entries without an address or a name are dropped.
+    public static func attendees(_ raw: [RawParticipant], organizer: RawParticipant?) -> [Attendee] {
+        func clean(_ s: String?) -> String { s?.trimmingCharacters(in: .whitespaces) ?? "" }
+        func key(_ p: RawParticipant) -> String { clean(p.email).lowercased() }
+        let people = raw.filter { $0.kind != .room && $0.kind != .resource }
+        var out: [Attendee] = []
+        if let o = organizer, !(clean(o.email).isEmpty && clean(o.name).isEmpty) {
+            let same = people.first { !key($0).isEmpty && key($0) == key(o) }
+            out.append(Attendee(email: clean(o.email), name: clean(o.name).isEmpty ? nil : clean(o.name), isOrganizer: true,
+                                isMe: o.isCurrentUser || same?.isCurrentUser == true, isOptional: false, status: .confirmed))
+        }
+        for p in people where !(clean(p.email).isEmpty && clean(p.name).isEmpty) {
+            if let o = organizer, !key(p).isEmpty, key(p) == key(o) { continue }
+            let n = clean(p.name)
+            out.append(Attendee(email: clean(p.email), name: n.isEmpty || n == clean(p.email) ? nil : n,
+                                isOrganizer: false, isMe: p.isCurrentUser, isOptional: p.role == .optional,
+                                status: p.isCurrentUser ? myAnswer(p.status) : status(of: p.status)))
+        }
+        return out
     }
+
+    /// An alarm is a reminder when it is relative and fires at or before the start. Absolute-date alarms and alarms after
+    /// the start are not reminders: Calendr shows and keeps them as they are.
+    public static func isReminder(_ a: RawAlarm) -> Bool { !a.isAbsolute && a.relativeOffset <= 0 }
+
+    /// The reminders of an event's alarms, in whole minutes, unique and sorted.
+    public static func reminders(alarms: [RawAlarm]) -> [Int] {
+        Array(Set(alarms.filter(isReminder).map { Int((-$0.relativeOffset / 60).rounded()) })).sorted()
+    }
+    /// EventKit stores relative alarms as offsets in seconds, negative before the start. Alarms after the start are dropped.
+    public static func reminders(alarmOffsetSeconds: [Double]) -> [Int] {
+        reminders(alarms: alarmOffsetSeconds.map { RawAlarm(relativeOffset: $0) })
+    }
+    /// The smallest reminder, or nil.
+    public static func reminderMinutes(alarmOffsetSeconds: [Double]) -> Int? { reminders(alarmOffsetSeconds: alarmOffsetSeconds).first }
     public static func alarmOffsetSeconds(minutes: Int?) -> Double? { minutes.map { -Double($0) * 60 } }
+    /// One alarm offset per reminder.
+    public static func alarmOffsets(reminders: [Int]) -> [Double] { reminders.map { -Double($0) * 60 } }
+
+    /// What saving `reminders` does to an event's alarms: nil when they already give these reminders (nothing is rewritten, so
+    /// sub-minute offsets stay as they are). Otherwise the indexes of the reminder alarms to remove and the offsets to add.
+    /// Alarms that are not reminders (absolute dates, after the start) are never touched.
+    public static func alarmChanges(existing: [RawAlarm], reminders target: [Int]) -> (remove: [Int], add: [Double])? {
+        let want = Array(Set(target.filter { $0 >= 0 })).sorted()
+        if reminders(alarms: existing) == want { return nil }
+        let remove = existing.indices.filter { isReminder(existing[$0]) }
+        return (remove, alarmOffsets(reminders: want))
+    }
 
     /// Participants shown as "Name <email>" or just the email/name. The organizer/self entry is dropped.
     public static func participantLabel(name: String?, email: String?) -> String? {

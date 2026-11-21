@@ -16,7 +16,7 @@ let package = Package(
             resources: [.copy("Resources/Fonts")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
-        .testTarget(name: "CalendrKitTests", dependencies: ["CalendrKit"]),
+        .testTarget(name: "CalendrKitTests", dependencies: ["CalendrKit"], resources: [.copy("Fixtures")]),
         .testTarget(name: "CalendrTests", dependencies: ["Calendr", "CalendrKit"], swiftSettings: [.swiftLanguageMode(.v5)]),
     ]
 )

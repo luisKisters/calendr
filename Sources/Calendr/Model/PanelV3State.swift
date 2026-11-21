@@ -58,6 +58,7 @@ enum PanelText {
         case .confirmed: "Yes"
         case .tentative: "Maybe"
         case .declined: "No"
+        case .needsAction: "No reply"
         }
     }
     /// "Weekly on Tue", "Every weekday", "Every day"
@@ -174,7 +175,7 @@ extension AppModel {
         switch f {
         case .place: return !e.location.isEmpty || added
         case .guests: return !e.participants.isEmpty || added
-        case .video: return !e.conferencing.isEmpty || added
+        case .video: return !e.conferencing.isEmpty || CallLink.parse(e) != nil || added
         case .notes: return !e.notes.isEmpty || added
         }
     }
@@ -225,7 +226,7 @@ extension AppModel {
     func addGuest(_ name: String) {
         let v = name.trimmingCharacters(in: .whitespaces)
         guard !v.isEmpty else { return }
-        updateSelected { $0.participants.append(v) }
+        updateSelected { $0.addGuest(v) }
     }
 
     /// Only the demo store makes up a call link; real calendars take a pasted one (`setVideoLink`).
@@ -245,9 +246,19 @@ extension AppModel {
         }
     }
 
+    /// Opens the event's call (`CallLink`: the conferencing field, else a call link in the notes or the location).
+    /// A website is no call: it gets no Join (`openConferencingLink`).
     func joinCall(_ e: CalendarEvent) {
-        if options.isHeadless { showToast("Opens the call in your browser"); return }
+        guard let call = CallLink.parse(e) else { return }
+        if options.isHeadless { showToast("Opens \(call.name) in your browser"); return }
+        NSWorkspace.shared.open(call.url)
+    }
+
+    /// Opens the web address in the conferencing field that is not a call (a website, a document).
+    func openConferencingLink(_ e: CalendarEvent) {
         let link = e.conferencing.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let u = URL(string: link.contains("://") ? link : "https://" + link) { NSWorkspace.shared.open(u) }
+        guard !link.isEmpty, let url = URL(string: link.contains("://") ? link : "https://" + link) else { return }
+        if options.isHeadless { showToast("Opens the link in your browser"); return }
+        NSWorkspace.shared.open(url)
     }
 }

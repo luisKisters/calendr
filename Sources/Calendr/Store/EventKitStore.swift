@@ -91,6 +91,28 @@ final class EventKitStore: CalendarStore {
         @unknown default: .local
         }
     }
+    nonisolated static func raw(_ a: EKAlarm) -> RawAlarm { RawAlarm(relativeOffset: a.relativeOffset, isAbsolute: a.absoluteDate != nil) }
+
+    nonisolated static func raw(_ p: EKParticipant) -> RawParticipant {
+        let mail = p.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
+        let role: RawParticipantRole = switch p.participantRole {
+        case .required: .required
+        case .optional: .optional
+        case .chair: .chair
+        case .nonParticipant: .nonParticipant
+        default: .unknown
+        }
+        let kind: RawParticipantKind = switch p.participantType {
+        case .person: .person
+        case .room: .room
+        case .resource: .resource
+        case .group: .group
+        default: .unknown
+        }
+        return RawParticipant(name: p.name, email: mail.contains("@") ? mail : nil, isCurrentUser: p.isCurrentUser, role: role,
+                              status: map(p.participantStatus), kind: kind)
+    }
+
     nonisolated static func map(_ s: EKParticipantStatus) -> RawParticipantStatus {
         switch s {
         case .unknown: .unknown
@@ -114,7 +136,7 @@ final class EventKitStore: CalendarStore {
     }
 
     func teammateEvents(_ email: String, in range: DateInterval) -> [CalendarEvent] {
-        events(in: range).filter { e in e.participants.contains { $0.lowercased().contains(email.lowercased()) } }
+        events(in: range).filter { e in e.attendees.contains { $0.email.lowercased() == email.lowercased() } }
     }
 
     func searchCorpus(around date: Date) -> [CalendarEvent] {
@@ -141,18 +163,11 @@ final class EventKitStore: CalendarStore {
 
     private func rebuildTeammates(from evs: [CalendarEvent]) {
         var seen: [String: Teammate] = [:]
-        for e in evs { for p in e.participants {
-            let (name, mail) = Self.split(p)
-            if !mail.isEmpty, seen[mail] == nil { seen[mail] = Teammate(name: name.isEmpty ? mail : name, email: mail) }
+        for e in evs { for a in e.attendees where !a.isMe {
+            let mail = a.email
+            if !mail.isEmpty, seen[mail] == nil { seen[mail] = Teammate(name: a.label, email: mail) }
         } }
         teammates = seen.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
-
-    nonisolated static func split(_ label: String) -> (String, String) {
-        if let lt = label.firstIndex(of: "<"), let gt = label.firstIndex(of: ">"), lt < gt {
-            return (label[..<lt].trimmingCharacters(in: .whitespaces), String(label[label.index(after: lt)..<gt]))
-        }
-        return label.contains("@") ? ("", label) : (label, "")
     }
 
     func series(of event: CalendarEvent) -> [CalendarEvent] {
@@ -169,13 +184,10 @@ final class EventKitStore: CalendarStore {
     nonisolated static func makeEvent(_ ev: EKEvent, math: CalendarMath) -> CalendarEvent {
         let baseID = ev.eventIdentifier ?? ev.calendarItemIdentifier
         let id = "\(baseID)@\(Int(ev.startDate.timeIntervalSince1970))"
-        let others = (ev.attendees ?? []).filter { !$0.isCurrentUser }
-        let participants = others.compactMap { a -> String? in
-            let mail = a.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
-            return EventKitMapping.participantLabel(name: a.name, email: mail.contains("@") ? mail : nil)
-        }
+        let attendees = EventKitMapping.attendees((ev.attendees ?? []).map(Self.raw), organizer: ev.organizer.map(Self.raw))
         let mine = (ev.attendees ?? []).first(where: { $0.isCurrentUser }).map { Self.map($0.participantStatus) }
-        let status = EventKitMapping.responseStatus(myStatus: mine, eventTentative: ev.status == .tentative, eventCanceled: ev.status == .canceled)
+        let status = EventKitMapping.responseStatus(myStatus: mine, iAmOrganizer: ev.organizer?.isCurrentUser == true,
+                                                    eventTentative: ev.status == .tentative, eventCanceled: ev.status == .canceled)
         var start = ev.startDate ?? Date(), end = ev.endDate ?? start
         if ev.isAllDay {
             start = math.startOfDay(start)
@@ -188,8 +200,8 @@ final class EventKitStore: CalendarStore {
             title: ev.title ?? "", start: start, end: end, isAllDay: ev.isAllDay,
             status: status,
             location: ev.location ?? "", notes: ev.notes ?? "", recurrence: ev.recurrenceRules?.first.flatMap(Self.convert),
-            participants: participants, conferencing: ev.url?.absoluteString ?? "",
-            reminderMinutes: EventKitMapping.reminderMinutes(alarmOffsetSeconds: (ev.alarms ?? []).map(\.relativeOffset)),
+            attendees: attendees, conferencing: ev.url?.absoluteString ?? "",
+            reminders: EventKitMapping.reminders(alarms: (ev.alarms ?? []).map(Self.raw)),
             availability: ev.availability == .free ? .free : .busy, visibility: .standard,
             timeZoneID: ev.timeZone?.identifier ?? math.timeZone.identifier)
     }
@@ -250,7 +262,11 @@ final class EventKitStore: CalendarStore {
         if e.isAllDay { ek.timeZone = nil }      // all-day events are floating dates
         else if let tz = TimeZone(identifier: e.timeZoneID) { ek.timeZone = tz }
         if let cal = store.calendar(withIdentifier: e.calendarID), cal.allowsContentModifications, ek.calendar?.calendarIdentifier != cal.calendarIdentifier { ek.calendar = cal }
-        for a in ek.alarms ?? [] { ek.removeAlarm(a) }
-        if let off = EventKitMapping.alarmOffsetSeconds(minutes: e.reminderMinutes) { ek.addAlarm(EKAlarm(relativeOffset: off)) }
+        // Only reminder alarms change, and only when the reminders did (absolute and after-start alarms stay).
+        let alarms = ek.alarms ?? []
+        if let change = EventKitMapping.alarmChanges(existing: alarms.map(Self.raw), reminders: e.reminders) {
+            for i in change.remove { ek.removeAlarm(alarms[i]) }
+            for off in change.add { ek.addAlarm(EKAlarm(relativeOffset: off)) }
+        }
     }
 }

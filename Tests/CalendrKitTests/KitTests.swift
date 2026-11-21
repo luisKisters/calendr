@@ -325,7 +325,7 @@ struct EventKitMappingTests {
         #expect(EventKitMapping.responseStatus(myStatus: .declined, eventTentative: false, eventCanceled: false) == .declined)
         #expect(EventKitMapping.responseStatus(myStatus: .accepted, eventTentative: true, eventCanceled: false) == .tentative)
         #expect(EventKitMapping.responseStatus(myStatus: nil, eventTentative: false, eventCanceled: true) == .declined)
-        #expect(EventKitMapping.responseStatus(myStatus: .pending, eventTentative: false, eventCanceled: false) == .confirmed)
+        #expect(EventKitMapping.responseStatus(myStatus: .pending, eventTentative: false, eventCanceled: false) == .needsAction)
     }
     @Test func alarmOffsets() {
         #expect(EventKitMapping.reminderMinutes(alarmOffsetSeconds: [-900, -60]) == 1)

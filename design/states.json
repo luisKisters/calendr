@@ -66,6 +66,9 @@
     "v4-delete": {
       "mockup": "delete",
       "fixture": "v4"
+    },
+    "v4-b-layout": {
+      "fixture": "v4"
     }
   }
 }

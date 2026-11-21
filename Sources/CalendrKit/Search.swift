@@ -9,14 +9,14 @@ public struct SearchGroup: Identifiable, Sendable {
 public enum EventSearch {
     static func fold(_ s: String) -> String { s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil) }
 
-    /// Every whitespace separated word must appear in title, location, notes or participants.
+    /// Every whitespace separated word must appear in title, location, notes or the other guests' names and addresses.
     /// Grouped by day, ascending. Upcoming days first when `preferFrom` is set.
     public static func search(_ events: [CalendarEvent], query: String, math: CalendarMath, near: Date? = nil, limit: Int = 200) -> [SearchGroup] {
         let words = fold(query).split(whereSeparator: { $0.isWhitespace }).map(String.init)
         guard !words.isEmpty else { return [] }
         var hits: [CalendarEvent] = []
         for ev in events {
-            let hay = fold(ev.title + " " + ev.location + " " + ev.notes + " " + ev.participants.joined(separator: " "))
+            let hay = fold(ev.title + " " + ev.location + " " + ev.notes + " " + ev.attendees.filter { !$0.isMe }.map { $0.label + " " + $0.email }.joined(separator: " "))
             if words.allSatisfy({ hay.contains($0) }) { hits.append(ev) }
         }
 
