@@ -32,13 +32,14 @@ struct IconButton: View {
     var help: String?
     let action: () -> Void
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
     var body: some View {
         let glyph = small ? Dim.iconGlyphSmall : Dim.iconGlyph, box = small ? Dim.iconButtonSmall : Dim.iconButton
         Button(action: action) {
             SFIcon(name: name, size: glyph * 0.75, color: hover ? Theme.fg : color)
                 .frame(width: glyph, height: glyph)
                 .frame(width: box, height: box)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hover : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? wash : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -60,13 +61,14 @@ struct ChromeIconButton: View {
     var help: String = ""
     let action: () -> Void
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
     var body: some View {
         let hot = hover || on || (probe != nil && HoverProbe.shared.target == probe)
         let glyph = small ? Dim.iconGlyphSmall : Dim.iconGlyph, box = small ? Dim.iconButtonSmall : Dim.iconButton
         Button(action: action) {
             ChromeIcon(name: icon, size: glyph, color: hot ? Theme.fg : Theme.fg3)
                 .frame(width: box, height: box)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? (rail ? Theme.hoverRail : Theme.hover) : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? (rail ? Theme.hoverRail : wash) : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -113,11 +115,12 @@ struct TextButton: View {
     var disabled = false
     let action: () -> Void
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
 
     var body: some View {
         let h = !disabled && hover
         let fg: Color = disabled || quiet ? Theme.fg3 : kind == .fill ? Theme.onAct : (kind == .line || h ? Theme.fg : Theme.fg2)
-        let fill: Color = kind == .fill ? (h ? Theme.actHover : Theme.act) : (h ? Theme.hover : .clear)
+        let fill: Color = kind == .fill ? (h ? Theme.actHover : Theme.act) : (h ? wash : .clear)
         let edge: Color = kind == .fill ? .clear : (disabled || quiet ? Theme.hair : (kind == .line ? Theme.hair2 : .clear))
         Button(action: action) {
             HStack(spacing: 6) {
@@ -213,9 +216,9 @@ struct SegmentButton: View {
             Text(title).font(on ? .textMedium : .text).tracking(TypeTrack.text)
                 .foregroundStyle(!enabled ? (on ? Theme.fg3 : Theme.fg4) : on || h ? Theme.fg : Theme.fg2)
                 .padding(.horizontal, 10).frame(minWidth: minWidth, minHeight: Dim.segment, maxHeight: Dim.segment)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(on && enabled ? Theme.thumb : Color.clear)
+                .background(RoundedRectangle(cornerRadius: Radius.inner).fill(on && enabled ? Theme.thumb : Color.clear)
                     .shadow(color: on && enabled && scheme == .light ? InkRGB.segShadow.color.opacity(0.10) : .clear, radius: 1, y: 1))
-                .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(on ? (enabled ? Theme.segRing : Theme.hair2) : Color.clear, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Radius.inner).strokeBorder(on ? (enabled ? Theme.segRing : Theme.hair2) : Color.clear, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

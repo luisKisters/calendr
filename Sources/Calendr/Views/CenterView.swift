@@ -112,7 +112,7 @@ struct MateChip: View {
     let mate: Teammate
     @State private var hover = false
     var body: some View {
-        let c = Color(hex: model.mateColorHex(mate))
+        let c = Theme.calendarMark(model.mateColorHex(mate))
         Button { model.toggleMate(mate) } label: {
             HStack(spacing: 6) {
                 ZStack {
@@ -129,9 +129,9 @@ struct MateChip: View {
                 SFIcon(name: "xmark", size: 9, color: Theme.fg3, weight: .medium)
             }
             .padding(.leading, 8).padding(.trailing, 6).frame(height: 24)
-            .background(Capsule().fill(hover ? Theme.hover : .clear))
-            .overlay(Capsule().strokeBorder(Theme.hair2, lineWidth: 1))
-            .contentShape(Capsule())
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.hover : .clear))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.hair2, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: Radius.control))
         }
         .buttonStyle(PressStyle(scale: 0.97))
         .onHover { hover = $0 }

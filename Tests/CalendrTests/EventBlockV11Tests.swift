@@ -89,7 +89,7 @@ struct EventBlockV11Tests {
             #expect(px(110, 30) == c.fill.c8 && px(125, 30) == InkRGB.of(dark).bg.c8, "dark \(dark): the block ends at its width")
         }
         #expect(EventPainter.textInset(dark: true) == 9.5 && EventPainter.textInset(dark: false) == 9.5)
-        #expect(Radius.event == 4.5)
+        #expect(Radius.event == 4)
     }
 
     @Test func anUnansweredBlockHasAnOutlineAndNoBar() {

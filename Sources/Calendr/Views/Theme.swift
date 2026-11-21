@@ -52,7 +52,7 @@ struct InkRGB: Equatable {
     let thumb, segRing: RGB
 
     static let dark = InkRGB(
-        bg: RGB(hex: "#0B0B0C"), rail: RGB(hex: "#070708"), bg1: RGB(hex: "#151516"), bg2: RGB(hex: "#1D1D1E"), bg3: RGB(hex: "#2A2A2C"), pop: RGB(hex: "#1D1D1E"),
+        bg: RGB(hex: "#0B0B0C"), rail: RGB(hex: "#070708"), bg1: RGB(hex: "#151516"), bg2: RGB(hex: "#1D1D1E"), bg3: RGB(hex: "#2A2A2C"), pop: RGB(hex: "#0B0B0C"),
         fg: RGB(hex: "#EBEBED"), fg2: RGB(hex: "#CCCCCE"), fg3: RGB(hex: "#A8A8AA"), fg4: RGB(hex: "#4E4E50"), hourLabel: RGB(hex: "#CCCCCE"),
         hover: RGB(hex: "#161617"), hoverRail: RGB(hex: "#121213"), selected: RGB(hex: "#1E1E1F"),
         grid: RGB(hex: "#212123"), gridV: RGB(hex: "#1B1B1C"), hairStrong: RGB(hex: "#2A2A2C"), hair: RGB(hex: "#1C1C1D"), todayTint: RGB(hex: "#131314"),
@@ -60,7 +60,7 @@ struct InkRGB: Equatable {
         ok: RGB(hex: "#6CC58A"), warn: RGB(hex: "#E5B44A"), danger: RGB(hex: "#FF7B72"),
         thumb: RGB(hex: "#1D1D1E"), segRing: RGB(hex: "#6B6B6C"))
     static let light = InkRGB(
-        bg: RGB(hex: "#FBFBFB"), rail: RGB(hex: "#F4F4F5"), bg1: RGB(hex: "#F1F1F2"), bg2: RGB(hex: "#FFFFFF"), bg3: RGB(hex: "#DCDCDC"), pop: RGB(hex: "#FFFFFF"),
+        bg: RGB(hex: "#FBFBFB"), rail: RGB(hex: "#F4F4F5"), bg1: RGB(hex: "#F1F1F2"), bg2: RGB(hex: "#FFFFFF"), bg3: RGB(hex: "#DCDCDC"), pop: RGB(hex: "#FBFBFB"),
         fg: RGB(hex: "#1D1D20"), fg2: RGB(hex: "#4A4A50"), fg3: RGB(hex: "#606067"), fg4: RGB(hex: "#B8B8B9"), hourLabel: RGB(hex: "#4A4A50"),
         hover: RGB(hex: "#F1F1F1"), hoverRail: RGB(hex: "#EAEAEB"), selected: RGB(hex: "#EAEAEB"),
         grid: RGB(hex: "#E1E1E2"), gridV: RGB(hex: "#EBEBEC"), hairStrong: RGB(hex: "#DCDCDC"), hair: RGB(hex: "#E8E8E8"), todayTint: RGB(hex: "#F3F3F3"),
@@ -111,6 +111,12 @@ enum Theme {
     static let hover = Color.ink(\.hover)
     static let hoverRail = Color.ink(\.hoverRail)
     static let selected = Color.ink(\.selected)
+    /// Row hover and the keyboard's row on a floating surface (menus, the command menu, dialogs, toasts): fg1 6 % over `pop`
+    /// (app.css `.pop, .modal, .toast { --hover: color-mix(fg1 6 %, raised) }`). `hover` is mixed over the canvas and would sit
+    /// darker than the menu.
+    static let hoverPop = Color.dyn(InkRGB.dark.pop.mixed(with: InkRGB.dark.fg, 0.06).color, InkRGB.light.pop.mixed(with: InkRGB.light.fg, 0.06).color)
+    /// A settings group (`.sbox`): fg1 3.5 % over `pop`.
+    static let groupBox = Color.dyn(InkRGB.dark.pop.mixed(with: InkRGB.dark.fg, 0.035).color, InkRGB.light.pop.mixed(with: InkRGB.light.fg, 0.035).color)
     static let scrim = Color.ink(\.bg, 0.5, 0.26)
     static let live = Color.ink(\.live)
     static let onLive = Color.ink(\.onLive)
@@ -127,6 +133,11 @@ enum Theme {
     /// Hover of a `raised` chrome button: fg1 mixed in by 6 % (Today) or 5 % (Join).
     static let buttonHover = Color.dyn(InkRGB.dark.bg2.mixed(with: InkRGB.dark.fg, 0.06).color, InkRGB.light.bg2.mixed(with: InkRGB.light.fg, 0.06).color)
     static let joinHover = Color.dyn(InkRGB.dark.bg2.mixed(with: InkRGB.dark.fg, 0.05).color, InkRGB.light.bg2.mixed(with: InkRGB.light.fg, 0.05).color)
+    /// A calendar colour as a dot, square or swatch (`calDot`, the recipe's mark), in both appearances. Every place that shows a
+    /// calendar's colour outside an event block uses this or `calendarBar`, never the raw hex.
+    static func calendarMark(_ hex: String) -> Color { Color.dyn(Palettes.cc(hex, dark: true).color, Palettes.cc(hex, dark: false).color) }
+    /// A calendar colour as a 3 pt bar (list rows, the command menu, the menu bar), the bar of the event recipe.
+    static func calendarBar(_ hex: String) -> Color { Color.dyn(Palettes.barColor(hex, dark: true).color, Palettes.barColor(hex, dark: false).color) }
     /// The tick on a filled calendar checkbox.
     static let tick = fg
 
@@ -194,27 +205,28 @@ enum Space {
     static let xl: CGFloat = 24
 }
 
-/// Corners: 4.5 events and all-day chips · 6 rows, icon buttons, segments · 8 buttons, fields, segmented controls · 12 menus, dialogs, cards.
-/// The small fixed shapes (calendar bars, checkboxes, swatches) have their own names so no view writes a number.
+/// Corners: one scale, three steps. 4 for small marks (events, all-day chips, calendar squares, checkboxes, swatches, the now
+/// pill) · 8 for everything you click in a list or a form (rows, buttons, fields, icon buttons, tiles, segmented tracks, chips) ·
+/// 12 for surfaces (menus, dialogs, the toast, cards, settings groups). A shape nested inside another with padding p uses the outer
+/// radius minus p (`inner`: a segment in its track), so the two corners stay parallel. The 3 pt colour bars are rounded to half
+/// their width (`bar`). The switch track is the one pill.
 enum Radius {
-    static let row: CGFloat = 6
-    /// Event blocks, all-day chips (and task markers): 4.5.
-    static let event: CGFloat = 4.5
+    static let small: CGFloat = 4
     static let control: CGFloat = 8
-    static let card: CGFloat = 12
     static let surface: CGFloat = 12
+    /// A segment inside its 2 pt padded track.
+    static let inner: CGFloat = control - 2
+    static let row: CGFloat = control
+    static let event: CGFloat = small
+    static let card: CGFloat = surface
     /// The 3 pt calendar colour bar.
     static let bar: CGFloat = 1.5
-    /// The now pill in the hour gutter.
-    static let nowPill: CGFloat = 4
+    static let nowPill: CGFloat = small
     /// Rules and the now line.
     static let rule: CGFloat = 1
-    /// Calendar checkboxes.
-    static let check: CGFloat = 4
-    /// The teammate swatch and the sidebar's 12 pt calendar square (`.cal .cb`).
-    static let swatch: CGFloat = 3
-    /// The right column's 3 × 31 lead bars (`.card.dc .ttl .b`).
-    static let leadBar: CGFloat = 2
+    static let check: CGFloat = small
+    static let swatch: CGFloat = small
+    static let leadBar: CGFloat = bar
 }
 
 /// Shadows only exist on surfaces above the window.
@@ -439,4 +451,15 @@ extension Theme {
     /// Destructive actions: the red split button of the delete dialog, "Discard changes" in a menu.
     static let danger = Color(hex: "#D9645A")
     static let onDanger = Color(hex: "#FFFFFF")
+}
+
+// MARK: Hover by surface
+
+/// The hover wash of the surface a control sits on: `hover` on the canvas, `hoverPop` inside menus and dialogs (set by `surface()`).
+private struct HoverWashKey: EnvironmentKey { static let defaultValue: Color = Theme.hover }
+extension EnvironmentValues {
+    var hoverWash: Color {
+        get { self[HoverWashKey.self] }
+        set { self[HoverWashKey.self] = newValue }
+    }
 }

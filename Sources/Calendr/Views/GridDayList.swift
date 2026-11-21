@@ -147,6 +147,7 @@ struct GridDayListPopover: View {
         .padding(Space.xs)
         .frame(width: Self.width, height: Self.height(rows: events.count), alignment: .top)
         .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.pop))
+        .environment(\.hoverWash, Theme.hoverPop)
         .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
         .popShadow()
     }
@@ -165,14 +166,14 @@ private struct GridDayListRow: View {
             HStack(spacing: 8) {
                 Text(e.isAllDay ? "all day" : model.fmt.time(e.start)).font(.smallTab).foregroundStyle(Theme.fg2)
                     .frame(width: 40, alignment: .leading)
-                RoundedRectangle(cornerRadius: Radius.bar).fill(Color(hex: model.hexColor(of: e))).frame(width: 3, height: 14)
+                RoundedRectangle(cornerRadius: Radius.bar).fill(Theme.calendarBar(model.hexColor(of: e))).frame(width: 3, height: 14)
                 Text(e.title.isEmpty ? "(No title)" : e.title).font(.text).foregroundStyle(past ? Theme.fg3 : Theme.fg)
                     .lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Space.s)
             .frame(height: GridDayListPopover.rowHeight)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected || hover ? Theme.hover : .clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected || hover ? Theme.hoverPop : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

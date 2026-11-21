@@ -66,12 +66,16 @@ final class Services {
     }
 }
 
-enum SettingsPage: String, CaseIterable { case general, accounts, contacts
+enum SettingsPage: String, CaseIterable { case general, appearance, calendars, accounts, contacts, menuBar, shortcuts
     var title: String {
         switch self {
         case .general: "General"
+        case .appearance: "Appearance"
+        case .calendars: "Calendars"
         case .accounts: "Accounts"
         case .contacts: "Contacts"
+        case .menuBar: "Menu bar"
+        case .shortcuts: "Shortcuts"
         }
     }
 }

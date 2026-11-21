@@ -210,7 +210,7 @@ private struct MenuEventRow: View {
         let hl = highlighted
         HStack(spacing: 8) {
             Group {
-                if row.tentative && !hl { MenuBarStripes(color: Color(hex: row.colorHex)) } else { Rectangle().fill(hl ? .white : Color(hex: row.colorHex)) }
+                if row.tentative && !hl { MenuBarStripes(color: Palettes.barColor(row.colorHex, dark: true).color) } else { Rectangle().fill(hl ? .white : Palettes.barColor(row.colorHex, dark: true).color) }
             }
             .frame(width: 3, height: 14).clipShape(RoundedRectangle(cornerRadius: Radius.bar))
             Text(row.start).font(NativeMenu.font).monospacedDigit().foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.time)
@@ -276,7 +276,7 @@ struct MenuBarItemPreview: View {
     var body: some View {
         HStack(spacing: 6) {
             if let f = menu.focus, display != .icon {
-                RoundedRectangle(cornerRadius: Radius.bar).fill(Color(hex: menu.head?.colorHex ?? "#8A8A8A")).frame(width: 3, height: 13)
+                RoundedRectangle(cornerRadius: Radius.bar).fill(Palettes.barColor(menu.head?.colorHex ?? InkRGB.neutralHex, dark: true).color).frame(width: 3, height: 13)
                 if display == .titleAndCountdown, let t = menu.itemTitle {
                     Text(t)
                     Text("\u{00B7}").opacity(0.5).padding(.horizontal, -2)
@@ -446,7 +446,7 @@ struct MenuJoinRow: View {
         let onJoin = joinHover || hoverJoin
         HStack(spacing: 8) {
             Group {
-                if row.tentative && !hl { MenuBarStripes(color: Color(hex: row.colorHex)) } else { Rectangle().fill(hl ? .white : Color(hex: row.colorHex)) }
+                if row.tentative && !hl { MenuBarStripes(color: Palettes.barColor(row.colorHex, dark: true).color) } else { Rectangle().fill(hl ? .white : Palettes.barColor(row.colorHex, dark: true).color) }
             }
             .frame(width: 3, height: 26).clipShape(RoundedRectangle(cornerRadius: Radius.bar))
             Text(row.start).font(NativeMenu.font).monospacedDigit().foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.time)

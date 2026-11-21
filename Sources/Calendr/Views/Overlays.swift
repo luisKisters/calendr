@@ -42,6 +42,7 @@ private struct SurfaceStyle: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: Radius.surface))
             .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
             .popShadow()
+            .environment(\.hoverWash, Theme.hoverPop)
     }
 }
 
@@ -83,19 +84,20 @@ struct ToastView: View {
                         Keycaps(keys: ["\u{2318}", "Z"], spacing: 10)
                     }
                     .padding(.leading, 9).padding(.trailing, 5).frame(height: 26)
-                    .background(Capsule().fill(hoverUndo ? Theme.hover : .clear))
-                    .contentShape(Capsule())
+                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(hoverUndo ? Theme.hoverPop : .clear))
+                    .contentShape(RoundedRectangle(cornerRadius: Radius.control))
                 }
                 .buttonStyle(PressStyle(scale: 0.97))
                 .onHover { hoverUndo = $0 }
                 .animation(Motion.fast, value: hoverUndo)
             }
-            IconButton(name: "xmark", small: true, color: Theme.fg3) { model.dismissToast() }.clipShape(Circle())
+            IconButton(name: "xmark", small: true, color: Theme.fg3) { model.dismissToast() }
         }
         .padding(.leading, 14).padding(.trailing, 5).frame(height: 38)
-        .background(Capsule().fill(Theme.bg2))
-        .overlay(Capsule().strokeBorder(Theme.hair2, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.surface).fill(Theme.pop))
+        .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
         .popShadow()
+        .environment(\.hoverWash, Theme.hoverPop)
         .fixedSize()
     }
 }
@@ -220,7 +222,7 @@ struct PaletteRowView: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Space.m) {
-                ChromeIcon(name: row.icon, color: row.colorHex.map { Color(hex: $0) } ?? Theme.fg3).frame(width: 16)
+                ChromeIcon(name: row.icon, color: row.colorHex.map { Theme.calendarBar($0) } ?? Theme.fg3).frame(width: 16)
                 Text(row.title + (row.more ? "\u{2026}" : "")).font(.text).foregroundStyle(row.past ? Theme.fg2 : Theme.fg)
                     .lineLimit(1).truncationMode(.tail)
                 if let sub = row.sub { Text(sub).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize() }
@@ -229,7 +231,7 @@ struct PaletteRowView: View {
                 if !row.keys.isEmpty { Keycaps(keys: row.keys) }
             }
             .padding(.horizontal, Space.m).frame(height: PaletteRowView.height)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(current ? Theme.hover : .clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(current ? Theme.hoverPop : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -333,74 +335,6 @@ struct ShortcutsSheet: View {
             // `.win p` resets `.sh__n`'s margin: the note sits right under the rows
             Text("Single keys work whenever the caret is not in a field.").font(.small).foregroundStyle(Theme.fg3)
         }
-    }
-}
-
-/// A settings row: title and an explanatory line on the left, the control on the right; hairline between rows of a group.
-struct SettingsRow<Content: View>: View {
-    let title: String
-    var detail: String?
-    var first = false
-    /// A leading 15 pt icon (Contacts, Accounts).
-    var icon: PanelIcon.Name?
-    @ViewBuilder var content: Content
-    var body: some View {
-        // `.st__r`: the text column takes all the room the control leaves
-        HStack(spacing: 24) {
-            if let icon { PanelIcon(name: icon, size: 15, color: Theme.fg2).padding(.trailing, -12) }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.textMedium).foregroundStyle(Theme.fg)
-                if let detail { Text(detail).font(.small).foregroundStyle(Theme.fg3).fixedSize(horizontal: false, vertical: true) }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            content.fixedSize()
-        }
-        .padding(.vertical, 8.5).frame(minHeight: 46)
-        .overlay(alignment: .top) { if !first { Hairline() } }
-    }
-}
-
-struct SettingsSheet: View {
-    @Environment(AppModel.self) private var model
-    var body: some View {
-        let s = model.settings
-        let page = model.services.settingsPage
-        SheetFrame(title: "Settings", width: 600, bottom: 20,
-                   accessory: AnyView(Segmented(options: SettingsPage.allCases.map { ($0, $0.title) }, selection: page) { model.services.settingsPage = $0 }
-                                        .tourAnchor("settings:pages"))) {
-            switch page {
-            case .general: general(s)
-            case .accounts: SettingsAccountsPage()
-            case .contacts: SettingsContactsPage()
-            }
-        }
-    }
-
-    @ViewBuilder private func general(_ s: AppSettings) -> some View {
-            SheetLabel(text: "General").padding(.top, 16).padding(.bottom, 2)
-            SettingsRow(title: "Appearance", first: true) {
-                Segmented(options: [(false, "Black"), (true, "Paper")], selection: model.isPaper) { model.settings.appearance = $0 ? .light : .dark }
-            }
-            SheetLabel(text: "Calendar").padding(.top, 16).padding(.bottom, 2)
-            SettingsRow(title: "Show week numbers", detail: "A column in the mini month. Click a number to open that week.", first: true) {
-                Segmented(options: [(false, "Off"), (true, "On")], selection: model.settings.showWeekNumbers) { model.settings.showWeekNumbers = $0 }
-            }
-            SettingsRow(title: "New events last", detail: "For C and double-click. A drag sets its own length.") {
-                Segmented(options: AppSettings.durationChoices.map { ($0, $0 == 60 ? "1 hour" : "\($0) min") }, selection: s.defaultDurationMinutes) {
-                    model.settings.defaultDurationMinutes = $0
-                }
-            }
-            SettingsRow(title: "Hour height", detail: s.hourHeight == nil ? "Fits each week when it opens. Drag the hour gutter to change it."
-                        : "Set by hand. The grid keeps this height in every week.") {
-                TextButton(title: "Fit again", small: true, disabled: s.hourHeight == nil) { model.fitHourScale() }
-            }
-            SheetLabel(text: "Menu bar").padding(.top, 16).padding(.bottom, 2)
-            SettingsRow(title: "Show in the menu bar", detail: "What sits next to the clock while an event is coming up.", first: true) {
-                Segmented(options: [(MenuBarDisplay.titleAndCountdown, "Title and countdown"), (.countdown, "Countdown"), (.icon, "Icon only")],
-                          selection: s.menuBarDisplay) { model.settings.menuBarDisplay = $0 }
-            }
-            Text("iCloud and other calendars come through macOS Calendar. Google accounts connect under Accounts.")
-                .font(.small).foregroundStyle(Theme.fg3)
     }
 }
 

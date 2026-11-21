@@ -61,10 +61,9 @@ extension WalkthroughV4 {
 
 @MainActor
 extension WalkthroughV4 {
-    /// A settings page segment (General, Accounts, Contacts) by its share of the switch.
+    /// A settings page by its row in the Settings nav.
     static func settingsPage(_ d: Driver, _ m: AppModel, _ page: SettingsPage) {
-        let fx: Double = switch page { case .general: 0.17; case .accounts: 0.5; case .contacts: 0.83 }
-        guard let p = spot(m, "settings:pages", fx: fx) else { d.check(false, "the settings page switch is on screen"); return }
+        guard let p = spot(m, "settings:nav:\(page.rawValue)", fx: 0.3) else { d.check(false, "the settings nav is on screen"); return }
         d.moveCursor(to: p, duration: 0.4)
         d.say(page.title)
         d.click(at: p) { m.services.settingsPage = page }
@@ -124,6 +123,7 @@ extension WalkthroughV4 {
         d.check(g?.email == "sam.rivera@example.com" && g?.calendarCount == 4, "sam.rivera@example.com connects with 4 calendars")
         d.check(m.hiddenDuplicateAccounts == ["sam.rivera@example.com"], "macOS Calendar's copy of it is hidden")
         d.hold(1.4)
+        settingsPage(d, m, .calendars)
         let family = "google:sam.rivera@example.com/\(DemoDataV4.family)"
         if let p = spot(m, "settings:cal:\(family)", fx: 0.93) {
             d.say("Hide Family, then show it again")

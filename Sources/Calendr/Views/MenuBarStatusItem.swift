@@ -73,7 +73,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             button.attributedTitle = NSAttributedString()
             return
         }
-        button.image = MenuBarArt.bar(color: NSColor(Color(hex: model.calendarColorHex(of: f.event))), height: 13, tentative: false)
+        button.image = MenuBarArt.bar(color: MenuBarArt.calendar(model.calendarColorHex(of: f.event)), height: 13, tentative: false)
         button.imagePosition = .imageLeading
         let font = NSFont.systemFont(ofSize: 13, weight: .medium)
         let s = NSMutableAttributedString()
@@ -262,7 +262,7 @@ final class MenuBarRowItem: NSObject {
     func apply(to it: NSMenuItem, highlighted: Bool) {
         it.attributedTitle = highlighted ? lit : plain
         it.image = highlighted ? MenuBarArt.bar(color: .selectedMenuItemTextColor, height: 14, tentative: false)
-                               : MenuBarArt.bar(color: NSColor(Color(hex: row.colorHex)), height: 14, tentative: row.tentative)
+                               : MenuBarArt.bar(color: MenuBarArt.calendar(row.colorHex), height: 14, tentative: row.tentative)
     }
 }
 
@@ -327,6 +327,11 @@ struct MenuBarColumns {
 enum MenuBarArt {
     /// Red text and dot on the dark menu bar and menu (menubar.html #FF6B61), lighter than Theme.live so it reads there.
     static let soon = NSColor(srgbRed: 1, green: 0x6B / 255, blue: 0x61 / 255, alpha: 1)
+
+    /// A calendar's bar colour in the event recipe, resolved for the appearance the menu bar or its menu draws in.
+    static func calendar(_ hex: String) -> NSColor {
+        NSColor(name: nil) { ap in NSColor(Palettes.barColor(hex, dark: ap.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua).color) }
+    }
 
     static func bar(color: NSColor, height: CGFloat, tentative: Bool) -> NSImage {
         NSImage(size: NSSize(width: 3, height: height), flipped: true) { r in
