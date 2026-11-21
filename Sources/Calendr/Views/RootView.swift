@@ -35,7 +35,7 @@ struct AccessEmptyState: View {
     var body: some View {
         VStack(spacing: 0) {
             EmptyArt(kind: .lock, size: 96).padding(.bottom, 14)
-            Text("Calendr needs access to your calendars").font(.title18).tracking(-0.4).foregroundStyle(Theme.paper)
+            Text("Calendr needs access to your calendars").font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.paper)
             Text("Events stay on this Mac. Calendr reads them through\nmacOS and never sends them anywhere.")
                 .font(.text).foregroundStyle(Theme.haze).multilineTextAlignment(.center).lineSpacing(3).padding(.top, 8)
             HStack(spacing: 8) {

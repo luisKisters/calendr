@@ -271,7 +271,7 @@ struct SheetFrame<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(title).font(.title18).tracking(-0.37).foregroundStyle(Theme.fg)
+                Text(title).font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg)
                 Spacer()
                 if let accessory { accessory.padding(.trailing, 8) }
                 if closable { IconButton(name: "xmark") { model.closeOverlay() } }

@@ -179,10 +179,12 @@ struct SegmentButton: View {
     var body: some View {
         let h = (hover || HoverProbe.shared.target == title) && enabled && !on
         Button { if enabled { action() } } label: {
-            Text(title).font(on ? .smallSemibold : .small)
+            // `.segc button`: 12 / 400 fg2, the selected segment 12 / 500 fg1 on raised with a 1 px `seg-ring` edge.
+            Text(title).font(on ? .textMedium : .text).tracking(TypeTrack.text)
                 .foregroundStyle(on || h ? Theme.fg : Theme.fg2)
                 .padding(.horizontal, 10).frame(minWidth: minWidth, minHeight: Dim.segment, maxHeight: Dim.segment)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(on ? Theme.thumb : h ? Theme.hover : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(on ? Theme.thumb : h ? Theme.bg3 : Color.clear))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(on ? Theme.segRing : Color.clear, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

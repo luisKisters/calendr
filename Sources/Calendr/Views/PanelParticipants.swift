@@ -144,7 +144,7 @@ struct GuestRow: View {
         }
         .padding(.leading, 8).padding(.vertical, 2)
         .frame(minHeight: 28)
-        .background(RoundedRectangle(cornerRadius: Radius.row).fill(h ? Theme.hover : Color.clear))
+        .background(RoundedRectangle(cornerRadius: Radius.row).fill(h ? Theme.hoverRail : Color.clear))
         .padding(.leading, -8)
         .contentShape(Rectangle())
         .onHover { hover = $0 }

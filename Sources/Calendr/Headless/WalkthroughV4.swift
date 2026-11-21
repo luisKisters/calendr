@@ -28,14 +28,15 @@ enum WalkthroughV4 {
         d.play(0.25) { HoverProbe.shared.target = target }
     }
 
-    /// PR A, the design tokens: black OLED surfaces, SF Pro text, the one Segmented, grey key hints, the 12 pt dialog surfaces.
+    /// PR A, the design tokens (v5: the #0B0B0C canvas, Geist text), the one Segmented, grey key hints, the 12 pt dialog surfaces.
     static func a(_ d: Driver, _ m: AppModel) {
         func tab(_ t: String) -> (ViewMode, String, CGPoint) { tabs.first { $0.1 == t }! }
 
         d.section("v4 tokens")
         d.check(m.viewMode == .week && m.math.day(m.now) == 4 && m.settings.hourHeight == 46, "v4 fixture: the week of Sun 4 Oct, 46 pt hours")
-        d.check(luma(d, at: CGPoint(x: 700, y: 400)) == 0, "the grid background is pure black")
-        d.say("v4 tokens: black surfaces, SF Pro, one segmented control")
+        let bg = InkRGB.dark.bg
+        d.check(abs(luma(d, at: CGPoint(x: 700, y: 400)) - (bg.r + bg.g + bg.b) / 3) < 0.003, "the grid background is the v5 canvas (#0B0B0C)")
+        d.say("v5 tokens: near-black canvas, Geist, one segmented control")
         d.frame(hold: 1.6)
 
         d.section("Segmented view switch")

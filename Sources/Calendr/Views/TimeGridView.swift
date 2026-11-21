@@ -69,8 +69,9 @@ private struct GridLines: View {
         Canvas { ctx, size in
             let ink = EventPainter.Ink.of(dark)
             ctx.withCGContext { cg in
-                cg.setFillColor(ink.hair)
+                cg.setFillColor(ink.hourLine)
                 for h in 0...24 { cg.fill(CGRect(x: 0, y: g.yPos(h * 60), width: size.width, height: 1)) }
+                cg.setFillColor(ink.dayDivider)
                 for d in 0..<g.dayCount { cg.fill(CGRect(x: Double(d) * g.dayWidth, y: 0, width: 1, height: size.height)) }
             }
         }
@@ -105,10 +106,10 @@ private struct HourGutter: View {
                     if let ny = nowY, abs(y - ny) < 13 { continue }
                     let s = TextCache.time(fmt, minutes: h * 60)
                     let w = TextCache.line(s, .hour).width
-                    EventPainter.text(cg, s, .hour, x: right - 10 - w, top: y - 7, box: 14, color: ink.fg3)
+                    EventPainter.text(cg, s, .hour, x: right - 10 - w, top: y - 7, box: 14, color: ink.hourLabel)
                 }
                 cg.restoreGState()
-                if let ny = nowY { pill(cg, nowText, .hourBold, y: ny, right: right - 5, fill: ink.live, color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)) }
+                if let ny = nowY { pill(cg, nowText, .hourBold, y: ny, right: right - 5, fill: ink.live, color: ink.onLive) }
                 if let m = hover { pill(cg, TextCache.time(fmt, minutes: m), .hour, y: g.yPos(m), right: right - 5, fill: ink.bg3, color: ink.fg) }
             }
         }
@@ -280,7 +281,7 @@ private struct GridEmptyState: View {
         if model.layout.timedCount == 0 && model.layout.allDay.placements.isEmpty && model.dragPreview == nil {
             GeometryReader { geo in
                 VStack(spacing: 6) {
-                    Text(model.visibleDays.count == 1 ? "Nothing on this day" : "Nothing this week").font(.title18).tracking(-0.35).foregroundStyle(Theme.fg)
+                    Text(model.visibleDays.count == 1 ? "Nothing on this day" : "Nothing this week").font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg)
                     HStack(spacing: 5) {
                         Text("Drag on the grid, or press")
                         Keycap(text: "C")

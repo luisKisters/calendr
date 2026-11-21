@@ -13,12 +13,12 @@ if grep -rnE "\.animation\(\s*\.|withAnimation\(\s*\.|NSAnimationContext\.runAni
   echo "raw animation curve found in app sources (use Motion.fast/base/slow/sheet/spring)"; exit 1
 fi
 if grep -q "\.package(" Package.swift; then echo "Package.swift has dependencies"; exit 1; fi
-# Design tokens (v4): colours only from Theme.swift (the menu bar art may keep its own), type only from Typeface.swift, radii only from Radius.
+# Design tokens (v5): colours only from Theme.swift (the menu bar art may keep its own), type only from Typeface.swift, radii only from Radius.
 if grep -rnE '"#[0-9A-Fa-f]{3,8}"' Sources/Calendr/Views | grep -v -e "^Sources/Calendr/Views/Theme.swift" -e "^Sources/Calendr/Views/MenuBarViews.swift"; then
   echo "hex colour literal in Views/ (add a token to Theme.swift)"; exit 1
 fi
 if grep -rnE "\.ui\([0-9]" Sources | grep -v "^Sources/Calendr/Views/Typeface.swift"; then
-  echo ".ui(<size>) outside Typeface.swift (use a type token: .title18, .text, .small, .event)"; exit 1
+  echo ".ui(<size>) outside Typeface.swift (use a type token: .title15, .text, .small, .event)"; exit 1
 fi
 if grep -rnE "cornerRadius: *[0-9]" Sources; then
   echo "cornerRadius with a number literal (use a Radius token)"; exit 1

@@ -61,7 +61,8 @@ extension WalkthroughV4 {
             let ok = hoverBlock(d, m, p, yFraction: yFraction)
             let s = style(m, p)
             d.check(ok && s.reply == expect && s.past == past, "\(title): \(expect), past \(past), hovered")
-            if expect != .notAnswered { d.check(luma(d, at: probe) > before, "\(title) brightens on hover (mockup brightness 1.12)") }
+            if expect != .notAnswered && !past { d.check(luma(d, at: probe) > before, "\(title) shows the hover fill on hover") }
+            else if expect != .notAnswered { d.check(abs(luma(d, at: probe) - before) < 0.003, "\(title) keeps its past fill on hover (v5: past blocks have no hover)") }
             d.hold(hold)
         }
         visit("Flat dinner", day: 6, "Accepted: fill 34 percent of the calendar colour", .accepted, past: false)
@@ -78,7 +79,7 @@ extension WalkthroughV4 {
         d.check(m.viewMode == .day, "day view of Wednesday")
         visit("Flat cleaning", day: 0, "Declined: solid, faded and struck through", .declined, past: true, yFraction: 0.5, hold: 0.6)
         let flat = Walkthrough.placed(m, "Flat cleaning", day: 0).map { style(m, $0).colors }
-        d.check(flat?.strike == true && flat?.barAlpha == 0.45, "declined: struck text, bar at .45")
+        d.check(flat?.strike == true && flat?.barAlpha == 1, "declined: struck text, the past bar (no alpha)")
         unhover(m)
         d.moveCursor(to: CGPoint(x: 1000, y: 820), duration: 0.4)
         d.hold(1.4)

@@ -26,7 +26,7 @@ struct SidebarView: View {
             SidebarFoot()
         }
         .frame(width: ChromeDim.sidebarWidth)
-        .background(Theme.bg)
+        .background(Theme.rail)
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair).frame(width: 1) }
     }
 }
@@ -124,7 +124,7 @@ struct MiniMonth: View {
                                 .help(model.chromeDay(d, long: true))
                         }
                     }
-                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(band.map { math.isSameDay($0, week[0]) } == true ? Theme.hover : .clear))
+                    .background(RoundedRectangle(cornerRadius: Radius.control).fill(band.map { math.isSameDay($0, week[0]) } == true ? Theme.hoverRail : .clear))
                     .frame(height: visible ? Self.cell : 0, alignment: .top)
                     .opacity(visible ? 1 : 0)
                     .allowsHitTesting(visible)
@@ -157,7 +157,7 @@ private struct MiniDay: View, Equatable {
         Button(action: action) {
             Color.clear
                 .frame(width: 22, height: 22)
-                .background(Circle().fill(today ? Theme.act : hovered ? Theme.hover : .clear))
+                .background(Circle().fill(today ? Theme.act : hovered ? Theme.hoverRail : .clear))
                 .overlay(Circle().strokeBorder(selected && !today ? Theme.ring : .clear, lineWidth: 1.5))
                 .frame(maxWidth: .infinity).frame(height: MiniMonth.cell)
                 .contentShape(Rectangle())
@@ -252,7 +252,7 @@ private struct MiniWeekNumber: View, Equatable {
             Text(verbatim: String(number)).font(.smallTab)
                 .foregroundStyle(hovered ? Theme.fg : Theme.fg3)
                 .frame(width: 24, height: MiniMonth.cell)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hovered ? Theme.hover : .clear))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hovered ? Theme.hoverRail : .clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -339,7 +339,7 @@ struct CalendarRow: View {
             }
             .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset)
             .frame(height: Dim.row)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hover : Color.clear).padding(.horizontal, Space.s))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hoverRail : Color.clear).padding(.horizontal, Space.s))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -363,7 +363,7 @@ struct SidebarFoot: View {
                 Keycaps(keys: ["\u{2318}", ","])
             }
             .padding(.leading, SidebarDim.glyph).padding(.trailing, SidebarDim.trailingInset).frame(height: Dim.row)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hover : Color.clear).padding(.horizontal, Space.s))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hoverRail : Color.clear).padding(.horizontal, Space.s))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

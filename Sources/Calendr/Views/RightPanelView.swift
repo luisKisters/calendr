@@ -27,7 +27,7 @@ struct RightPanelView: View {
         .padding(.leading, 1)
         .frame(width: PanelMetrics.width)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Theme.bg)
+        .background(Theme.rail)
         .overlay(alignment: .leading) { Rectangle().fill(Theme.hair).frame(width: 1) }
     }
 }
@@ -124,7 +124,7 @@ struct ColumnLabel: View {
     }
 }
 
-/// Nothing selected: Today (title 18), the Now and Up next cards with Join, Later, then the useful shortcuts. No frames.
+/// Nothing selected: Today (title 15), the Now and Up next cards with Join, Later, then the useful shortcuts. No frames.
 struct PanelTodayView: View {
     @Environment(AppModel.self) private var model
 
@@ -132,7 +132,7 @@ struct PanelTodayView: View {
         let t = model.panelState.today
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Today").font(.title18).tracking(-0.35).foregroundStyle(Theme.fg)
+                Text("Today").font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg)
                 Spacer(minLength: 0)
                 Text(PanelText.day(model.now, model.fmt)).font(.smallTab).foregroundStyle(Theme.fg3)
             }
@@ -166,7 +166,7 @@ struct PanelNextCard: View {
     var body: some View {
         let minutes = Countdown.minutes(from: model.now, to: live ? event.end : event.start)
         let soon = live || minutes <= 15
-        let bar = Palettes.cc(model.hexColor(of: event), dark: scheme == .dark).color
+        let bar = Palettes.barColor(model.hexColor(of: event), dark: scheme == .dark).color
         let length = Int(event.end.timeIntervalSince(event.start) / 60)
         let guests = event.attendees.filter { !$0.isMe }.count
         let hot = hover || HoverProbe.shared.target == "card:\(event.id)"
@@ -199,7 +199,7 @@ struct PanelNextCard: View {
             }
         }
         .padding(.horizontal, Space.m).padding(.vertical, Space.s)
-        .background(RoundedRectangle(cornerRadius: Radius.card).fill(hot ? Theme.hover : Color.clear))
+        .background(RoundedRectangle(cornerRadius: Radius.card).fill(hot ? Theme.hoverRail : Color.clear))
         .onHover { hover = $0 }
         .animation(Motion.fast, value: hot)
         .padding(.horizontal, ColumnDim.box).padding(.bottom, Space.xs)
@@ -250,14 +250,14 @@ struct PanelLaterRow: View {
         Button { if let action { action() } else { model.panelOpen(event) } } label: {
             HStack(spacing: Space.s) {
                 Text(time ?? model.fmt.time(event.start)).font(.smallTab).foregroundStyle(Theme.fg2).frame(width: 40, alignment: .leading)
-                RoundedRectangle(cornerRadius: Radius.bar).fill(Palettes.cc(model.hexColor(of: event), dark: scheme == .dark).color).frame(width: 3, height: 14)
+                RoundedRectangle(cornerRadius: Radius.bar).fill(Palettes.barColor(model.hexColor(of: event), dark: scheme == .dark).color).frame(width: 3, height: 14)
                 Self.title(event.title, match: match).foregroundStyle(declined ? Theme.fg3 : Theme.fg).strikethrough(declined, color: Theme.fg3)
                     .lineLimit(1).truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if CallLink.parse(event) != nil { SFIcon(name: "video", size: 10.5, color: Theme.fg3).opacity(0.7) }
             }
             .padding(.horizontal, Space.m).frame(height: Dim.row)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected || hot ? Theme.hover : Color.clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(selected ? Theme.selected : hot ? Theme.hoverRail : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -308,7 +308,7 @@ struct UsefulShortcutRow: View {
                 Keycaps(keys: shortcut.keys, spacing: 4)
             }
             .padding(.horizontal, Space.m).frame(height: Dim.row)
-            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hover : Color.clear))
+            .background(RoundedRectangle(cornerRadius: Radius.row).fill(hot ? Theme.hoverRail : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

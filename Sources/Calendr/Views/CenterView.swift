@@ -30,7 +30,7 @@ struct CenterView: View {
     }
 }
 
-/// Title left (18 pt Instrument Sans), controls right: "October 2026  Week 40  [with Maya ×]  ...  [Day Week Month]  ‹ Today ›".
+/// Title left (Geist 15 / 600), controls right: "October 2026  Week 40  [with Maya ×]  ...  [Day Week Month]  ‹ Today ›".
 /// v4: no search button; search is the right column's field (`/`, Command-F).
 struct ToolbarView: View {
     @Environment(AppModel.self) private var model
@@ -68,8 +68,8 @@ struct HeaderTitle: View {
     var body: some View {
         let t = model.chromeTitle
         HStack(spacing: 10) {
-            (Text(t.main).font(.title18).tracking(-0.48).foregroundColor(Theme.fg)
-             + Text(" " + t.year).font(.title18Light).foregroundColor(Theme.fg3))
+            (Text(t.main).font(.title15).tracking(TypeTrack.title).foregroundColor(Theme.fg)
+             + Text(" " + t.year).font(.title15Light).foregroundColor(Theme.fg3))
                 .lineLimit(1).fixedSize()
             if model.viewMode != .month && model.authState == .authorized {
                 Text(model.weekLabel).font(.smallTab).foregroundStyle(Theme.fg3).padding(.top, 5).fixedSize()

@@ -1,6 +1,6 @@
 # Calendr — spec
 
-A native macOS SwiftUI calendar (dark appearance first). `design/mockup-v4/` and `design/mockup-v4/DECISIONS.md` are the visual truth (v4; the "copy Notion Calendar 1:1" rule ended with v3). When this spec and the mockup disagree, the mockup wins. Type: SF Pro for text, Instrument Sans 600 only for 18 pt titles. Light theme: Paper, with the v4 token roles.
+A native macOS SwiftUI calendar (dark appearance first). `design/mockup-v4/` and `design/mockup-v4/DECISIONS.md` are the visual truth (v4; the "copy Notion Calendar 1:1" rule ended with v3). When this spec and the mockup disagree, the mockup wins. Type (v5): Geist only, bundled, in three sizes (15 month title, 12 text, 11 secondary) and three weights (400 / 500 / 600); colours and the event recipe come from `design/design-system/` (locked v11, Dark + derived Paper). Light theme: Paper, with the same token roles.
 
 Owner: the maintainer. Priorities, in order: 1) it works, 2) it is fast, 3) it looks exactly like the v4 mockup, 4) UX is thought through (keyboard-first, every action reachable from mouse and keyboard). **Motion (v2)**: one curve, four durations, everything instant under Reduce Motion (see `design/DESIGN.md`; v1 of this spec forbade animation, v2 replaces that rule).
 

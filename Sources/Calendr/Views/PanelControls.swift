@@ -24,7 +24,7 @@ struct PanelInputChrome: ViewModifier {
         content
             .padding(.horizontal, 7)
             .frame(height: height)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(focused ? Theme.bg : (hover && editable ? Theme.hover : Color.clear)))
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(focused ? Theme.bg : (hover && editable ? Theme.hoverRail : Color.clear)))
             .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(bad ? Theme.live : (focused ? Theme.focus : Color.clear), lineWidth: 1.5))
             .padding(.vertical, 1)
             .padding(.leading, hang ? -7 : 0)
@@ -180,7 +180,7 @@ struct PanelIconButton: View {
         Button(action: action) {
             PanelIcon(name: icon, size: Dim.iconGlyph, color: hover ? Theme.fg : Theme.fg2)
                 .frame(width: Dim.iconButton, height: Dim.iconButton)
-                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hover : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.row).fill(hover ? Theme.hoverRail : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())

@@ -1,5 +1,8 @@
 # Locked designs: what to build (v3, superseded by v4)
 
+> **Superseded (2026-11-20) by `design/mockup-v11/DECISIONS.md` and `design/design-system/`** (round h lock: R10 · Mine, three sizes 15 / 12 / 11, Dark + derived Paper). Kept for history.
+
+
 > **Superseded.** The design to build is v4: `design/mockup-v4/DECISIONS.md` (the decisions) and `design/mockup-v4/index.html`
 > (the mockup, with its `LOCKED` picks and the `.ds` design system). The order of authority is DECISIONS.md, then the mockup-v4
 > picks and CSS, then README, then this file, then SPEC (`design/mockup-v4/IMPLEMENTATION-PLAN.md` section 2). This file stays as

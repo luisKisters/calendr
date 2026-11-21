@@ -77,27 +77,28 @@ enum TextCache {
     private static var lines: [Key: (CTLine, CGFloat, CGFloat, CGFloat)] = [:]   // line, width, ascent, descent
 
     static func font(_ k: Kind) -> CTFont {
-        // SF Pro throughout (v4); sizes are the type tokens.
-        func f(_ size: CGFloat, _ w: Int, _ tab: Bool = false) -> CTFont { SF.ctFont(size, weight: w, tabular: tab) }
+        // Geist throughout (v11); sizes are the type tokens.
+        func f(_ size: CGFloat, _ w: Int, _ tab: Bool = false) -> CTFont { Typeface.ctFont(size, weight: w, tabular: tab) }
         switch k {
         case .title: return f(TypeSize.event, 500)
         case .titleMedium: return f(TypeSize.event, 500)
         case .time: return f(TypeSize.small, 400, true)
         case .hour: return f(TypeSize.small, 400, true)
-        case .hourBold: return f(TypeSize.small, 600, true)
-        case .header: return f(TypeSize.small, 400)
-        case .headerToday: return f(TypeSize.small, 600)
-        case .headerNum: return f(TypeSize.small, 600, true)
-        case .headerNumToday: return f(TypeSize.small, 600, true)
-        case .headerPast: return f(TypeSize.small, 400, true)
+        case .hourBold: return f(TypeSize.small, 600, true)          // the now pill (11 / 600 on live red)
+        // Day header: weekday 12 / 500 fg3, date 12 / 500, today's date 12 / 600 (the only 600 in the grid).
+        case .header: return f(TypeSize.text, 500)
+        case .headerToday: return f(TypeSize.text, 500)
+        case .headerNum: return f(TypeSize.text, 500, true)
+        case .headerNumToday: return f(TypeSize.text, 600, true)
+        case .headerPast: return f(TypeSize.text, 500, true)
         case .allDayLabel: return f(TypeSize.small, 400)
         case .more: return f(TypeSize.small, 400, true)
         case .monthTitle: return f(TypeSize.small, 400)
         case .monthNum: return f(TypeSize.small, 500, true)
         case .monthNumToday: return f(TypeSize.small, 600, true)
-        case .micro: return f(TypeSize.small, 600)
+        case .micro: return f(TypeSize.small, 500)
         case .dayNum: return f(TypeSize.small, 500, true)
-        case .moreChip: return f(TypeSize.small, 600, true)
+        case .moreChip: return f(TypeSize.small, 500, true)
         }
     }
 
@@ -187,8 +188,13 @@ enum TextCache {
         let key = Key(text: text, kind: kind.rawValue)
         if let hit = lines[key] { return (hit.0, hit.1, hit.2, hit.3) }
         var attrs: [NSAttributedString.Key: Any] = [.font: font(kind), NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true]
-        if kind == .micro { attrs[.kern] = 0.63 }
-        if kind == .allDayLabel { attrs[.kern] = 0.19 }
+        switch kind {
+        case .title, .titleMedium: attrs[.kern] = TypeTrack.text
+        case .time, .allDayLabel, .micro: attrs[.kern] = TypeTrack.small
+        case .header, .headerToday: attrs[.kern] = TypeTrack.label
+        case .headerNum, .headerNumToday, .headerPast: attrs[.kern] = TypeTrack.text
+        default: break
+        }
         let l = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attrs))
         var asc: CGFloat = 0, desc: CGFloat = 0, lead: CGFloat = 0
         let w = CGFloat(CTLineGetTypographicBounds(l, &asc, &desc, &lead))
@@ -274,7 +280,9 @@ enum EventPainter {
     /// CoreGraphics forms of the ink tokens for the current appearance (from `InkRGB`, like `Theme`).
     struct Ink {
         let dark: Bool
-        let bg, bg1, bg2, bg3, fg, fg2, fg3, act, onAct, actWash, ring, hair, hair2, hover, live, pastTitle, liftShadow: CGColor
+        let bg, rail, bg1, bg2, bg3, fg, fg2, fg3, act, onAct, actWash, ring, hair, hair2, hover, live, pastTitle, liftShadow: CGColor
+        /// Hour line, day divider, today column, hour labels.
+        let hourLine, dayDivider, todayTint, hourLabel, onLive: CGColor
         // v2 names still used by the sidebar.
         var paper: CGColor { fg }
         var haze: CGColor { fg2 }
@@ -283,17 +291,18 @@ enum EventPainter {
             self.dark = dark
             let t = InkRGB.of(dark)
             fg = t.fg.cg; fg2 = t.fg2.cg; fg3 = t.fg3.cg
-            bg = t.bg.cg; bg1 = t.bg1.cg; bg2 = t.bg2.cg; bg3 = t.bg3.cg
+            bg = t.bg.cg; rail = t.rail.cg; bg1 = t.bg1.cg; bg2 = t.bg2.cg; bg3 = t.bg3.cg
+            hourLine = t.grid.cg; dayDivider = t.gridV.cg; todayTint = t.todayTint.cg; hourLabel = t.hourLabel.cg; onLive = t.onLive.cg
             act = fg; onAct = bg
             actWash = fg.copy(alpha: 0.09) ?? fg
             ring = fg.copy(alpha: 0.82) ?? fg
-            hair2 = fg.copy(alpha: t.hair2Alpha) ?? fg
-            hair = fg.copy(alpha: t.hairAlpha) ?? fg
-            hover = fg.copy(alpha: t.hoverAlpha) ?? fg
+            hair2 = t.hairStrong.cg
+            hair = t.hair.cg
+            hover = t.hover.cg
             live = t.live.cg
             // `.is-past .ev__t`: fg2 78 percent over the window colour.
             pastTitle = t.fg2.mixed(with: t.bg, 0.22).cg
-            liftShadow = dark ? InkRGB.black.cg.copy(alpha: 0.45)! : InkRGB.paperShadow.cg.copy(alpha: 0.16)!
+            liftShadow = dark ? InkRGB.black.cg.copy(alpha: 0.45)! : InkRGB.paperShadow.cg.copy(alpha: 0.10)!
         }
         private static let darkInk = Ink(build: true)
         private static let lightInk = Ink(build: false)
@@ -315,10 +324,11 @@ enum EventPainter {
         cg.addPath(p); cg.setFillColor(color); cg.fillPath()
     }
 
-    /// The rings outside a block: cut (1.5 pt of window colour) and selected (that plus 1.5 pt of fg, `0 0 0 1.5px bg, 0 0 0 3px fg`).
-    static func rings(_ cg: CGContext, _ path: (CGFloat) -> CGPath, selected: Bool, cut: Bool, ink: Ink) {
+    /// The rings outside a block: cut (1.5 pt of window colour) and selected (that plus 1.5 pt of the bar colour,
+    /// `0 0 0 1.5px bg, 0 0 0 3px bar`).
+    static func rings(_ cg: CGContext, _ path: (CGFloat) -> CGPath, selected: Bool, cut: Bool, ink: Ink, ring: CGColor? = nil) {
         if selected {
-            cg.addPath(path(-2.25)); cg.setStrokeColor(ink.fg); cg.setLineWidth(1.5); cg.strokePath()
+            cg.addPath(path(-2.25)); cg.setStrokeColor(ring ?? ink.fg); cg.setLineWidth(1.5); cg.strokePath()
         }
         if selected || cut {
             cg.addPath(path(-0.75)); cg.setStrokeColor(ink.bg); cg.setLineWidth(1.5); cg.strokePath()
@@ -349,7 +359,7 @@ enum EventPainter {
         defer { cg.restoreGState() }
 
         // Rings, fill, stripes, outline.
-        rings(cg, { roundedPath(r.insetBy(dx: $0, dy: $0), Radius.event - $0) }, selected: style.selected && !style.draft, cut: style.over, ink: ink)
+        rings(cg, { roundedPath(r.insetBy(dx: $0, dy: $0), Radius.event - $0) }, selected: style.selected && !style.draft, cut: style.over, ink: ink, ring: c.bar.cg)
         if style.draft {
             cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
             cg.saveGState()

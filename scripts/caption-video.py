@@ -10,10 +10,10 @@ Chips sit bottom-centre in the padding under the window, so Glide's zoom never c
 import json, os, subprocess, sys, tempfile
 from PIL import Image, ImageDraw, ImageFont
 
-FONT = os.path.join(os.path.dirname(__file__), "..", "Sources", "Calendr", "Resources", "Fonts", "InstrumentSans.ttf")
+FONT = os.path.join(os.path.dirname(__file__), "..", "Sources", "Calendr", "Resources", "Fonts", "Geist[wght].ttf")
 
 
-SYMBOLS = "/System/Library/Fonts/SFNS.ttf"   # keycaps: Instrument Sans has no ⌘ ⌥ ⇧ ↩ glyphs
+SYMBOLS = "/System/Library/Fonts/SFNS.ttf"   # keycaps: Geist has no ⌘ ⌥ ⇧ ↩ glyphs
 
 
 def keyfont(size):
@@ -28,7 +28,7 @@ def keyfont(size):
 
 def font(size, weight):
     f = ImageFont.truetype(FONT, size)
-    f.set_variation_by_axes([100, weight])
+    f.set_variation_by_axes([weight])
     return f
 
 

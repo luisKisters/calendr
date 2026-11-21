@@ -2,15 +2,16 @@ import AppKit
 import CoreText
 import SwiftUI
 
-/// Instrument Sans (SIL OFL, `Resources/Fonts`), registered for this process before anything renders.
+/// Geist (the variable `Geist[wght].ttf`, 100–900, SIL OFL 1.1, `Resources/Fonts` with `Geist-OFL.txt`), registered for this process
+/// before anything renders. It is the only face of the UI (v11, locked 2026-11-20); the system menu bar keeps the system font.
 ///
 /// The font is looked up without SwiftPM's `Bundle.module` (it traps when the resource bundle is not next to the executable):
 /// 1. the app bundle: `Contents/Resources/Fonts` (copied there by scripts/build-app.sh),
 /// 2. next to the executable or the test bundle: `Fonts/` and the SwiftPM resource bundle `*_Calendr.bundle`,
 /// 3. the source tree, for builds run from the checkout.
 enum Typeface {
-    static let fileName = "InstrumentSans.ttf"
-    static let family = "Instrument Sans"
+    static let fileName = "Geist[wght].ttf"
+    static let family = "Geist"
 
     /// Registers the font once. Safe to call from anywhere and more than once.
     @discardableResult
@@ -57,7 +58,7 @@ enum Typeface {
 
     // MARK: Fonts
 
-    private static let weightAxis = 0x77676874    // 'wght', 400 ... 700
+    private static let weightAxis = 0x77676874    // 'wght', 100 ... 900
     private struct Key: Hashable { var size: CGFloat; var weight: Int; var tabular: Bool }
     nonisolated(unsafe) private static var cache: [Key: CTFont] = [:]
     private static let lock = NSLock()
@@ -76,7 +77,7 @@ enum Typeface {
         w.rawValue >= NSFont.Weight.bold.rawValue ? 700 : w.rawValue >= NSFont.Weight.semibold.rawValue ? 600 : w.rawValue >= NSFont.Weight.medium.rawValue ? 500 : 400
     }
 
-    /// Instrument Sans at `size` and CSS `weight`; `tabular` turns on tabular figures (every time and date numeral).
+    /// Geist at `size` and CSS `weight`; `tabular` turns on tabular figures (`tnum`: every time, date and count).
     static func ctFont(_ size: CGFloat, weight: Int = 400, tabular: Bool = false) -> CTFont {
         let key = Key(size: size, weight: weight, tabular: tabular)
         lock.lock(); defer { lock.unlock() }
@@ -100,58 +101,68 @@ enum Typeface {
     }
 }
 
-// MARK: Type tokens (DECISIONS.md design system: 18 titles · 12.5 text · 11.5 small · events 11.5 / 500; no other sizes)
+// MARK: Type tokens (v11 design system, the locked "three" scale: 15 / 12 / 11, weights 400 / 500 / 600)
 
-/// SF Pro (the system font) for text and events; tabular variants use `monospacedDigitSystemFont`. Instrument Sans 600 only for 18 pt titles.
-enum SF {
-    private struct Key: Hashable { var size: CGFloat; var weight: Int; var tabular: Bool }
-    nonisolated(unsafe) private static var cache: [Key: CTFont] = [:]
-    private static let lock = NSLock()
+/// Sizes and line heights. Only 15 (month title), 12 (everything you read) and 11 (times, hour labels, mini-month days, small labels).
+enum TypeSize {
+    /// Month title, 15 / 21.
+    static let title: CGFloat = 15
+    /// Body, headings, labels, rows: 12 / 18.
+    static let text: CGFloat = 12
+    /// Secondary: times, hour labels, mini-month days, small labels: 11 / 14.
+    static let small: CGFloat = 11
+    /// Event titles: 12 / 15.5.
+    static let event: CGFloat = 12
 
-    static func nsWeight(_ w: Int) -> NSFont.Weight { w >= 700 ? .bold : w >= 600 ? .semibold : w >= 500 ? .medium : .regular }
-
-    /// SF at `size` and CSS `weight`; `tabular` uses monospaced digits.
-    static func ctFont(_ size: CGFloat, weight: Int = 400, tabular: Bool = false) -> CTFont {
-        let key = Key(size: size, weight: weight, tabular: tabular)
-        lock.lock(); defer { lock.unlock() }
-        if let f = cache[key] { return f }
-        let f: NSFont = tabular ? .monospacedDigitSystemFont(ofSize: size, weight: nsWeight(weight)) : .systemFont(ofSize: size, weight: nsWeight(weight))
-        cache[key] = f
-        return f
-    }
+    static let titleLine: CGFloat = 21
+    static let textLine: CGFloat = 18
+    /// The right-column lead title (`heading`, 12 / 20).
+    static let headingLine: CGFloat = 20
+    static let eventLine: CGFloat = 15.5
+    /// Event times and other 11 pt text in lists.
+    static let smallLine: CGFloat = 14
 }
 
-enum TypeSize {
-    static let title: CGFloat = 18
-    static let text: CGFloat = 12.5
-    static let small: CGFloat = 11.5
-    static let event: CGFloat = 11.5
+/// Letter-spacing in points (the mockup's em values at their size): title -.01em, body and event titles -.004em,
+/// small text and labels +.004em, hour labels 0.
+enum TypeTrack {
+    static let title: CGFloat = -0.15
+    /// The right-column lead (12 / 600, -.01em).
+    static let heading: CGFloat = -0.12
+    static let text: CGFloat = -0.048
+    static let small: CGFloat = 0.044
+    /// Group headers and day-header weekdays (12, +.004em).
+    static let label: CGFloat = 0.048
 }
 
 extension Font {
-    private static func sf(_ size: CGFloat, _ weight: Int = 400, tabular: Bool = false) -> Font { Font(SF.ctFont(size, weight: weight, tabular: tabular)) }
+    private static func geist(_ size: CGFloat, _ weight: Int = 400, tabular: Bool = false) -> Font { Font(Typeface.ctFont(size, weight: weight, tabular: tabular)) }
 
-    /// Month title, event title, Today, dialog titles: Instrument Sans 18 / 600.
-    static let title18 = Font(Typeface.ctFont(TypeSize.title, weight: 600))
-    /// The year after the month title: Instrument Sans 18 / 400 tabular, drawn fg3.
-    static let title18Light = Font(Typeface.ctFont(TypeSize.title, weight: 400, tabular: true))
+    /// Month title and dialog titles: Geist 15 / 600 (track `TypeTrack.title`).
+    static let title15 = geist(TypeSize.title, 600)
+    /// The year after the month title: Geist 15 / 400 tabular, drawn fg3.
+    static let title15Light = geist(TypeSize.title, 400, tabular: true)
 
-    /// Body text: SF 12.5 / 400.
-    static let text = sf(TypeSize.text)
-    static let textMedium = sf(TypeSize.text, 500)
-    static let textSemibold = sf(TypeSize.text, 600)
-    static let textTab = sf(TypeSize.text, tabular: true)
+    /// Body text (`body`): Geist 12 / 400.
+    static let text = geist(TypeSize.text)
+    /// `body-strong`: day-header date, mini-month title, all-day chips (12 / 500).
+    static let textMedium = geist(TypeSize.text, 500)
+    /// `heading`: the right-column lead title and today's date (12 / 600).
+    static let textSemibold = geist(TypeSize.text, 600)
+    static let textTab = geist(TypeSize.text, tabular: true)
+    /// `label`: sidebar group headers (12 / 500, fg3).
+    static let label = geist(TypeSize.text, 500)
 
-    /// Secondary text, labels, hints: SF 11.5 / 400.
-    static let small = sf(TypeSize.small)
-    static let smallMedium = sf(TypeSize.small, 500)
-    static let smallSemibold = sf(TypeSize.small, 600)
-    static let smallTab = sf(TypeSize.small, tabular: true)
-    static let smallTabMedium = sf(TypeSize.small, 500, tabular: true)
-    static let smallTabSemibold = sf(TypeSize.small, 600, tabular: true)
+    /// Secondary text, labels, hints (`small`): Geist 11 / 400.
+    static let small = geist(TypeSize.small)
+    static let smallMedium = geist(TypeSize.small, 500)
+    static let smallSemibold = geist(TypeSize.small, 600)
+    static let smallTab = geist(TypeSize.small, tabular: true)
+    static let smallTabMedium = geist(TypeSize.small, 500, tabular: true)
+    static let smallTabSemibold = geist(TypeSize.small, 600, tabular: true)
 
-    /// Event titles: SF 11.5 / 500.
-    static let event = sf(TypeSize.event, 500)
-    /// Event times: SF 11.5 tabular. DECISIONS.md allows only 18 / 12.5 / 11.5, so the mockup CSS's 10.5 `--fs-evt` is not used.
-    static let eventTab = sf(TypeSize.small, tabular: true)
+    /// Event titles: Geist 12 / 500.
+    static let event = geist(TypeSize.event, 500)
+    /// Event times: Geist 11 tabular.
+    static let eventTab = geist(TypeSize.small, tabular: true)
 }

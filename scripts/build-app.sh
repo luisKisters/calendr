@@ -13,9 +13,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Calendr"
 scripts/make-icon.sh   # no-op when design/icon/AppIcon.icns exists
 cp design/icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-# Instrument Sans (SIL OFL) and its license; Typeface.swift looks in Contents/Resources/Fonts first
+# Geist (variable, SIL OFL 1.1) and its licence; Typeface.swift looks in Contents/Resources/Fonts first
 mkdir -p "$APP/Contents/Resources/Fonts"
-cp Sources/Calendr/Resources/Fonts/InstrumentSans.ttf Sources/Calendr/Resources/Fonts/OFL.txt "$APP/Contents/Resources/Fonts/"
+cp "Sources/Calendr/Resources/Fonts/Geist[wght].ttf" Sources/Calendr/Resources/Fonts/Geist-OFL.txt "$APP/Contents/Resources/Fonts/"
 
 # Google Calendar API (v4 Phase 8b): only when CALENDR_GOOGLE_CLIENT_ID is set (an iOS-type OAuth client ID, never committed).
 # It goes into Info.plist with its reversed-client-ID URL scheme, which ASWebAuthenticationSession receives the sign-in redirect on.

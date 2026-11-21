@@ -115,7 +115,7 @@ struct AllDayView: View {
                     .onHover { hoverToggle = $0 }
                     .help(expanded ? "Collapse all-day section" : "Expand all-day section")
                 }
-                Text("all-day").font(.small).tracking(0.19).foregroundStyle(Theme.fg3)
+                Text("all-day").font(.small).tracking(TypeTrack.small).foregroundStyle(Theme.fg3)
             }
             .padding(.top, 5)
             .frame(width: Theme.gutterWidth)
@@ -227,11 +227,11 @@ enum AllDayPainter {
         var c = style.palette.colors(reply: reply == .maybe ? .accepted : reply, past: style.past)
         var dashed = false
         if reply == .notAnswered { c.outline = nil; dashed = true }
-        if reply == .declined { c.fill = style.palette.bgRGB.mixed(with: style.palette.fillRGB, 0.32); c.barAlpha = 1 }
-        if style.hovered { c.fill = Palettes.brighter(c.fill) }
+        if style.selected && !style.draft { c.fill = style.palette.selFillRGB; c.title = style.palette.selTitleRGB; c.time = style.palette.selTimeRGB }
+        else if style.hovered && !style.past && reply != .notAnswered { c.fill = style.palette.hoverFillRGB }
         cg.saveGState()
         defer { cg.restoreGState() }
-        EventPainter.rings(cg, path, selected: style.selected && !style.draft, cut: false, ink: ink)
+        EventPainter.rings(cg, path, selected: style.selected && !style.draft, cut: false, ink: ink, ring: c.bar.cg)
         if style.draft {
             cg.addPath(shape); cg.setFillColor(ink.actWash); cg.fillPath()
             cg.saveGState()
@@ -241,7 +241,7 @@ enum AllDayPainter {
             cg.addPath(shape); cg.setFillColor(c.fill.cg); cg.fillPath()
             if dashed {
                 cg.saveGState()
-                cg.addPath(path(0.75)); cg.setStrokeColor(style.palette.dashRGB.cg); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
+                cg.addPath(path(0.75)); cg.setStrokeColor(style.palette.edgeRGB.cg); cg.setLineWidth(1.5); cg.setLineDash(phase: 0, lengths: [4.5, 3]); cg.strokePath()
                 cg.restoreGState()
             }
         }
