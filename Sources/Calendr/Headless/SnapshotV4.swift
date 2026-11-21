@@ -1,8 +1,8 @@
 import AppKit
 import CalendrKit
 
-/// Snapshot states of the v4 mockup scenes (design/mockup-v4/index.html `preset()`), rendered with `--fixture v4` (design/states.json
-/// sets it) so they compare one to one with design/mockup-v4/shots. `SnapshotStates.apply` falls through to this for names it does not know.
+/// Snapshot states of the v4 mockup scenes (design/mockup-v4/index.html `preset()`), rendered on the v4 fixture (the demo data)
+/// so they compare one to one with design/mockup-v4/shots. `SnapshotStates.apply` falls through to this for names it does not know.
 /// "v4-menubar" is a menu bar screen: `SnapshotMenuBar.run` draws it. "v4-b-layout" is the OverlapV5 debug screen: `SnapshotV4Layout.run` draws it.
 @MainActor
 enum SnapshotV4 {

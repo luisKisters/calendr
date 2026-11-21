@@ -42,7 +42,7 @@ struct AuditTests {
     @Test func ongoingOvernightEventBlocksMorningSlots() throws {
         let m = makeModel()
         let day = m.math.startOfDay(m.now)
-        let shift = CalendarEvent(calendarID: DemoData.personal, title: "Overnight on-call shift",
+        let shift = CalendarEvent(calendarID: DemoDataV4.personal, title: "Overnight on-call shift",
                                   start: m.math.addDays(day, -1).addingTimeInterval(22 * 3600), end: day.addingTimeInterval(6 * 3600))
         try m.store.create(shift)
         m.setNow(day.addingTimeInterval(30 * 60))
@@ -63,12 +63,10 @@ struct AuditTests {
         #expect(!states.isEmpty)
         for (name, s) in states {
             let state = s["state"] as? String ?? name
-            let fixture = (s["fixture"] as? String).flatMap(DemoFixture.init(rawValue:)) ?? .v3
             #expect(SnapshotStates.all.contains(state) || SnapshotMenuBar.screens.contains(state), "\(name): \(state) is not in SnapshotStates.all")
             if SnapshotMenuBar.screens.contains(state) { continue }
-            var o = LaunchOptions.parse(["Calendr", "--fixture", fixture.rawValue, "--freeze-clock"])
-            if fixture == .v3 { o.now = DemoData.defaultNow }
-            let m = AppModel(store: DemoStore(fixture: fixture), options: o, persist: false)
+            let o = LaunchOptions.parse(["Calendr", "--demo", "--freeze-clock"])
+            let m = AppModel(store: DemoStore(), options: o, persist: false)
             #expect(SnapshotStates.apply(state, to: m), "\(name): no snapshot hook applies \(state)")
         }
     }

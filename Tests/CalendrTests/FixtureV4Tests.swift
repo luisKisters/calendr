@@ -6,7 +6,7 @@ import CalendrKit
 @MainActor
 func makeModelV4() -> AppModel {
     let o = LaunchOptions.parse(["Calendr", "--fixture", "v4", "--freeze-clock"])
-    return AppModel(store: DemoStore(fixture: .v4), options: o, persist: false)
+    return AppModel(store: DemoStore(), options: o, persist: false)
 }
 
 /// design/mockup-v4/index.html, read from the source tree.
@@ -27,7 +27,7 @@ struct FixtureV4Tests {
     }
 
     @Test func weekHasTheMockupCountsOfTimedAndAllDayEvents() throws {
-        let store = DemoStore(fixture: .v4)
+        let store = DemoStore()
         let week = DateInterval(start: DemoDataV4.weekStart, end: DemoDataV4.math.addDays(DemoDataV4.weekStart, 7))
         let events = store.events(in: week)
         #expect(events.filter { !$0.isAllDay }.count == 53)

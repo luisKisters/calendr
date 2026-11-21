@@ -8,9 +8,10 @@ import CalendrKit
 struct MenuBarItemFixTests {
     @Test func storeChangesBumpTheVersion() {
         let m = makeModel()
+        m.setNow(m.math.date(year: 2026, month: 9, day: 30, hour: 16))
         let v = m.storeVersion
-        guard let sam = m.menuBarMenu.rows.first(where: { $0.title == "Sam / Alex" })?.event else { Issue.record("no Sam / Alex"); return }
-        m.setResponse(.tentative, for: sam)
+        guard let board = m.menuBarMenu.rows.first(where: { $0.title == "Club board meeting" })?.event else { Issue.record("no Club board meeting"); return }
+        m.setResponse(.tentative, for: board)
         #expect(m.storeVersion > v)
     }
 

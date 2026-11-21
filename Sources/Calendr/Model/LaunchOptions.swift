@@ -2,15 +2,14 @@ import Foundation
 import CalendrKit
 
 struct LaunchOptions {
+    /// `--demo` (or its old alias `--fixture v4`): the design/mockup-v4 week (`DemoDataV4`) with its clock (Sun 4 Oct 2026 15:10) and 46 pt hours.
     var demo = false
     var now: Date?
     var snapshot: String?
     var out: String?
     var walkthrough = false
-    /// `--walkthrough <tour>`: nil is the v3 tour; "v4-a" ... are the v4 feature tours (they use the v4 fixture).
+    /// `--walkthrough <tour>`: nil (or "e2e") is the end-to-end tour scripts/verify.sh runs; "v4-a" ... are the v4 feature tours.
     var tour: String?
-    /// `--fixture v4`: the design/mockup-v4 week with its clock (Sun 4 Oct 2026 15:10) and 46 pt hours.
-    var fixture = DemoFixture.v3
     var record: String?
     var perf = false
     var size = CGSize(width: 1440, height: 900)
@@ -36,8 +35,7 @@ struct LaunchOptions {
             case "--walkthrough":
                 o.walkthrough = true; o.demo = true; o.freezeClock = true
                 if i + 1 < args.count, !args[i + 1].hasPrefix("-") { o.tour = value() }
-                if o.tour?.hasPrefix("v4") == true { o.fixture = .v4 }
-            case "--fixture": o.demo = true; o.fixture = value().flatMap(DemoFixture.init(rawValue:)) ?? .v3
+            case "--fixture": o.demo = true; _ = value()        // `--fixture v4`: the demo is the v4 week
             case "--record": o.record = value()
             case "--perf": o.perf = true; o.demo = true; o.freezeClock = true
             case "--freeze-clock": o.freezeClock = true
@@ -49,7 +47,7 @@ struct LaunchOptions {
             }
             i += 1
         }
-        if o.demo && o.now == nil { o.now = o.fixture == .v4 ? DemoDataV4.now : DemoData.defaultNow }
+        if o.demo && o.now == nil { o.now = DemoDataV4.now }
         return o
     }
 
@@ -59,10 +57,6 @@ struct LaunchOptions {
         if let d = iso.date(from: s) { return d }
         let parts = s.split(whereSeparator: { "-T: ".contains($0) }).compactMap { Int($0) }
         guard parts.count >= 3 else { return nil }
-        return DemoData.math.date(year: parts[0], month: parts[1], day: parts[2], hour: parts.count > 3 ? parts[3] : 0, minute: parts.count > 4 ? parts[4] : 0)
+        return DemoDataV4.math.date(year: parts[0], month: parts[1], day: parts[2], hour: parts.count > 3 ? parts[3] : 0, minute: parts.count > 4 ? parts[4] : 0)
     }
-}
-
-extension DemoData {
-    static var defaultNow: Date { math.date(year: 2026, month: 9, day: 29, hour: 11, minute: 48) }
 }

@@ -7,7 +7,7 @@ import CalendrKit
 enum AppContext {
     static let model: AppModel = {
         // EventKit for iCloud and local calendars, plus the connected Google accounts (v4 Phase 8b)
-        let store: CalendarStore = launchOptions.demo ? DemoStore(fixture: launchOptions.fixture) : CompositeStore(base: EventKitStore())
+        let store: CalendarStore = launchOptions.demo ? DemoStore() : CompositeStore(base: EventKitStore())
         return AppModel(store: store, options: launchOptions)
     }()
 }

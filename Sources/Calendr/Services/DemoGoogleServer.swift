@@ -16,7 +16,7 @@ final class DemoGoogleServer: @unchecked Sendable {
     private var nextID = 0
 
     init() {
-        let zone = DemoData.math.timeZone
+        let zone = DemoDataV4.math.timeZone
         let acct = DemoDataV4.accounts.first { $0.name == Self.email }!
         calendars = acct.calendars.map { c in
             GCalendarListEntry(id: c.id, summary: c.title, backgroundColor: c.colorHex, accessRole: "owner", primary: c.isDefault ? true : nil,

@@ -9,6 +9,7 @@ struct GridTests {
     func model(viewport: Double = 700) -> AppModel {
         let m = makeModel()
         m.setGridViewport(height: viewport)
+        m.fitHourScale()            // the demo opens at its hand-set 46 pt: these tests start from the fit
         m.gridGeometry = GridGeometry(dayWidth: 150, hourHeight: m.gridHourHeight, dayCount: 7)
         return m
     }
@@ -16,8 +17,8 @@ struct GridTests {
     @Test func fitsTheWeekFromFirstToLastEvent() {
         let m = model()
         let f = m.gridState.fit!
-        #expect(f.lo == 7 * 60)                                   // Meal prep 07:30
-        #expect(f.hi == 23 * 60)                                  // Evening journal 22:45 - 23:00
+        #expect(f.lo == 8 * 60)                                   // Deep work 08:00
+        #expect(f.hi == 24 * 60)                                  // Journal 23:15 - 23:45
         #expect(abs(f.perHour - max(38, 680 / Double(f.hi - f.lo) * 60)) < 1e-9)
         #expect(m.gridHourHeight == f.perHour)
         #expect(abs(m.gridState.scrollTarget - Double(f.lo) / 60 * f.perHour) < 1e-9)
@@ -26,7 +27,7 @@ struct GridTests {
 
     @Test func emptyPeriodFitsNineToSix() {
         let m = model()
-        m.go(to: DemoData.day(6, 7, year: 2028))
+        m.go(to: DemoDataV4.day(6, 7, year: 2028))
         #expect(m.gridState.fit?.lo == 9 * 60 && m.gridState.fit?.hi == 18 * 60)
         #expect(m.gridHourHeight == 680.0 / 9)
     }
@@ -70,7 +71,7 @@ struct GridTests {
 
     @Test func clickOnEmptyGridOnlyDismisses() {
         let m = model()
-        let e = m.layout.timed[1].first { $0.event.title == "Genetics" }!.event
+        let e = m.layout.timed[1].first { $0.event.title == "Standup" }!.event
         m.select(eventID: e.id)
         let g = m.gridGeometry, count = m.layout.timedCount
         let p = CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(3 * 60))
@@ -96,7 +97,7 @@ struct GridTests {
     @Test func upwardDragCreates() {
         let m = model()
         let g = m.gridGeometry
-        let x = 5.5 * g.dayWidth
+        let x = 3.5 * g.dayWidth                    // Thursday: free from 14:00 to 17:00
         m.gridMouseDown(CGPoint(x: x, y: g.yPos(15 * 60 + 5)))
         m.gridMouseDragged(CGPoint(x: x, y: g.yPos(13 * 60 + 50)))
         #expect(m.gridState.pointer.minute == 13 * 60 + 45)
@@ -108,18 +109,18 @@ struct GridTests {
     @Test func escapeCancelsADrag() {
         let m = model()
         let g = m.gridGeometry, count = m.layout.timedCount
-        let x = 5.5 * g.dayWidth
-        m.gridMouseDown(CGPoint(x: x, y: g.yPos(14 * 60)))
-        m.gridMouseDragged(CGPoint(x: x, y: g.yPos(16 * 60)))
+        let x = 3.5 * g.dayWidth                    // Thursday: free from 14:00 to 17:00
+        m.gridMouseDown(CGPoint(x: x, y: g.yPos(14 * 60 + 15)))
+        m.gridMouseDragged(CGPoint(x: x, y: g.yPos(16 * 60 + 15)))
         #expect(m.dragPreview != nil)
         #expect(m.handle(.escape))
-        m.gridMouseUp(CGPoint(x: x, y: g.yPos(16 * 60)))
+        m.gridMouseUp(CGPoint(x: x, y: g.yPos(16 * 60 + 15)))
         #expect(m.dragPreview == nil && m.layout.timedCount == count)
     }
 
     @Test func topEdgeResizesTheStart() {
         let m = model()
-        let pe = m.layout.timed[1].first { $0.event.title == "Sam / Alex" }!
+        let pe = m.layout.timed[2].first { $0.event.title == "Lunch with Theo" }!
         let g = m.gridGeometry
         let r = g.rect(for: pe)
         let p = CGPoint(x: r.midX, y: r.minY + 2)
@@ -128,13 +129,13 @@ struct GridTests {
         m.gridMouseDragged(CGPoint(x: r.midX, y: g.yPos(13 * 60 + 30)))
         m.gridMouseUp(CGPoint(x: r.midX, y: g.yPos(13 * 60 + 30)))
         let e = m.event(id: pe.event.id)!
-        #expect(m.fmt.time(e.start) == "13:30" && m.fmt.time(e.end) == "15:00")
+        #expect(m.fmt.time(e.start) == "13:30" && m.fmt.time(e.end) == "16:00")
     }
 
     @Test func monthDoubleClickMakesAnAllDayDraft() {
         let m = model()
         m.setMode(.month)
-        m.createAllDay(on: DemoData.day(9, 24))
+        m.createAllDay(on: DemoDataV4.day(10, 8))
         let e = m.selectedEvent!
         #expect(e.isAllDay && m.draftEventID == e.id)
     }

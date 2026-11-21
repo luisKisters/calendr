@@ -30,8 +30,6 @@ final class Driver {
     private(set) var samples: [Sample] = []
     private(set) var clicks: [Click] = []
     private(set) var captions: [Caption] = []
-    struct Zoom { var start: Double; var end: Double?; var x: Double; var y: Double }
-    private(set) var zooms: [Zoom] = []
 
     init(model: AppModel, size: CGSize, recorder: VideoRecorder?) {
         self.model = model
@@ -65,27 +63,12 @@ final class Driver {
         captions.append(Caption(start: videoTime, end: nil, text: text, keys: keys))
     }
 
-    /// Starts a zoom region centred on a window point (Glide zooms in on it until `zoomOut`).
-    func zoomIn(on p: CGPoint) {
-        zoomOut()
-        zooms.append(Zoom(start: videoTime, end: nil, x: Double(p.x / size.width), y: Double(p.y / size.height)))
-    }
-
-    func zoomOut() {
-        if let i = zooms.indices.last, zooms[i].end == nil { zooms[i].end = videoTime }
-    }
-
     func endCaption() {
         if let i = captions.indices.last, captions[i].end == nil { captions[i].end = max(videoTime, captions[i].start + 0.3) }
     }
 
     func writeTelemetry(to base: String) {
-        endCaption(); zoomOut()
-        let zs = zooms.compactMap { z -> [String: Any]? in
-            guard let e = z.end, e > z.start else { return nil }
-            return ["start": (z.start * 100).rounded() / 100, "end": (e * 100).rounded() / 100, "x": (z.x * 1000).rounded() / 1000, "y": (z.y * 1000).rounded() / 1000]
-        }
-        if let data = try? JSONSerialization.data(withJSONObject: zs, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: base + ".zoom.json")) }
+        endCaption()
         func n(_ v: Double) -> String { String(format: "%.5f", min(1, max(0, v))) }
         let sj = samples.map { "{\"t\":\(Int($0.t)),\"x\":\(n($0.x)),\"y\":\(n($0.y))}" }.joined(separator: ",")
         let cj = clicks.map { "{\"t\":\(Int($0.t)),\"x\":\(n($0.x)),\"y\":\(n($0.y)),\"button\":1,\"double\":\($0.double)}" }.joined(separator: ",")
@@ -103,7 +86,7 @@ final class Driver {
 
     /// Captures the window (with overlays) and writes it `hold` seconds long (at least one frame).
     func frame(hold: Double = 0) {
-        guard let recorder else { return }
+        guard let recorder else { settle(2); return }
         settle(2)
         guard let img = source.image(scale: scale) else { return }
         lastFrame = img
@@ -196,7 +179,8 @@ final class Driver {
     }
 
     func hold(_ seconds: Double) {
-        guard let recorder else { return }
+        // Unrecorded: let SwiftUI catch up (focus, the field editor, animations ending) for a moment instead of writing frames.
+        guard let recorder else { RunLoop.main.run(until: Date().addingTimeInterval(min(seconds, 0.05))); return }
         if lastFrame == nil { frame() }
         if let f = lastFrame { emit(f, frames: Int((seconds * Double(recorder.fps)).rounded())) }
     }
@@ -272,6 +256,11 @@ final class Driver {
 
     /// Types into whatever text field is focused, one real key event per character, capturing frames along the way.
     func type(_ text: String, frames: Bool = true) {
+        // Wait for a text field to take focus: SwiftUI hands it the field editor a few run loop turns later, and a new event's title is
+        // nudged into focus for 0.25 s (`requestTitleFocus`). Recording already spends that long on frames; unrecorded, wait it out.
+        if recorder == nil { RunLoop.main.run(until: Date().addingTimeInterval(0.3)) }
+        let deadline = Date().addingTimeInterval(1)
+        while !(win.window.firstResponder is NSTextView) && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
         for c in text {
             var mods: NSEvent.ModifierFlags = []
             if c.isUppercase { mods.insert(.shift) }
@@ -301,7 +290,7 @@ final class Driver {
 
     /// Eases the cursor to `p` over `duration` seconds (smoothstep), one written frame per step, like a hand moving to its target.
     func moveCursor(to p: CGPoint, duration: Double = 0.32, onStep: ((CGPoint) -> Void)? = nil) {
-        guard let recorder else { cursor = p; return }
+        guard let recorder else { cursor = p; settle(1); return }
         if lastFrame == nil { frame() }
         let from = cursor
         let steps = max(1, Int((duration * Double(recorder.fps)).rounded()))

@@ -33,7 +33,7 @@ extension AppModel {
         gridState.dayList = nil
     }
 
-    /// "n more" of a month cell (and the model call the v3 snapshot uses): the day's events in a list under it. Settles the draft and the selection first.
+    /// "n more" of a month cell: the day's events in a list under it. Settles the draft and the selection first.
     func openDayList(_ day: Date) {
         gridDismiss()
         gridState.dayList = GridDayList(day: math.startOfDay(day), period: periodID)

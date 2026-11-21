@@ -143,14 +143,14 @@ final class AppModel {
         self.store = store
         self.options = options
         self.services = services ?? Services.make(options)
-        // The v4 fixture is a fixed demo (46 pt hours, pinned clock): it never reads or writes the user's settings.
-        let persist = persist && options.fixture != .v4
+        // The demo (the v4 fixture) is fixed (46 pt hours, pinned clock): it never reads or writes the user's settings.
+        let persist = persist && !options.demo
         self.persist = persist
         var s = persist ? AppSettings.load() : AppSettings()
-        if options.fixture == .v4 { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46
+        if options.demo { s.hourHeight = DemoDataV4.hourHeight }      // the mockup's H = 46
         settings = s
         Motion.override = s.reduceMotion
-        let m = options.demo ? DemoData.math : CalendarMath.system
+        let m = options.demo ? DemoDataV4.math : CalendarMath.system
         use24h = options.demo || Fmt.uses24h()
         math = m
         let n = options.now ?? Date()
@@ -612,6 +612,8 @@ final class AppModel {
 
     func undo() {
         flushPendingEdit()
+        // The pill offering this undo goes at once, whether its button or Cmd-Z ran it.
+        if toast?.undo == true { toast = nil }
         guard let change = undoStack.pop() else { showToast("Nothing to undo"); return }
         switch change {
         case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }

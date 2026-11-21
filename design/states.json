@@ -1,136 +1,104 @@
 {
-  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH` (scripts/snapshots.sh). An entry may override 'state' (the app state to render), 'size' and 'fixture' (the demo data: 'v4' is design/mockup-v4's week). 'mockup' is the mockupDir scene it is compared with (index.html#<mockup>, '&key=value' adds picks); scripts/render-mockup.swift writes it to <mockupDir>/shots/<mockup>.png after running the optional 'js' step, and scripts/compare-all.sh diffs it against the snapshot.",
+  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH` (scripts/snapshots.sh). An entry may override 'state' (the app state to render) and 'size'. 'mockup' is the mockupDir scene it is compared with (index.html#<mockup>, '&key=value' adds picks); scripts/render-mockup.swift writes it to <mockupDir>/shots/<mockup>.png after running the optional 'js' step, and scripts/compare-all.sh diffs it against the snapshot.",
   "mockupDir": "design/mockup-v4",
   "size": "1440x900",
   "states": {
-    "week": {},
-    "week-selected-event": {},
-    "command-menu": {},
-    "teammate-picker": {},
-    "teammate-overlay": {},
-    "go-to-date": {},
-    "search-results": {},
-    "month": {},
-    "day": {},
-    "menubar-popover": {},
-    "sidebar-hidden": {},
-    "all-day-collapsed": {},
-    "create-drag": {},
-    "shortcuts-sheet": {},
-    "settings": {},
-    "light-week": {},
-    "delete-recurring": {},
-    "meet-with": {},
-    "week-reference-size": {
-      "state": "week",
-      "size": "1798x1126"
-    },
-    "readonly-event": {},
-    "month-light": {},
-    "empty-access": {},
-    "toast": {},
-    "search-empty": {},
-    "menubar-empty": {},
-    "create-event": {},
-    "week-zoomed": {},
-    "week-numbers": {},
-    "detail-guests": {},
     "v4-week": {
-      "mockup": "week",
-      "fixture": "v4"
+      "mockup": "week"
     },
     "v4-overlap": {
-      "mockup": "overlap",
-      "fixture": "v4"
+      "mockup": "overlap"
     },
     "v4-status": {
-      "mockup": "status",
-      "fixture": "v4"
+      "mockup": "status"
     },
     "v4-event": {
-      "mockup": "event",
-      "fixture": "v4"
+      "mockup": "event"
     },
     "v4-cmd": {
-      "mockup": "cmd",
-      "fixture": "v4"
+      "mockup": "cmd"
     },
     "v4-settings": {
-      "mockup": "settings",
-      "fixture": "v4"
+      "mockup": "settings"
     },
     "v4-menubar": {
-      "mockup": "menubar",
-      "fixture": "v4"
+      "mockup": "menubar"
     },
     "v4-delete": {
-      "mockup": "delete",
-      "fixture": "v4"
+      "mockup": "delete"
     },
-    "v4-b-layout": {
-      "fixture": "v4"
-    },
+    "v4-b-layout": {},
     "v4-overlap-stack": {
       "mockup": "overlap",
       "shot": "overlap-stack",
-      "js": "document.querySelector('[data-pop=evmore]').click()",
-      "fixture": "v4"
+      "js": "document.querySelector('[data-pop=evmore]').click()"
     },
     "v4-allday-expanded": {
       "mockup": "week",
       "shot": "allday-expanded",
-      "js": "document.querySelector('.ad .tog').click()",
-      "fixture": "v4"
+      "js": "document.querySelector('.ad .tog').click()"
     },
     "v4-search": {
       "mockup": "week",
       "shot": "search",
-      "js": "const i=document.querySelector('[data-f=search]'); i.value='walk'; i.dispatchEvent(new Event('input',{bubbles:true}))",
-      "fixture": "v4"
+      "js": "const i=document.querySelector('[data-f=search]'); i.value='walk'; i.dispatchEvent(new Event('input',{bubbles:true}))"
     },
     "v4-invited": {
-      "mockup": "invited",
-      "fixture": "v4"
+      "mockup": "invited"
     },
     "v4-call": {
-      "mockup": "call",
-      "fixture": "v4"
+      "mockup": "call"
     },
     "v4-location": {
-      "mockup": "location",
-      "fixture": "v4"
+      "mockup": "location"
     },
     "v4-maps": {
-      "mockup": "maps",
-      "fixture": "v4"
+      "mockup": "maps"
     },
     "v4-calendar": {
-      "mockup": "calendar",
-      "fixture": "v4"
+      "mockup": "calendar"
     },
     "v4-reminders": {
-      "mockup": "reminders",
-      "fixture": "v4"
+      "mockup": "reminders"
     },
     "v4-guests": {
-      "mockup": "guests",
-      "fixture": "v4"
+      "mockup": "guests"
     },
     "v4-invite": {
-      "mockup": "invite",
-      "fixture": "v4"
+      "mockup": "invite"
     },
     "v4-pending": {
-      "mockup": "pending",
-      "fixture": "v4"
+      "mockup": "pending"
     },
     "v4-contacts": {
-      "mockup": "contacts",
-      "fixture": "v4"
+      "mockup": "contacts"
     },
     "v4-settings-accounts": {
-      "mockup": "settings",
-      "fixture": "v4"
+      "mockup": "settings"
+    },
+    "month": {},
+    "day": {},
+    "light-week": {},
+    "month-light": {},
+    "sidebar-hidden": {},
+    "create-drag": {},
+    "week-numbers": {},
+    "week-zoomed": {},
+    "teammate-picker": {},
+    "meet-with": {},
+    "teammate-overlay": {},
+    "go-to-date": {},
+    "search-empty": {},
+    "shortcuts-sheet": {},
+    "toast": {},
+    "empty-access": {},
+    "create-event": {},
+    "delete-recurring": {},
+    "readonly-event": {},
+    "menubar-empty": {},
+    "week-reference-size": {
+      "state": "v4-week",
+      "size": "1798x1126"
     }
   }
 }
