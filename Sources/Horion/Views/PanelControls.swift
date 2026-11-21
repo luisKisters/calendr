@@ -194,3 +194,45 @@ struct PanelIconButton: View {
         .animation(Motion.fast, value: hover)
     }
 }
+
+/// design/call-link round 3 `.cp--sm`: a small copy icon (22 pt, fg3, no fill until hovered), always shown. Hovering shows a
+/// "Copy link" tip above it; a click copies and turns the icon into a check, with the tip saying "Copied", for 1.5 s.
+struct CopyLinkButton: View {
+    let copy: () -> Bool
+    @State private var hover = false
+    @State private var copiedAt: Date?
+    static let feedback: TimeInterval = 1.5
+
+    var body: some View {
+        let copied = copiedAt != nil
+        let tip = copied ? "Copied" : "Copy link"
+        Button {
+            guard copy() else { return }
+            let now = Date()
+            copiedAt = now
+            after(Self.feedback) { if copiedAt == now { copiedAt = nil } }
+        } label: {
+            PanelIcon(name: copied ? .check : .copy, size: Dim.iconGlyphSmall, color: hover || copied ? Theme.fg : Theme.fg3)
+                .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? Theme.hoverRail : Color.clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .onHover { hover = $0 }
+        .overlay(alignment: .topTrailing) {
+            if hover || copied {
+                Text(tip).font(.small).tracking(TypeTrack.small).foregroundStyle(Theme.fg).fixedSize()
+                    .padding(.horizontal, 7).frame(height: 20)
+                    .background(RoundedRectangle(cornerRadius: Radius.small).fill(Theme.bg2))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.small).strokeBorder(Theme.hair2, lineWidth: 1))
+                    .offset(x: 4, y: -(20 + 6))
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .zIndex(1)
+        .animation(Motion.fast, value: hover)
+        .animation(Motion.fast, value: copied)
+        .accessibilityLabel(tip)
+    }
+}

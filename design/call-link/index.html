@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horion call link · round 4</title>
+<!-- designr round mockup: the call row and the Up next card of Horion, in the current look. -->
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+/* ================= the app: the right column of Horion (current look, Theme.swift tokens) ================= */
+/* Only what this round is about: the 320 pt right column, as the event editor and as Today. Geist, 12 / 11 pt, radius 5 · 9 · 13. */
+@font-face { font-family: "Geist"; src: url(fonts/geist-latin.woff2) format("woff2"); font-weight: 100 900; font-display: block; }
+#stage { display: grid; place-items: center; background: #050507; }
+.desk { --sans: "Geist", system-ui, sans-serif; --r-s: 5px; --r-c: 9px; --r-srf: 13px; --r-mark: 4px;
+  --t1: 120ms; --ease: cubic-bezier(.22, .61, .36, 1); }
+.desk.theme-ink { --bg: #0B0B0C; --bg1: #151516; --bg2: #1D1D1E; --bg3: #2A2A2C; --fg: #EBEBED; --fg2: #CCCCCE; --fg3: #A8A8AA; --fg4: #4E4E50;
+  --hair: #1C1C1D; --hair2: #2A2A2C; --hover: #161617; --rail: #121213; --live: #FF6B5F; --danger: #FF7B72; --pop: #0B0B0C; --popedge: #2A2A2C;
+  --shadow: 0 12px 32px rgba(0,0,0,.55); color-scheme: dark; }
+.desk.theme-paper { --bg: #FBFBFB; --bg1: #F1F1F2; --bg2: #FFFFFF; --bg3: #DCDCDC; --fg: #1D1D20; --fg2: #4A4A50; --fg3: #606067; --fg4: #B8B8B9;
+  --hair: #E8E8E8; --hair2: #DCDCDC; --hover: #F1F1F1; --rail: #EAEAEB; --live: #C9372C; --danger: #B4382D; --pop: #FBFBFB; --popedge: #DCDCDC;
+  --shadow: 0 12px 32px rgba(20,20,30,.14); color-scheme: light; }
+.desk { --act: var(--fg); --on-act: var(--bg); --acth: color-mix(in srgb, var(--fg) 88%, var(--bg)); }
+.desk { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; overflow: hidden; background: var(--bg); color: var(--fg);
+  font: 400 12px/18px var(--sans); letter-spacing: -.005em; -webkit-font-smoothing: antialiased; border-radius: 12px; box-shadow: 0 0 0 1px var(--hair2); }
+.col { position: absolute; inset: 0; }
+svg { display: block; flex: none; }
+.dim { color: var(--fg3); } .num { font-variant-numeric: tabular-nums; }
+.srch { margin: 10px 12px 6px; height: 28px; border-radius: var(--r-c); background: var(--bg2); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; color: var(--fg3); }
+.srch .sp { flex: 1; } .cap { min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-mark); box-shadow: inset 0 0 0 1px var(--hair2); font-size: 11px; display: inline-grid; place-items: center; color: var(--fg3); }
+
+/* event editor */
+.ed { padding: 6px 14px 20px 20px; }
+.ed__top { display: flex; align-items: center; gap: 4px; height: 36px; }
+.ed__top::before { content: ""; width: 3px; height: 18px; border-radius: 2px; background: var(--c); margin-right: 13px; }
+.ed__t { flex: 1; font: 600 15px/21px var(--sans); letter-spacing: -.015em; }
+.ib { width: 26px; height: 26px; border-radius: var(--r-s); display: grid; place-items: center; color: var(--fg2); position: relative; flex: none; }
+.ib:hover { background: var(--rail); color: var(--fg); }
+.ib.sm { width: 22px; height: 22px; color: var(--fg3); } .ib.sm svg { width: 14px; height: 14px; }
+.ib.sm:hover { color: var(--fg); }
+.ib.danger:hover { color: var(--danger); }
+.fl { display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 12px; row-gap: 8px; margin-top: 8px; }
+.fl__k { height: 32px; display: grid; place-items: center; color: var(--fg2); }
+.fl__v { min-width: 0; min-height: 32px; display: flex; flex-direction: column; justify-content: center; }
+.fl__v.h { flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; }
+.sub { color: var(--fg3); font-size: 11px; line-height: 14px; }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--r-c); background: var(--bg1); }
+.seg b { font-weight: 500; padding: 0 12px; height: 24px; line-height: 24px; border-radius: 7px; color: var(--fg3); }
+.seg b.on { background: var(--bg2); color: var(--fg); box-shadow: inset 0 0 0 1px var(--hair2); }
+.av { display: flex; align-items: center; gap: 8px; height: 26px; } .av i { width: 14px; text-align: center; font-style: normal; color: #6CC58A; }
+
+/* the call row: subject of this round */
+.cr { display: flex; align-items: center; gap: 2px; min-width: 0; height: 32px; position: relative; }
+.cr .lk { flex: 1; min-width: 0; height: 26px; display: flex; align-items: center; gap: 7px; padding: 0 6px; margin-left: -6px; border-radius: var(--r-s); white-space: nowrap; cursor: text; color: var(--fg); }
+.cr .lk span { overflow: hidden; text-overflow: ellipsis; }
+.cr .lk:hover { box-shadow: inset 0 0 0 1px var(--hair2); }
+.cr .lk.ro { cursor: pointer; } .cr .lk.ro:hover { box-shadow: none; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--fg) 40%, transparent); text-underline-offset: 3px; }
+.cr .lk.sm { color: var(--fg2); font-size: 11px; }
+.cr input { flex: 1; min-width: 0; height: 26px; margin-left: -6px; padding: 0 6px; border-radius: var(--r-s); background: var(--bg1); box-shadow: inset 0 0 0 1px var(--fg4), 0 0 0 2px color-mix(in srgb, #6E9BF5 45%, transparent); font-size: 12px; }
+.cr .acts { display: flex; gap: 0; margin-right: -4px; }
+.cr .acts.hov .ib { opacity: 0; transition: opacity var(--t1); } .cr:hover .acts.hov .ib, .cr .acts.hov .ib.keep { opacity: 1; }
+.tip::after { content: attr(data-tip); position: absolute; right: -2px; bottom: calc(100% + 6px); padding: 0 7px; height: 20px; line-height: 20px; border-radius: var(--r-s); white-space: nowrap;
+  font: 500 11px/20px var(--sans); color: var(--fg); background: var(--bg2); box-shadow: 0 0 0 1px var(--hair2), 0 4px 12px rgba(0,0,0,.25);
+  opacity: 0; transform: translateY(2px); pointer-events: none; transition: opacity 120ms, transform 120ms; z-index: 5; }
+.tip:hover::after, .tip.ok::after { opacity: 1; transform: none; transition-delay: 250ms; } .tip.ok::after { transition-delay: 0s; }
+.tip.ok { color: var(--fg); }
+
+/* Join: the filled ink button with the ⌘ J keycaps */
+.join { width: 100%; height: 32px; border-radius: var(--r-c); background: var(--act); color: var(--on-act); display: flex; align-items: center; gap: 7px;
+  font-weight: 600; font-size: 12px; padding: 0 10px; transition: background var(--t1); }
+.join:hover { background: var(--acth); }
+.join.c { justify-content: center; } .join.l .jt { flex: 1; }
+.join.card { height: 30px; }
+.kb { display: inline-flex; gap: 3px; margin-left: 2px; }
+.kb kbd { font: 500 11px/1 var(--sans); min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--r-mark); display: inline-grid; place-items: center; background: color-mix(in srgb, var(--on-act) 16%, transparent); color: var(--on-act); }
+.lg { width: 15px; height: auto; }
+
+/* add a call: the menu */
+.addc { height: 26px; display: flex; align-items: center; color: var(--fg3); padding: 0 6px; margin-left: -6px; border-radius: var(--r-s); width: 100%; }
+.addc:hover, .addc.on { background: var(--rail); color: var(--fg2); }
+.menu { position: absolute; z-index: 20; width: 260px; padding: 6px; border-radius: var(--r-srf); background: var(--pop); box-shadow: 0 0 0 1px var(--popedge), var(--shadow); }
+.mi { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 5px 8px; border-radius: 7px; }
+.mi:hover { background: var(--hover); }
+.mi .s2 { display: block; color: var(--fg3); font-size: 11px; line-height: 14px; }
+.mi.danger { color: var(--danger); }
+.sep { height: 1px; background: var(--hair); margin: 5px 4px; }
+.made { height: 32px; border-radius: var(--r-c); background: var(--bg2); display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--fg2); }
+
+/* today: the lead card */
+.cd { margin: 2px 20px 6px; padding: 10px 0 17px; border-bottom: 1px solid var(--hair); }
+.cd__k { display: flex; gap: 8px; height: 18px; align-items: center; font-size: 11px; font-weight: 500; color: var(--fg3); }
+.cd__k b { font-weight: 500; color: var(--fg2); } .cd__k b.live { color: var(--live); }
+.cd__r { display: flex; gap: 8px; margin-top: 6px; text-align: left; }
+.cd__tm { width: 36px; text-align: right; font-size: 11px; line-height: 14px; padding-top: 3px; color: var(--fg2); } .cd__tm span { display: block; color: var(--fg3); }
+.cd__bar { width: 7px; display: flex; justify-content: center; } .cd__bar i { width: 3px; border-radius: 2px; background: var(--c); margin: 2px 0; }
+.cd__t { font-weight: 600; line-height: 20px; } .cd__m { font-size: 11px; line-height: 14px; color: var(--fg2); }
+.cd__j { display: flex; align-items: center; gap: 4px; margin-top: 12px; }
+.cd__j > .ib { margin-right: -4px; }
+.lt { padding: 12px 20px 0; } .lt__k { font-size: 11px; font-weight: 500; color: var(--fg3); height: 18px; margin-bottom: 4px; }
+.lt__r { display: flex; align-items: center; gap: 8px; height: 26px; } .lt__r .num { width: 36px; text-align: right; font-size: 11px; color: var(--fg2); }
+.lt__r i { width: 3px; height: 14px; border-radius: 2px; background: var(--c); margin: 0 2px; }
+
+.to { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 16px; display: flex; align-items: center;
+  font-size: 12px; white-space: nowrap; background: var(--bg2); box-shadow: 0 0 0 1px var(--hair2), var(--shadow); }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Horion call link', VERSION = 'v1', ROUND = 4;
+const DESK = { w: 320, h: 470 };            // the right column (320 pt), cut to the part that matters
+const SCENES = [['event', 'Event with Google Meet'], ['zoom', 'Zoom, long link'], ['edit', 'Editing the link'], ['nocall', 'No call yet'],
+  ['menu', 'Add a call: the menu'], ['made', 'Meet link made on save'], ['today', 'Up next is a call'], ['live', 'Call running now'],
+  ['paper-event', 'Event, Paper'], ['paper-today', 'Up next, Paper']];
+const HOWTO = ['Everything is clickable: click the link to edit it (Return keeps it), Copy copies, ✕ removes the call, Add conferencing opens the menu.', 'This is the current Horion look (Geist, the app\'s colours), 320 pt right column, enlarged.', 'Keys: G alignment guides, ⌘J joins.', 'Notes on one element: turn on Agentation below, click the element, write. "Copy my picks" takes the notes.'];
+const READ = 'Reading this as: the call row should read like every other row (icon, then the value), with Join as the one strong thing under it; edit, copy and remove live with the link. Dials: variance 2, motion 3, density 5.';
+const LOCKED = { add: 'menu', tool: 'btn', btn: 'fill', key: 'cmdj', copy: 'tip', fb: 'check', row: 'linktop', acts: 'icons', jalign: 'center', card: 'full' };
+const BEFORE = { row: 'jointop', acts: 'hoverx', jalign: 'center', card: 'title' };
+const DECISIONS = [
+  { g: 'Round 4', id: 'row', name: 'The call row in the event', fb: 'go to something earlier where the link is actually there in the row with the camera icon and under it is the Join button … then you can also remove the link there and edit the link',
+    note: 'Look at the event. B switches to how the app is now.', scene: 'event', hl: '.cr, .join', opts: [
+    ['linktop', 'Link on the camera row, Join under it', 'The camera row holds the link like any other value (12 pt, fg), with its actions on the right. The wide Join sits under it in the value column.'],
+    ['jointop', 'Join on the camera row, link under it', 'As in the app now: Join takes the camera row, the link follows small in grey.'],
+  ] },
+  { id: 'acts', name: 'Edit, copy and remove the link', fb: 'the x being there is actually a good idea i think it just wasnt visible … there is no good way currently to remove it',
+    note: 'Hover the link row. Click the link, Copy and ✕.', scene: 'event', hl: '.cr .acts, .cr .lk', opts: [
+    ['icons', 'Click the link to edit; Copy and ✕ always shown', 'Both icons stay on the right in fg3, with tips ("Copy link", "Remove call"). The link gets a field edge on hover and becomes a text field on click.'],
+    ['hoverx', 'Click to edit; Copy always, ✕ on hover', 'Copy stays; ✕ fades in left of it while the pointer is on the row. Its space is always kept, so nothing shifts.'],
+    ['more', 'Link opens the call; Copy and a ⋯ menu', 'Clicking the link joins, like a link. The ⋯ menu holds Change link…, Copy link and Remove call (in red).'],
+  ] },
+  { id: 'jalign', name: 'Inside the Join button', fb: 'the icon starts at a point that doesn\'t really make sense to me', note: 'Look at Join in the event and on Today.', scene: 'today', hl: '.join', opts: [
+    ['left', 'Logo and name on the left, keys on the right', 'The logo starts 10 pt in from the button edge, like an icon in a row; ⌘ J sit at the right end. The logo is always in the same place.'],
+    ['center', 'Centred, as now', 'Logo, name and keys centred as one group: the logo moves with the length of the tool name.'],
+  ] },
+  { id: 'card', name: 'Where Join starts on the Up next card', fb: 'for flat family dinner in up next in 25 minutes … the icon starts at a point that doesn\'t really make sense', note: 'Look at Today.', scene: 'today', hl: '.cd__j', opts: [
+    ['full', 'The card\'s full width, Copy beside it', 'Join starts under the times, at the card\'s left edge (the "Up next" label), and runs to Copy on the right edge.'],
+    ['title', 'From the title, Copy beside it', 'As now: Join starts where the title starts, 59 pt in.'],
+    ['fullnocopy', 'Full width, no Copy on the card', 'Join alone across the card. Copy stays in the event.'],
+  ] },
+  { id: 'add', lock: true, name: 'Adding a call', opts: [['menu', 'Add conferencing → menu: Google Meet (made on save) · Paste a link…', 'Locked in v4 round 2 and built: "Add conferencing" opens the call menu; Google Meet makes the link when you save, Paste a link… gives a field. See the scenes "No call yet", "Add a call: the menu" and "Meet link made on save".']] },
+  { id: 'tool', lock: true, name: 'Tool on Join', opts: [['btn', 'Logo and "Join Google Meet" on the button', 'Round 3.']] },
+  { id: 'btn', lock: true, name: 'Join button', opts: [['fill', 'Filled ink, ⌘ J keycaps', 'Round 3 and after: "i like ours way more".']] },
+  { id: 'key', lock: true, name: 'Join shortcut', opts: [['cmdj', '⌘J', 'Round 2.']] },
+  { id: 'copy', lock: true, name: 'Copy', opts: [['tip', 'Small icon, "Copy link" tip on hover', 'Round 3.']] },
+  { id: 'fb', lock: true, name: 'After a copy', opts: [['check', 'Check and "Copied" for 1.5 s', 'Round 1.']] },
+];
+
+// ================= demo data (invent all of it) =================
+function fresh() {
+  return { copied: null, toast: null, editing: null, menu: null, events: {
+    wg: { id: 'wg', title: 'Flat dinner', when: ['Sun 4 Oct', '19:00', '20:00', '1 h'], repeat: 'Every week on Sun', guests: '5 participants', gsub: '2 yes, 1 maybe, 1 no, 1 awaiting', place: 'Kitchen, 12 Harbour Street', cal: 'Personal', c: '#5BBF7A', link: 'https://meet.google.com/cmv-hjhb-qgb' },
+    d5: { id: 'd5', title: 'Client call', when: ['Thu 1 Oct', '17:30', '18:30', '1 h'], repeat: 'Does not repeat', guests: '2 participants', gsub: '2 yes', place: '', cal: 'Work', c: '#5AA8E8', link: 'https://northwind.zoom.us/j/84512093377?pwd=Qm9kZXJ0YWJsZQ' },
+    c3: { id: 'c3', title: 'Lunch with Theo', when: ['Wed 30 Sep', '14:00', '16:00', '2 h'], repeat: 'Does not repeat', guests: '2 participants', gsub: '2 yes', place: 'Market Hall, 42 Station Road', cal: 'Personal', c: '#6E8BFF', link: '' },
+  } };
+}
+
+// ================= the app =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const svg = (d, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const I = {
+  clock: svg('<circle cx="8" cy="8" r="5.8"/><path d="M8 4.8V8l2.2 1.4"/>'),
+  repeat: svg('<path d="M2.6 7.4a5.4 5.4 0 0 1 9.6-2.6M13.4 8.6a5.4 5.4 0 0 1-9.6 2.6"/><path d="M12.4 2v3h-3M3.6 14v-3h3"/>'),
+  users: svg('<circle cx="6" cy="5.6" r="2.4"/><path d="M1.8 13c.3-2.3 2-3.6 4.2-3.6s3.9 1.3 4.2 3.6M10.6 3.4a2.4 2.4 0 0 1 0 4.4M12.2 9.8c1.2.5 1.9 1.6 2.1 3.2"/>'),
+  going: svg('<circle cx="6.5" cy="5.4" r="2.4"/><path d="M2.2 13c.3-2.3 2-3.6 4.3-3.6 1 0 1.9.3 2.6.8M10 12l1.6 1.6L14.4 10"/>'),
+  video: svg('<rect x="1.6" y="4" width="9" height="8" rx="1.8"/><path d="m10.6 7 3.8-2v6l-3.8-2"/>'),
+  pin: svg('<path d="M8 14s4.6-4 4.6-7.6a4.6 4.6 0 0 0-9.2 0C3.4 10 8 14 8 14z"/><circle cx="8" cy="6.4" r="1.6"/>'),
+  cal: svg('<rect x="2" y="3" width="12" height="11" rx="2.2"/><path d="M2 6.6h12M5.2 1.8v2.4M10.8 1.8v2.4"/>'),
+  trash: svg('<path d="M2.8 4.4h10.4M6.4 4.4V3a.8.8 0 0 1 .8-.8h1.6a.8.8 0 0 1 .8.8v1.4M4.2 4.4l.6 8a1.2 1.2 0 0 0 1.2 1.1h4a1.2 1.2 0 0 0 1.2-1.1l.6-8"/>'),
+  x: svg('<path d="m4.4 4.4 7.2 7.2M11.6 4.4l-7.2 7.2"/>'), arrow: svg('<path d="M3 8h10M9.4 4.4 13 8l-3.6 3.6"/>', 12),
+  search: svg('<circle cx="7" cy="7" r="4.4"/><path d="m10.4 10.4 3 3"/>', 14), more: svg('<circle cx="3.6" cy="8" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><circle cx="12.4" cy="8" r=".9" fill="currentColor"/>'),
+  check: svg('<path d="m3.5 8.3 3 3 6-6.6"/>'), link: svg('<path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.6.6M9.4 6.6a2.6 2.6 0 0 0-3.7 0L3.5 8.8a2.6 2.6 0 0 0 3.7 3.7l.6-.6"/>'),
+  pencil: svg('<path d="M10.6 2.8a1.5 1.5 0 0 1 2.1 2.1L5.6 12l-2.8.7.7-2.8z"/>'),
+  copy: svg('<rect x="5" y="5" width="8.5" height="8.5" rx="1.8"/><path d="M11 5V3.8A1.3 1.3 0 0 0 9.7 2.5H3.8a1.3 1.3 0 0 0-1.3 1.3v5.9A1.3 1.3 0 0 0 3.8 11H5"/>'),
+};
+const LOGO = {
+  meet: `<svg class="lg" width="16" height="13" viewBox="0 0 22 18"><path fill="#00832d" d="M12.4 9 14.5 11.4 17.4 13.2 17.9 9 17.4 4.9 14.6 6.5z"/><path fill="#0066da" d="M0 12.8v3.6C0 17.3.7 18 1.6 18h3.6l.7-2.6-.7-2.6-2.5-.7z"/><path fill="#e94235" d="M5.2 0 0 5.2l2.6.7 2.6-.7.8-2.4z"/><path fill="#2684fc" d="M5.2 5.2H0v7.6h5.2z"/><path fill="#00ac47" d="M20.9 2.2 17.4 4.9v8.3l3.5 2.7c.5.4 1.3 0 1.3-.7V2.9c0-.7-.8-1.1-1.3-.7zM12.4 9v3.8H5.2V18h10.6c.9 0 1.6-.7 1.6-1.6v-3.2z"/><path fill="#ffba00" d="M15.8 0H5.2v5.2h7.2V9l5-4.1V1.6C17.4.7 16.7 0 15.8 0z"/></svg>`,
+  zoom: `<svg class="lg" viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="#2D8CFF"/><path d="M3.5 5.5h5.2c.7 0 1.3.6 1.3 1.3v3.7H4.8c-.7 0-1.3-.6-1.3-1.3zM10.5 7.2l2-1.5v4.6l-2-1.5z" fill="#fff"/></svg>`,
+};
+function tool(l) {
+  let u; try { u = new URL(l.trim()); } catch (_) { return { k: 'other', name: 'call', logo: I.video }; }
+  return /(^|\.)meet\.google\.com$/.test(u.hostname) ? { k: 'meet', name: 'Google Meet', logo: LOGO.meet } : /(^|\.)zoom\.us$/.test(u.hostname) ? { k: 'zoom', name: 'Zoom', logo: LOGO.zoom } : { k: 'other', name: 'call', logo: I.video };
+}
+const short = l => l.replace(/^https?:\/\//, '');
+const theme = () => S.scene.startsWith('paper') ? 'paper' : 'ink';
+function deskClass() { return `theme-${theme()}`; }
+const kbd = () => `<span class="kb"><kbd>⌘</kbd><kbd>J</kbd></span>`;
+const join = (e, cls = '') => { const t = tool(e.link); return `<button class="join ${C('jalign') === 'left' ? 'l' : 'c'} ${cls}" data-join="1" title="Join ${esc(t.name)}  ⌘J">${t.logo}<span class="jt">${t.k === 'other' ? 'Join call' : 'Join ' + esc(t.name)}</span>${kbd()}</button>`; };
+const copyBtn = (e) => { const on = A.copied === e.id; return `<button class="ib sm tip ${on ? 'ok keep' : ''}" data-copy="${e.id}" data-tip="${on ? 'Copied' : 'Copy link'}" aria-label="Copy link">${on ? I.check : I.copy}</button>`; };
+function linkRow(e, small) {
+  const a = C('acts');
+  if (A.editing === e.id) return `<div class="cr"><input id="lkin" value="${esc(short(e.link))}" data-ev="${e.id}" spellcheck="false"></div>`;
+  const lk = a === 'more' ? `<button class="lk ro ${small ? 'sm' : ''}" data-join="1" title="${esc(e.link)}"><span>${esc(short(e.link))}</span></button>`
+                         : `<button class="lk ${small ? 'sm' : ''}" data-edit="${e.id}" title="Click to edit"><span>${esc(short(e.link))}</span></button>`;
+  const x = `<button class="ib sm tip danger" data-rm="${e.id}" data-tip="Remove call" aria-label="Remove call">${I.x}</button>`;
+  const more = `<button class="ib sm tip ${A.menu === 'more' ? 'keep' : ''}" data-more="${e.id}" data-tip="More" aria-label="More">${I.more}</button>`;
+  const acts = a === 'icons' ? `<span class="acts">${x}${copyBtn(e)}</span>` : a === 'hoverx' ? `<span class="acts hov">${x}</span><span class="acts">${copyBtn(e)}</span>` : `<span class="acts">${copyBtn(e)}${more}</span>`;
+  const menu = a === 'more' && A.menu === 'more' ? `<div class="menu" style="right:-8px; top:34px; width:200px">
+      <button class="mi" data-edit="${e.id}">${I.pencil}Change link…</button><button class="mi" data-copy="${e.id}">${I.copy}Copy link</button>
+      <div class="sep"></div><button class="mi danger" data-rm="${e.id}">${I.x}Remove call</button></div>` : '';
+  return `<div class="cr">${lk}${acts}${menu}</div>`;
+}
+function callValue(e) {
+  if (A.made === e.id) return `<div class="made">${LOGO.meet}Meet link is made when you save</div>`;
+  if (!e.link) {
+    if (A.pasting === e.id) return `<div class="cr"><input id="lkin" value="" placeholder="Paste a Zoom, Teams or other link, then Return" data-ev="${e.id}" spellcheck="false"></div>`;
+    const menu = A.menu === 'add' ? `<div class="menu" style="left:-6px; top:34px">
+        <button class="mi" data-meet="${e.id}">${LOGO.meet}<span>Google Meet<span class="s2">A new meeting link</span></span></button><div class="sep"></div>
+        <button class="mi" data-paste="${e.id}">${I.link}<span>Paste a link…</span></button></div>` : '';
+    return `<div class="cr"><button class="addc ${A.menu === 'add' ? 'on' : ''}" data-add="${e.id}">Add conferencing</button>${menu}</div>`;
+  }
+  return C('row') === 'linktop' ? linkRow(e) + `<div style="margin-top:4px">${join(e)}</div>` : `<div style="padding-top:0">${join(e)}</div><div style="margin-top:4px">${linkRow(e, true)}</div>`;
+}
+function editor(e) {
+  const [d, s, en, dur] = e.when;
+  const rows = [
+    [I.clock, `<div class="fl__v h"><span>${d}</span><span style="width:8px"></span><span class="num">${s}</span><span class="dim">${I.arrow}</span><span class="num">${en}</span><span class="dim" style="font-size:11px">${dur}</span></div>`],
+    [I.repeat, `<div class="fl__v">${esc(e.repeat)}</div>`],
+    [I.users, `<div class="fl__v"><span style="font-weight:500">${e.guests}</span><span class="sub">${e.gsub}</span></div>`],
+    [I.going, `<div class="fl__v h"><span>Going?</span><span class="seg"><b class="on">Yes</b><b>Maybe</b><b>No</b></span></div>`],
+    [I.video, `<div class="fl__v" style="justify-content:flex-start">${callValue(e)}</div>`],
+    e.place && [I.pin, `<div class="fl__v">${esc(e.place)}</div>`],
+    [I.cal, `<div class="fl__v h"><span style="width:10px;height:10px;border-radius:3px;background:${e.c}"></span>${esc(e.cal)}</div>`],
+  ].filter(Boolean);
+  return `<div class="ed" style="--c:${e.c}"><div class="ed__top"><div class="ed__t">${esc(e.title)}</div>
+      <button class="ib" title="Delete">${I.trash}</button><button class="ib" data-go="${theme() === 'paper' ? 'paper-today' : 'today'}" title="Close">${I.x}</button></div>
+    <div class="fl">${rows.map(r => `<div class="fl__k">${r[0]}</div>${r[1]}`).join('')}</div></div>`;
+}
+function today(live) {
+  const e = A.events.wg, c = C('card');
+  const j = `<div class="cd__j" style="padding-left:${c === 'title' ? 59 : 0}px">${join(e, 'card')}${c === 'fullnocopy' || !e.link ? '' : copyBtn(e).replace('ib sm', 'ib sm')}</div>`;
+  const later = [['19:00', 'Groceries', '#9A9A9C'], ['21:30', 'Evening walk', '#6E8BFF'], ['22:49', 'Evening reading', '#9A9A9C'], ['23:10', 'Bedtime', '#6E8BFF']];
+  return `<div class="cd" style="--c:${e.c}"><div class="cd__k">${live ? 'Now' : 'Up next'}<b class="${live ? 'live' : ''} num">${live ? '35 min left' : 'in 25 min'}</b></div>
+    <button class="cd__r" data-go="${theme() === 'paper' ? 'paper-event' : 'event'}" style="width:100%"><div class="cd__tm num">19:00<span>20:00</span></div><div class="cd__bar"><i></i></div>
+      <div><div class="cd__t">${esc(e.title)}</div><div class="cd__m">1 h · 4 guests · Kitchen</div></div></button>${e.link ? j : ''}</div>
+    <div class="lt"><div class="lt__k">Later today</div>${later.map(([t, n, cc]) => `<div class="lt__r" style="--c:${cc}"><span class="num">${t}</span><i></i>${esc(n)}</div>`).join('')}</div>`;
+}
+function app() {
+  const sc = S.scene.replace('paper-', '');
+  const ev = { zoom: 'd5', nocall: 'c3', menu: 'c3', made: 'c3' }[sc] ? A.events[{ zoom: 'd5', nocall: 'c3', menu: 'c3', made: 'c3' }[sc]] : A.events.wg;
+  // the scene sets up its state once
+  if (A.sceneSet !== S.scene) { A.sceneSet = S.scene; A.menu = sc === 'menu' ? 'add' : null; A.editing = sc === 'edit' ? 'wg' : null; A.made = sc === 'made' ? 'c3' : null; A.pasting = null; }
+  const body = sc === 'today' ? today(false) : sc === 'live' ? today(true) : editor(ev);
+  if (A.editing || A.pasting) setTimeout(() => { const i = document.querySelector('#desk #lkin'); if (i && document.activeElement !== i) { i.focus(); i.select(); } }, 0);
+  return `<div class="col" data-area="panel"><div class="srch">${I.search}<span>Search events</span><span class="sp"></span><span class="cap">/</span></div>${body}</div>${A.toast ? `<div class="to">${esc(A.toast)}</div>` : ''}`;
+}
+let FB_T = null;
+function flash(id, toast) {
+  A.copied = id; A.toast = toast; clearTimeout(FB_T);
+  FB_T = setTimeout(() => { A.copied = null; A.toast = null; render(); }, toast ? 2000 : 1500);
+}
+function commitLink(i) {
+  const e = A.events[i.dataset.ev]; let v = i.value.trim();
+  if (v) { if (!/^https?:\/\//.test(v)) v = 'https://' + v; e.link = v; }
+  A.editing = null; A.pasting = null; render();
+}
+document.addEventListener('keydown', ev => {
+  const i = ev.target.closest?.('#lkin'); if (!i) return;
+  if (ev.key === 'Enter') { ev.preventDefault(); commitLink(i); }
+  else if (ev.key === 'Escape') { A.editing = null; A.pasting = null; render(); }
+});
+document.addEventListener('focusout', ev => { const i = ev.target.closest?.('#lkin'); if (i && (A.editing || A.pasting)) setTimeout(() => { if (document.activeElement !== i && document.body.contains(i)) commitLink(i); }, 0); });
+function appClick(t) {
+  const d = t.dataset;
+  if (d.go) S.scene = d.go;
+  else if (d.copy) { A.menu = null; try { navigator.clipboard?.writeText(A.events[d.copy].link).catch(() => {}); } catch (_) {} flash(d.copy, null); }
+  else if (d.rm) { A.events[d.rm].link = ''; A.menu = null; flash(null, 'Call removed · not sent yet'); }
+  else if (d.edit) { A.editing = d.edit; A.menu = null; }
+  else if (d.more) A.menu = A.menu === 'more' ? null : 'more';
+  else if (d.add) A.menu = A.menu === 'add' ? null : 'add';
+  else if (d.meet) { A.made = d.meet; A.menu = null; }
+  else if (d.paste) { A.pasting = d.paste; A.menu = null; }
+  else if (d.join) flash(null, 'Would open the call in your browser');
+  else { if (!A.menu) return false; A.menu = null; }
+  render(); return true;
+}
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  // The right column is small: scale it up (to 1.6x) to fit the stage, centred. Shots (#scene&shot) stay at 1x.
+  const st = document.getElementById('stage').getBoundingClientRect();
+  const k = shot ? 1 : Math.min((st.width - 48) / DESK.w, (st.height - 48) / DESK.h, 1.6);
+  desk.style.width = DESK.w + 'px'; desk.style.height = DESK.h + 'px';
+  desk.style.transform = `translate(-50%, -50%) scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p>${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${notes ? `\n## Notes on elements\n${notes}` : ''}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') A = fresh();
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+desk.addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+// The Join shortcut: the picked key joins the selected event's call, or the Up next call on Today.
+document.addEventListener('keydown', ev => {
+  if (!ev.metaKey || ev.key.toLowerCase() !== 'j' || ev.altKey || ev.ctrlKey) return;
+  if (ev.shiftKey !== (C('key') === 'cmdshj')) return;
+  ev.preventDefault(); flash(null, 'Would open the call in your browser'); render();
+});
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-d', 'data-v', 'data-go', 'data-copy', 'data-join'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>

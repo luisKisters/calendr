@@ -7,7 +7,7 @@ enum SnapshotPanel {
     /// The editor scenes (design/mockup-v4 `preset()`). "v4-event" and "v4-delete" are in `SnapshotV4`.
     static let v4States = ["v4-invited", "v4-call", "v4-location", "v4-maps", "v4-calendar", "v4-reminders", "v4-guests", "v4-invite", "v4-pending"]
     /// The other panel states: a new event, the recurring delete question, an event on a read-only calendar.
-    static let states = ["create-event", "delete-recurring", "readonly-event"]
+    static let states = ["create-event", "delete-recurring", "readonly-event", "call-link", "call-link-card"]
 
     /// Puts the model into the named state. Returns false for names this area does not define.
     static func apply(_ state: String, _ m: AppModel) -> Bool {
@@ -30,6 +30,11 @@ enum SnapshotPanel {
             (m.store as? DemoStore)?.makeReadOnly(DemoDataV4.family)
             m.storeChanged()
             open("d3")
+        // design/call-link round 3: Flat dinner's Meet call, Join with the logo and the small Copy on the link row; the same call on
+        // the Up next card 25 min before it starts, Copy beside Join.
+        case "call-link": open("wg")
+        case "call-link-card":
+            if let e = SnapshotV4.event(m, "wg") { m.setNow(e.start.addingTimeInterval(-25 * 60)) }
         case "v4-invited": open("d4")                                   // Office hours: Jonas organises, Going? answered Yes
         case "v4-call": open("c3"); m.openPanelMenu(.call)              // Lunch with Theo: no call yet, the call menu
         case "v4-location":

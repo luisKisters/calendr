@@ -2,8 +2,8 @@ import SwiftUI
 import AppKit
 import HorionKit
 
-/// The call row (design/mockup-v4 `callui: big`): a big Join button (32 pt, radius 8, act, the call logo) with the meeting link under it,
-/// editable. Without a call: "Add conferencing" opens the call menu (Google Meet where a link can be made, "Paste a link…").
+/// The call row (design/call-link round 4): the meeting link on the camera row, editable, with Remove and Copy on the right, and the
+/// big Join button (32 pt, act, the call logo) under it. Without a call: "Add conferencing" opens the call menu (Google Meet where a link can be made, "Paste a link…").
 struct PanelCallRow: View {
     @Environment(AppModel.self) private var model
     let e: CalendarEvent
@@ -23,16 +23,17 @@ struct PanelCallRow: View {
                 }
                 .frame(maxWidth: .infinity).frame(height: Dim.field)
                 .background(RoundedRectangle(cornerRadius: Radius.control).fill(Theme.bg2))
-                LinkField(value: "", editable: false, focus: focus, unsentAdded: false, copy: {}, remove: { model.removeCall() }) { _ in false }
+                LinkField(value: "", editable: false, focus: focus, unsentAdded: false, copy: nil, remove: { model.removeCall() }) { _ in false }
                     .padding(.top, 8)
             } else if let call {
-                JoinBigButton(call: call) { model.joinCall(e) }
+                // design/call-link round 4: the link on the camera row (click to edit, ✕ and Copy on the right), the wide Join under it.
                 LinkField(value: call.display, editable: canEdit, focus: focus, unsentAdded: base != nil && (base.map { CallLink.parse($0) == nil } ?? false),
-                          copy: { model.copyCallLink() }, remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
-                    .padding(.top, 8)
+                          copy: { model.copyCallLink(e) }, remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
+                JoinBigButton(call: call) { model.joinCall(e) }
+                    .padding(.top, 4)
             } else if !link.isEmpty {
                 // a web address that is not a call: the link only
-                LinkField(value: link, editable: canEdit, focus: focus, unsentAdded: false, copy: { model.copyToPasteboard(link) },
+                LinkField(value: link, editable: canEdit, focus: focus, unsentAdded: false, copy: { model.copyCallLink(e) },
                           remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
             } else if let gone, base != nil {
                 HStack(spacing: 4) {
@@ -61,64 +62,84 @@ struct PanelCallRow: View {
     }
 }
 
-/// `.joinbig`: the whole width, 32 pt, radius 8, act fill, the call logo and "Join Google Meet".
+/// `.joinbig`: the whole width, 32 pt, radius 8. design/call-link round 3: the filled ink Join (act fill, onAct 600 text, the call
+/// logo, "Join Google Meet") with the ⌘ J keycaps tinted into the fill.
 struct JoinBigButton: View {
     let call: CallLink
     let action: () -> Void
     @State private var hover = false
     var body: some View {
         let h = hover || HoverProbe.shared.target == "joinbig"
-        // v5 I: the calm v11 `.join` (raised, a 1 pt edge, fg1 500, the ⌘J hint), as in the right column; no inverted slab.
         Button(action: action) {
-            HStack(spacing: 8) {
-                CallLogo(kind: call.kind, size: 16, glyphColor: Theme.fg)
-                Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textMedium).tracking(TypeTrack.text)
-                Keycaps(keys: ["\u{2318}J"])
-            }
-            .foregroundStyle(Theme.fg)
-            .frame(maxWidth: .infinity).frame(height: Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.joinHover : Theme.bg2))
-            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.joinEdge, lineWidth: 1))
-            .contentShape(Rectangle())
+            JoinFillLabel(call: call, height: Dim.field, hot: h)
         }
         .buttonStyle(PressStyle(scale: 0.98))
         .onHover { hover = $0 }
         .animation(Motion.fast, value: h)
-        .help("Join \(call.name)")
+        .help("Join \(call.name)  \u{2318}J")
         .tourAnchor("joinbig")
     }
 }
 
-/// `.linkrow`: the meeting link in fg2 small, editable; copy and remove show on hover.
+/// The filled ink Join's face, shared by the event's Join and the right column's (design/call-link `.btn--fill.jw`).
+struct JoinFillLabel: View {
+    let call: CallLink
+    var height: CGFloat = Dim.field
+    var hot = false
+    var body: some View {
+        HStack(spacing: 7) {
+            CallLogo(kind: call.kind, size: 15, glyphColor: Theme.onAct)
+            Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textSemibold).tracking(TypeTrack.text)
+            HStack(spacing: 3) { JoinKbd(text: "\u{2318}"); JoinKbd(text: "J") }.padding(.leading, 2)
+        }
+        .foregroundStyle(Theme.onAct)
+        .frame(maxWidth: .infinity).frame(height: height)
+        .background(RoundedRectangle(cornerRadius: Radius.control).fill(hot ? Theme.actHover : Theme.act))
+        .contentShape(Rectangle())
+    }
+}
+
+/// `.btn--fill kbd`: one key, 18 pt square-ish, radius 4, onAct text on a 16 % onAct tint, no edge.
+struct JoinKbd: View {
+    let text: String
+    var body: some View {
+        Text(text).font(.smallTabMedium).foregroundStyle(Theme.onAct)
+            .padding(.horizontal, 4).frame(minWidth: 18, minHeight: 18, maxHeight: 18)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Theme.onAct.opacity(0.16)))
+            .fixedSize()
+    }
+}
+
+/// `.cr`: the meeting link in fg text, click to edit; Remove (✕) and Copy always show on the right (design/call-link round 4).
 struct LinkField: View {
     let value: String
     let editable: Bool
     var focus: FocusState<PanelFocus?>.Binding
     let unsentAdded: Bool
-    let copy: () -> Void
+    let copy: (() -> Bool)?
     let remove: (() -> Void)?
     let commit: (String) -> Bool
     @State private var text = ""
-    @State private var hover = false
 
     var body: some View {
         let focused = focus.wrappedValue == .video
-        let h = hover || HoverProbe.shared.target == "field:link" || focused
         HStack(spacing: 2) {
             TextField("", text: $text, prompt: nil)
-                .textFieldStyle(.plain).font(.small).foregroundStyle(focused ? Theme.fg : Theme.fg2).lineLimit(1)
+                .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineLimit(1)
                 .focused(focus, equals: .video).disabled(!editable)
                 .onSubmit { if !commit(text) { text = value }; focus.wrappedValue = nil }
-                .panelPlaceholder("Meeting link", when: text.isEmpty, font: .small)
+                .panelPlaceholder("Meeting link", when: text.isEmpty, font: .text)
                 .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
                 .editorField(focused: focused, editable: editable, key: "field:link")
                 .padding(.trailing, 8)
             if unsentAdded { UnsentDot(removed: false) }
-            PanelIconButton(icon: .copy, action: copy).help("Copy link").opacity(h ? 1 : 0)
-            if let remove { PanelIconButton(icon: .x, action: remove).help("Remove call").opacity(h ? 1 : 0) }
+            // Remove, then Copy on the right edge, in line with Join's.
+            if let remove { PanelIconButton(icon: .x, action: remove).help("Remove call") }
+            if let copy { CopyLinkButton(copy: copy) }
         }
+        // The icons' glyphs (not their hover boxes) line up with Join's right edge.
+        .padding(.trailing, -4)
         .frame(height: 26)
-        .onHover { hover = $0 }
         .onAppear { text = value }
         .onChange(of: value) { _, v in if !focused { text = v } }
         .onChange(of: focused) { _, f in if !f && text != value { if !commit(text) { text = value } } }

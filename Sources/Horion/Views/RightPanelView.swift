@@ -174,7 +174,6 @@ struct PanelNextCard: View {
         let mark = Palettes.cc(model.hexColor(of: event), dark: dark).color
         let length = Int(event.end.timeIntervalSince(event.start) / 60)
         let guests = event.attendees.filter { !$0.isMe }.count
-        let textEdge = ColumnDim.timeColumn + ColumnDim.barColumn + 2 * ColumnDim.gap
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Space.s) {
                 Text(live ? "Now" : "Up next").font(.smallMedium).tracking(TypeTrack.small).foregroundStyle(Theme.fg3)
@@ -208,7 +207,12 @@ struct PanelNextCard: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
             if let call = CallLink.parse(event) {
-                JoinCallButton(event: event, call: call, ghost: !live).padding(.top, Space.m).padding(.leading, textEdge)
+                // design/call-link round 4: Join across the card's full width from its left edge (the "Up next" label), Copy beside it.
+                HStack(spacing: Space.xs) {
+                    JoinCallButton(event: event, call: call)
+                    CopyLinkButton { model.copyCallLink(event) }.padding(.trailing, -4)   // the glyph on the column's edge
+                }
+                .padding(.top, Space.m)
             }
         }
         // `.card.dc.lead`: margin 2 20 6, padding 10 0 16, a pane edge below; the others margin 0 20 4, padding 8 0 10.
@@ -220,34 +224,17 @@ struct PanelNextCard: View {
     }
 }
 
-/// `.join` (v11 looks.css, calm): 30 pt, radius 8, on `raised` with a 1 pt edge and a small shadow, the call logo, "Join Google Meet"
-/// 12 / 500 fg1 and the ⌘J hint in fg3; hover mixes fg1 5 % into the fill. Not a white or black slab. On an Up next card it is the
-/// `ghost`: no fill, a 1 pt hair2 edge, the rail hover.
+/// `.join` in the right column: 30 pt, the filled ink Join of design/call-link round 3 (`JoinFillLabel`), replacing the calm v11 one.
 struct JoinCallButton: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.colorScheme) private var scheme
     let event: CalendarEvent
     let call: CallLink
-    var ghost = false
     @State private var hover = false
 
     var body: some View {
         let hot = hover || HoverProbe.shared.target == "join:\(event.id)"
-        let dark = scheme == .dark
-        let fill: Color = ghost ? (hot ? Theme.hoverRail : .clear) : (hot ? Theme.joinHover : Theme.bg2)
-        Button { model.joinCall(event) } label: {
-            HStack(spacing: 7) {
-                CallLogo(kind: call.kind, size: 14)
-                Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textMedium).tracking(TypeTrack.text).foregroundStyle(Theme.fg)
-                Keycaps(keys: ["\u{2318}J"])
-            }
-            .frame(maxWidth: .infinity).frame(height: 30)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(fill)
-                .shadow(color: InkRGB.black.color.opacity(dark && !ghost ? 0.3 : 0), radius: 0.5, y: 1)
-                .shadow(color: InkRGB.paperShadow.color.opacity(dark || ghost ? 0 : 0.08), radius: 1, y: 1))
-            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(ghost ? Theme.hair2 : Theme.joinEdge, lineWidth: 1).padding(dark || ghost ? 0 : -1))
-            .contentShape(Rectangle())
-        }
+        // design/call-link round 3: the filled ink Join with the ⌘ J keycaps, on Now and Up next alike.
+        Button { model.joinCall(event) } label: { JoinFillLabel(call: call, height: 30, hot: hot) }
         .buttonStyle(PressStyle(scale: 0.98))
         .onHover { hover = $0 }
         .animation(Motion.fast, value: hot)
