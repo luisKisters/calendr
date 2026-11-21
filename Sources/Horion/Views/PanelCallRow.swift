@@ -61,31 +61,51 @@ struct PanelCallRow: View {
     }
 }
 
-/// `.joinbig`: the whole width, 32 pt, radius 8, act fill, the call logo and "Join Google Meet".
+/// `.joinbig`: the whole width, 32 pt, radius 8. design/call-link round 3: the filled ink Join (act fill, onAct 600 text, the call
+/// logo, "Join Google Meet") with the ⌘ J keycaps tinted into the fill.
 struct JoinBigButton: View {
     let call: CallLink
     let action: () -> Void
     @State private var hover = false
     var body: some View {
         let h = hover || HoverProbe.shared.target == "joinbig"
-        // v5 I: the calm v11 `.join` (raised, a 1 pt edge, fg1 500, the ⌘J hint), as in the right column; no inverted slab.
         Button(action: action) {
-            HStack(spacing: 8) {
-                CallLogo(kind: call.kind, size: 16, glyphColor: Theme.fg)
-                Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textMedium).tracking(TypeTrack.text)
-                Keycaps(keys: ["\u{2318}J"])
-            }
-            .foregroundStyle(Theme.fg)
-            .frame(maxWidth: .infinity).frame(height: Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.joinHover : Theme.bg2))
-            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.joinEdge, lineWidth: 1))
-            .contentShape(Rectangle())
+            JoinFillLabel(call: call, height: Dim.field, hot: h)
         }
         .buttonStyle(PressStyle(scale: 0.98))
         .onHover { hover = $0 }
         .animation(Motion.fast, value: h)
-        .help("Join \(call.name)")
+        .help("Join \(call.name)  \u{2318}J")
         .tourAnchor("joinbig")
+    }
+}
+
+/// The filled ink Join's face, shared by the event's Join and the right column's (design/call-link `.btn--fill.jw`).
+struct JoinFillLabel: View {
+    let call: CallLink
+    var height: CGFloat = Dim.field
+    var hot = false
+    var body: some View {
+        HStack(spacing: 7) {
+            CallLogo(kind: call.kind, size: 15, glyphColor: Theme.onAct)
+            Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textSemibold).tracking(TypeTrack.text)
+            HStack(spacing: 3) { JoinKbd(text: "\u{2318}"); JoinKbd(text: "J") }.padding(.leading, 2)
+        }
+        .foregroundStyle(Theme.onAct)
+        .frame(maxWidth: .infinity).frame(height: height)
+        .background(RoundedRectangle(cornerRadius: Radius.control).fill(hot ? Theme.actHover : Theme.act))
+        .contentShape(Rectangle())
+    }
+}
+
+/// `.btn--fill kbd`: one key, 18 pt square-ish, radius 4, onAct text on a 16 % onAct tint, no edge.
+struct JoinKbd: View {
+    let text: String
+    var body: some View {
+        Text(text).font(.smallTabMedium).foregroundStyle(Theme.onAct)
+            .padding(.horizontal, 4).frame(minWidth: 18, minHeight: 18, maxHeight: 18)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Theme.onAct.opacity(0.16)))
+            .fixedSize()
     }
 }
 

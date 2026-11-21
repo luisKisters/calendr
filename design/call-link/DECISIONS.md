@@ -1,7 +1,7 @@
 # Horion call link: decisions
 
 The copy call link button next to Join, in the event detail's video row and on the Now / Up next card.
-Drawn on the v3 look; only these two places are in this mockup. Built into the current app (v11 calm Join, which already had the tool logo and ⌘J): the small Copy with its tip and the 1.5 s check on the link row, and Copy beside Join on the Up next card. The app keeps the v11 Join style rather than the v3 filled ink one.
+Drawn on the v3 look; only these two places are in this mockup. Built into the current app (v11 calm Join, which already had the tool logo and ⌘J): the small Copy with its tip and the 1.5 s check on the link row, and Copy beside Join on the Up next card. After seeing both, the owner chose the filled ink Join with the separate ⌘ J keycaps over the calm v11 one ("i like ours way more use that but have the nice kbd"), in the event and on the card.
 
 Open with `python3 -m http.server 8811 --bind 127.0.0.1` in `design/`, then http://127.0.0.1:8811/call-link/.
 
