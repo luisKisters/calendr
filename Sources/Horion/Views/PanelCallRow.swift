@@ -23,16 +23,16 @@ struct PanelCallRow: View {
                 }
                 .frame(maxWidth: .infinity).frame(height: Dim.field)
                 .background(RoundedRectangle(cornerRadius: Radius.control).fill(Theme.bg2))
-                LinkField(value: "", editable: false, focus: focus, unsentAdded: false, copy: {}, remove: { model.removeCall() }) { _ in false }
+                LinkField(value: "", editable: false, focus: focus, unsentAdded: false, copy: nil, remove: { model.removeCall() }) { _ in false }
                     .padding(.top, 8)
             } else if let call {
                 JoinBigButton(call: call) { model.joinCall(e) }
                 LinkField(value: call.display, editable: canEdit, focus: focus, unsentAdded: base != nil && (base.map { CallLink.parse($0) == nil } ?? false),
-                          copy: { model.copyCallLink() }, remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
+                          copy: { model.copyCallLink(e) }, remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
                     .padding(.top, 8)
             } else if !link.isEmpty {
                 // a web address that is not a call: the link only
-                LinkField(value: link, editable: canEdit, focus: focus, unsentAdded: false, copy: { model.copyToPasteboard(link) },
+                LinkField(value: link, editable: canEdit, focus: focus, unsentAdded: false, copy: { model.copyCallLink(e) },
                           remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
             } else if let gone, base != nil {
                 HStack(spacing: 4) {
@@ -89,13 +89,13 @@ struct JoinBigButton: View {
     }
 }
 
-/// `.linkrow`: the meeting link in fg2 small, editable; copy and remove show on hover.
+/// `.linkrow`: the meeting link in fg2 small, editable; Copy (design/call-link round 3) always shows on the right, remove on hover.
 struct LinkField: View {
     let value: String
     let editable: Bool
     var focus: FocusState<PanelFocus?>.Binding
     let unsentAdded: Bool
-    let copy: () -> Void
+    let copy: (() -> Bool)?
     let remove: (() -> Void)?
     let commit: (String) -> Bool
     @State private var text = ""
@@ -114,7 +114,7 @@ struct LinkField: View {
                 .editorField(focused: focused, editable: editable, key: "field:link")
                 .padding(.trailing, 8)
             if unsentAdded { UnsentDot(removed: false) }
-            PanelIconButton(icon: .copy, action: copy).help("Copy link").opacity(h ? 1 : 0)
+            if let copy { CopyLinkButton(copy: copy) }
             if let remove { PanelIconButton(icon: .x, action: remove).help("Remove call").opacity(h ? 1 : 0) }
         }
         .frame(height: 26)

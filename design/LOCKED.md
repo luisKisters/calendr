@@ -72,6 +72,13 @@ Already done in the app: the "Start transcription" button is removed from the me
 
 The no-calendar-access empty state and recurrence editing are unchanged from v2.
 
+## Call link (design/call-link, round 3, 21 Nov 2026)
+
+- The event's Join keeps the v11 calm style with the tool logo, "Join Google Meet" and ⌘J.
+- Copy on the link row is a small 22 pt icon in fg3 on the right, always shown. Hovering shows a "Copy link" tip above it. A click copies the plain link, and the icon turns into a check with the tip "Copied" for 1.5 s. There is no toast.
+- On the Up next / Now card, the same Copy sits beside the wide Join.
+- Snapshot states: `call-link`, `call-link-card`.
+
 ## Verifying an implementation
 
 v4: render the mockup scenes with `swift scripts/render-mockup.swift`, the app states with `scripts/snapshots.sh`, and compare them

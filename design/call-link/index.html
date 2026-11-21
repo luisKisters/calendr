@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horion call link · round 3</title>
+<!-- designr round mockup: the call link row and the Up next card of Horion v3. -->
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+/* ================= the app: the right column of Horion v3 ================= */
+/* Only what this round is about: the 320 pt right column, as the event detail and as Today.
+   Tokens and component values are copied from the v3 mockup (design/mockup-v3/app.css, before the v4 to v15 rounds). */
+@font-face { font-family: "Instrument Sans"; src: url(fonts/instrument-sans.woff2) format("woff2"); font-weight: 400 700; font-display: block; }
+#stage { display: grid; place-items: center; background: #050507; }
+.desk { --sans: "Instrument Sans", system-ui, sans-serif; --r-ctl: 7px; --r-srf: 12px; --r-row: 7px;
+  --t1: 120ms; --t2: 180ms; --ease: cubic-bezier(.22, .61, .36, 1); --spring: cubic-bezier(.34, 1.3, .64, 1); }
+.desk.theme-ink { --bg: #0E0E11; --bg1: #15151A; --bg2: #1E1E24; --bg3: #2B2B33; --fg: #EDECF1; --fg2: #A19FAC; --fg3: #6D6B78;
+  --hair: rgba(237, 236, 241, .065); --hair2: rgba(237, 236, 241, .13); --hover: rgba(237, 236, 241, .055); --thumb: #33333C; --live: #FF453A;
+  --shadow: 0 22px 60px rgba(0, 0, 0, .6), 0 3px 10px rgba(0, 0, 0, .4); color-scheme: dark; }
+.desk.theme-paper { --bg: #FBFAF6; --bg1: #F5F3ED; --bg2: #ECE9E1; --bg3: #DFDBD1; --fg: #1B1A20; --fg2: #5C5A65; --fg3: #918E99;
+  --hair: rgba(27, 26, 32, .075); --hair2: rgba(27, 26, 32, .15); --hover: rgba(27, 26, 32, .05); --thumb: #FFFFFF; --live: #E5342A;
+  --shadow: 0 22px 60px rgba(40, 34, 20, .2), 0 3px 10px rgba(40, 34, 20, .1); color-scheme: light; }
+.desk { --act: var(--fg); --on-act: var(--bg); }
+.desk { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; overflow: hidden; background: var(--bg); color: var(--fg);
+  font: 400 13px/1.35 var(--sans); -webkit-font-smoothing: antialiased; border-radius: 12px; box-shadow: 0 0 0 1px var(--hair2); }
+.col { position: absolute; inset: 0; }
+svg { display: block; flex: none; }
+.btn { height: 28px; padding: 0 10px; border-radius: var(--r-ctl); display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none;
+  font-size: 12.5px; font-weight: 500; color: var(--fg2); white-space: nowrap; transition: background var(--t1) var(--ease), color var(--t1) var(--ease); }
+.btn:hover { background: var(--hover); color: var(--fg); }
+.btn--s { height: 24px; font-size: 12px; padding: 0 8px; }
+.btn--icon.btn--s { width: 24px; padding: 0; }
+.btn--fill { background: var(--act); color: var(--on-act); font-weight: 600; }
+.btn--fill:hover { background: color-mix(in srgb, var(--act) 88%, var(--bg)); color: var(--on-act); }
+.btn--line { color: var(--fg); box-shadow: inset 0 0 0 1px var(--hair2); }
+.btn:active { transform: scale(.97); }
+
+/* event detail (.dt) */
+.dt { display: flex; flex-direction: column; gap: 12px; padding: 14px 14px 14px 16px; }
+.dt__top { display: flex; align-items: center; gap: 4px; }
+.dt__top::before { content: ""; width: 3px; height: 20px; border-radius: 1.5px; background: var(--c); flex: none; margin-right: 7px; }
+.dt__title { flex: 1; min-width: 0; font: 600 17px/28px var(--sans); letter-spacing: -.022em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 11px; row-gap: 6px; align-items: start; }
+.fl__k { display: grid; place-items: center; height: 28px; color: var(--fg3); }
+.fl__v { min-width: 0; min-height: 28px; display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; font-size: 12.5px; }
+.num { font-variant-numeric: tabular-nums; }
+.dim { color: var(--fg3); } .dur { color: var(--fg3); font-size: 11.5px; margin-left: 8px; }
+.gs__c { height: 24px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 3px; border-radius: 12px; background: var(--bg2); font-size: 12px; margin-right: 8px; }
+.gs__a { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--bg3); font: 600 8.5px/1 var(--sans); color: var(--fg2); }
+.rsvp { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--bg2); }
+.rsvp button { height: 22px; padding: 0 11px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--fg2); }
+.rsvp button.on { background: var(--thumb); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, .2); }
+.calpick { display: inline-flex; align-items: center; gap: 7px; } .calpick i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.adds { display: flex; gap: 4px; margin-left: -7px; padding-top: 10px; border-top: 1px solid var(--hair); }
+.add { height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 6px; border-radius: 6px; font-size: 12px; color: var(--fg3); }
+.add:hover { background: var(--hover); color: var(--fg); }
+
+/* the video row: the subject of this round */
+.vr { display: flex; align-items: center; min-width: 0; width: 100%; }
+.vr a { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.vr .sp { flex: 1; min-width: 4px; }
+.vr--after { gap: 10px; }
+.vr--after a { font-size: 12px; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--fg) 40%, transparent); text-underline-offset: 3px; }
+.vr--after .cp { margin-left: -6px; }
+.vr--edge { gap: 4px; }
+.vr--edge a { margin-right: 6px; }
+.vr--edge a:hover { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--fg) 40%, transparent); text-underline-offset: 3px; }
+.vr--edge .btn--fill { margin-left: 2px; }
+.vr--well { gap: 6px; }
+.well { flex: 1; min-width: 0; display: flex; align-items: center; height: 26px; padding: 0 1px 0 8px; border-radius: var(--r-ctl); background: var(--bg1); box-shadow: inset 0 0 0 1px var(--hair); }
+.well a { flex: 1; font-size: 12px; }
+.well .cp { width: 22px; height: 22px; }
+.vr--lead { gap: 10px; }
+.vr--lead a { color: var(--fg2); }
+.cp.ok { color: var(--fg); }
+.cp--word { width: auto !important; padding: 0 8px !important; font-weight: 500; }
+
+/* today column (.td) and the up next card (.nx) */
+.td { padding: 14px 12px 16px; }
+.td__h { display: flex; align-items: baseline; justify-content: space-between; height: 28px; padding: 5px 8px 14px 7px; box-sizing: content-box; font: 600 16px/1 var(--sans); letter-spacing: -.022em; }
+.td__h .num { font: 400 11.5px/1 var(--sans); color: var(--fg3); letter-spacing: 0; }
+.nx { padding: 10px 10px 10px 11px; border-radius: var(--r-srf); background: var(--bg1); box-shadow: inset 0 0 0 1px var(--hair); }
+.nx + .nx { margin-top: 8px; }
+.nx__k { display: flex; align-items: center; gap: 8px; height: 20px; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--fg3); }
+.nx__in { font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11.5px; color: var(--fg2); }
+.nx__in.soon { color: var(--live); }
+.nx__b { position: relative; display: flex; flex-direction: column; gap: 2px; width: 100%; margin-top: 6px; padding: 2px 0 2px 12px; }
+.nx__b::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 1.5px; background: var(--c); }
+.nx__t { font-size: 13.5px; font-weight: 600; } .nx__m { font-size: 11.5px; color: var(--fg2); }
+.nx__act { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+.nx__act .btn--fill { flex: 1; }
+.nx__act--split .btn { flex: 1; }
+.nx__link { display: flex; align-items: center; gap: 4px; margin: 8px 0 0 12px; font-size: 12px; color: var(--fg2); }
+.nx__link a { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.nx__link + .nx__act { margin-top: 8px; }
+.lk { margin-top: 18px; }
+.lk__k { padding: 0 9px 5px; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--fg3); }
+.lk__r { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 9px; border-radius: var(--r-row); font-size: 12.5px; }
+.lk__r:hover { background: var(--hover); }
+.lk__r .num { width: 40px; font-size: 11px; color: var(--fg2); }
+.lk__r i { width: 3px; height: 14px; border-radius: 2px; background: var(--c); }
+
+/* round 2: wide Join with its keycap */
+kbd { font: 500 10.5px/1 var(--sans); min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--fg2); background: var(--bg2); box-shadow: inset 0 0 0 1px var(--hair2); }
+kbd + kbd { margin-left: 3px; }
+.btn--fill kbd { background: color-mix(in srgb, var(--on-act) 16%, transparent); color: var(--on-act); box-shadow: none; }
+.btn--fill .kb { display: inline-flex; margin-left: 2px; }
+.jw { width: 100%; height: 28px; font-size: 12.5px; }
+.vstack { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
+.vstack .vr { gap: 4px; min-height: 28px; }
+.vstack .vr > a { margin-right: 6px; }
+.vstack .vr > a:hover { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--fg) 40%, transparent); text-underline-offset: 3px; }
+.vstack .jw { margin-bottom: 2px; }
+.vr--sub { min-height: 24px !important; font-size: 12px; color: var(--fg2); }
+.vr--sub > a { color: var(--fg2); }
+.jtop { margin: -4px 0 0 10px; }
+.jfoot { position: absolute; left: 16px; right: 14px; bottom: 14px; padding-top: 12px; border-top: 1px solid var(--hair); }
+.nx .jw { height: 28px; }
+
+/* round 3: tool icon, small copy with a tip */
+.tl { flex: none; display: block; border-radius: 4px; box-shadow: 0 0 0 .5px var(--hair2); }
+.vr a { display: inline-flex; align-items: center; gap: 7px; }
+.vr a .lt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.vr a .code { color: var(--fg3); margin-left: 7px; font-variant-numeric: tabular-nums; }
+.vr { position: relative; }
+.cp--sm { flex: none; position: relative; width: 20px; height: 20px; margin-right: -2px; border-radius: 5px; display: grid; place-items: center; color: var(--fg3); transition: color 120ms, background 120ms, opacity 140ms; }
+.cp--sm svg { width: 13px; height: 13px; }
+.cp--sm:hover { color: var(--fg); background: var(--hover); }
+.cp--sm.ok { color: var(--fg); }
+.cp--sm::after { content: attr(data-tip); position: absolute; right: -4px; bottom: calc(100% + 6px); padding: 4px 7px; border-radius: 6px; white-space: nowrap;
+  font: 500 11px/1 var(--sans); color: var(--fg); background: var(--bg2); box-shadow: 0 0 0 1px var(--hair2), 0 4px 12px rgba(0,0,0,.25);
+  opacity: 0; transform: translateY(2px); pointer-events: none; transition: opacity 120ms, transform 120ms; }
+.cp--sm:hover::after, .cp--sm.ok::after { opacity: 1; transform: none; transition-delay: 250ms; }
+.cp--sm.ok::after { transition-delay: 0s; }
+.cp--row { opacity: 0; } .vr:hover .cp--row, .cp--row.ok, .cp--row:focus-visible { opacity: 1; }
+.btn--fill .tl { box-shadow: none; }
+.nx__tool { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; color: var(--fg3); vertical-align: -2px; }
+.nx__tool .tl { width: 12px; height: 12px; }
+
+/* toast pill (the app's existing toast) */
+.to { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 17px;
+  font-size: 12.5px; white-space: nowrap; background: var(--bg2); box-shadow: 0 0 0 1px var(--hair2), var(--shadow); animation: toast 260ms var(--spring); }
+@keyframes toast { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Horion call link', VERSION = 'v1', ROUND = 3;
+const DESK = { w: 320, h: 450 };            // the right column (always 320 pt), cut to the part that matters
+const SCENES = [['detail', 'Event with Google Meet'], ['long', 'Zoom, long link'], ['teams', 'Microsoft Teams'], ['other', 'Unknown tool'], ['today', 'Up next is a call'], ['live', 'Call running now'],
+  ['paper-detail', 'Event, Paper'], ['paper-today', 'Up next, Paper']];
+const HOWTO = ['Everything is clickable: Copy copies the link, Join and the link show what would happen.', 'The column is shown alone and enlarged; in the app it is the right edge of the window.', 'Keys: G alignment guides. The Join shortcut works too (with the key you pick).', 'Notes on one element: turn on Agentation below, click the element, write. "Copy my picks" takes the notes.'];
+const READ = 'Reading this as: one row of a calm Mac calendar panel, ink only, where actions recede until needed. Dials: variance 2, motion 3, density 5.';
+const LOCKED = { tool: 'btn', copy: 'tip', cardtool: 'join', theme: 'v3', btn: 'fill', join: 'under', key: 'cmdj', card: 'icon', fb: 'check' };
+const BEFORE = {};
+const DECISIONS = [
+  { g: 'Round 3', id: 'tool', lock: true, name: 'Icon of the call tool', fb: 'have an icon of whatever tool is used · tool icon on btn', note: 'Switch scenes to see Meet, Zoom, Teams and an unknown tool (it falls back to the camera icon).', scene: 'detail', hl: '.fl__k--tool, .tl, .vr a', opts: [
+    ['btn', 'Tool icon on the Join button', 'The wide Join leads with the tool logo and names it: "Join Google Meet ⌘J", same as the Up next card. The row keeps the camera and the link.'],
+    ['btnkey', 'On Join and in place of the camera', 'The logo shows twice: on Join and where the camera is. The strongest read of the tool, a little repetitive.'],
+    ['key', 'Tool icon in place of the camera', 'The row keeps its shape: the small tool logo sits where the camera icon is, the link stays as it is.'],
+    ['name', 'Tool icon and name, link on hover', 'The logo replaces the camera and the row reads "Google Meet" with the meeting code in grey. The full link shows on hover and is what Copy copies.'],
+    ['inline', 'Camera stays, logo before the link', 'The key column keeps the camera like every other row; a small logo leads the link text.'],
+    ['none', 'No tool icon', 'As now: the camera icon and the raw link.'],
+  ] },
+  { id: 'copy', lock: true, name: 'Copy in the event', fb: 'one iteration where the copy btn also in editor is just small at the right and when hovered it says copy link', note: 'Hover the Copy icon on the right of the video row.', scene: 'detail', hl: '.cp', opts: [
+    ['tip', 'Small icon on the right, "Copy link" tip on hover', 'A 20 pt icon in grey, no background, at the right edge. Hovering shows a small "Copy link" tip above it; after a click the tip says "Copied".'],
+    ['row', 'Appears when the row is hovered, with the tip', 'Same small icon, but hidden until the pointer is on the video row. The cleanest row; Copy is harder to find.'],
+    ['btn', 'The 24 pt button from round 2', 'The icon button as built: hover fill, the system tooltip after a delay.'],
+  ] },
+  { id: 'cardtool', lock: true, name: 'Tool icon on the Up next card', fb: 'have an icon of whatever tool is used', note: 'Look at Today.', scene: 'today', hl: '.nx__act .btn--fill, .nx__m', opts: [
+    ['join', 'Logo inside Join: "Join Google Meet"', 'The wide Join leads with the tool logo and names the tool. The keycap stays on the right.'],
+    ['meta', 'Logo after the time', 'Join stays "Join"; the time line under the title ends with the logo and tool name in grey.'],
+    ['none', 'No tool icon on the card', 'The card stays as in round 2.'],
+  ] },
+  { g: 'Round 2', id: 'join', lock: true, name: 'Wide Join in the event', fb: 'the join should also be wide in the normal editor thing gimme variations with that and it should have a kbd',
+    note: 'Look at the event. Every option has a full-width Join with its keycap.', scene: 'detail', hl: '.jw, .vr', opts: [
+    ['under', 'Link and Copy, wide Join under them', 'The video row shows the link and Copy on the right edge. Join spans the value column on the next line, so it lines up with the other values.'],
+    ['top', 'Wide Join under the title', 'Join is the first thing under the title, the full panel width, like a primary action. The video row below only holds the link and Copy.'],
+    ['first', 'Wide Join, link and Copy under it', 'Join takes the video row itself. The link follows on the line below in grey, with Copy at its end.'],
+    ['well', 'Link field with Copy, wide Join under it', 'The link sits in a quiet well with Copy inside it; Join spans the value column under the well.'],
+    ['foot', 'Wide Join at the foot of the panel', 'Join sits at the bottom of the column, like Save when creating. The video row holds the link and Copy.'],
+  ] },
+  { id: 'key', lock: true, name: 'Join shortcut', fb: 'it should have a kbd', note: 'J alone already means next period, so the key needs a modifier. The same key joins the Up next call when nothing is selected.', scene: 'detail', hl: '.btn--fill kbd', opts: [
+    ['cmdj', '⌘J', 'Command-J. Notion Calendar uses the same key to join.'],
+    ['cmdshj', '⇧⌘J', 'Shift-Command-J. Leaves ⌘J free for something else later.'],
+  ] },
+  { g: 'Round 1', id: 'card', lock: true, name: 'Up next card', fb: 'Same copy button next to Join on the Now / Up next card.', note: 'Look at the card on Today.', scene: 'today', hl: '.nx__act, .nx__link', opts: [
+    ['icon', 'Wide Join, Copy icon beside it', 'Join keeps the full width minus a 24 pt Copy icon on its right. Same Copy button as in the event. Join carries the keycap.'],
+    ['split', 'Join and "Copy link", side by side', 'Two equal buttons: Join filled, Copy link outlined. Copy is spelled out.'],
+    ['link', 'The link on the card, Copy at its end', 'The card shows the link in grey under the time with Copy at its end, and Join full width below. The card gets 26 pt taller.'],
+  ] },
+  { id: 'fb', lock: true, name: 'After a copy', fb: 'brief feedback (a check / "Copied" for ~1.5 s, or the app’s toast)', note: 'Click a Copy button. Hovering an option shows the copied state.', scene: 'detail', hl: '.cp', opts: [
+    ['check', 'The icon turns into a check for 1.5 s', 'Nothing moves. The copy icon becomes a check in ink, then turns back.'],
+    ['word', 'The button says "Copied" for 1.5 s', 'The icon is replaced by the word. The button grows by about 30 pt for that moment, so the row shifts.'],
+    ['toast', 'Toast: "Link copied"', 'The app’s pill toast at the bottom, for 1.5 s. The button itself does not change.'],
+  ] },
+  { id: 'theme', lock: true, name: 'Look', opts: [['v3', 'Horion v3 (ink, Instrument Sans, soft corners)', 'From design/LOCKED.md.']] },
+  { id: 'btn', lock: true, name: 'Join button', opts: [['fill', 'Filled ink button', 'From the v3 mockup: .btn--fill. Wide, it is 28 pt tall.']] },
+];
+
+// ================= demo data (invent all of it) =================
+function fresh() {
+  return { copied: null, toast: null, rsvp: 'yes', events: {
+    sam: { id: 'sam', title: 'Sam / Alex', when: ['Tue 29 Sep', '14:00', '15:00', '1h'], repeat: 'Weekly on Tue', guests: ['Sam Okafor'], cal: 'Personal', c: '#6E8BFF', link: 'https://meet.google.com/kpd-tzwx-qmf' },
+    nw: { id: 'nw', title: 'Quarterly planning with Northwind', when: ['Thu 1 Oct', '10:00', '11:30', '1h 30m'], repeat: '', guests: ['Maya Lindqvist', 'Jonas Berg'], cal: 'Northwind', c: '#C36BE8', link: 'https://northwind.zoom.us/j/84512093377?pwd=Qm9kZXJ0YWJsZQ' },
+    tm: { id: 'tm', title: 'Design review', when: ['Wed 30 Sep', '11:00', '11:45', '45m'], repeat: '', guests: ['Priya Raman'], cal: 'Work', c: '#E8A33B', link: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZTk4YjA' },
+    ot: { id: 'ot', title: 'Coffee chat with Lea', when: ['Fri 2 Oct', '09:30', '10:00', '30m'], repeat: '', guests: ['Lea Novak'], cal: 'Personal', c: '#6E8BFF', link: 'https://whereby.com/lea-novak' },
+  } };
+}
+
+// ================= the app =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const svg = (d, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const I = {
+  clock: svg('<circle cx="8" cy="8" r="5.8"/><path d="M8 4.8V8l2.2 1.4"/>'),
+  repeat: svg('<path d="M2.6 7.4a5.4 5.4 0 0 1 9.6-2.6M13.4 8.6a5.4 5.4 0 0 1-9.6 2.6"/><path d="M12.4 2v3h-3M3.6 14v-3h3"/>'),
+  users: svg('<circle cx="6" cy="5.6" r="2.4"/><path d="M1.8 13c.3-2.3 2-3.6 4.2-3.6s3.9 1.3 4.2 3.6M10.6 3.4a2.4 2.4 0 0 1 0 4.4M12.2 9.8c1.2.5 1.9 1.6 2.1 3.2"/>'),
+  video: svg('<rect x="1.6" y="4" width="9" height="8" rx="1.8"/><path d="m10.6 7 3.8-2v6l-3.8-2"/>'),
+  help: svg('<circle cx="8" cy="8" r="6"/><path d="M6.2 6.2a1.9 1.9 0 0 1 3.7.5c0 1.3-1.9 1.6-1.9 2.9M8 11.6h.01"/>'),
+  cal: svg('<rect x="2" y="3" width="12" height="11" rx="2.2"/><path d="M2 6.6h12M5.2 1.8v2.4M10.8 1.8v2.4"/>'),
+  trash: svg('<path d="M2.8 4.4h10.4M6.4 4.4V3a.8.8 0 0 1 .8-.8h1.6a.8.8 0 0 1 .8.8v1.4M4.2 4.4l.6 8a1.2 1.2 0 0 0 1.2 1.1h4a1.2 1.2 0 0 0 1.2-1.1l.6-8"/>'),
+  x: svg('<path d="m4 4 8 8M12 4l-8 8"/>', 12), plus: svg('<path d="M8 3.2v9.6M3.2 8h9.6"/>', 12), arrow: svg('<path d="M3 8h10M9.4 4.4 13 8l-3.6 3.6"/>', 12),
+  down: svg('<path d="M4 6.2 8 10l4-3.8"/>', 12), check: svg('<path d="m3.4 8.4 3 3 6.2-6.6"/>'),
+  copy: svg('<rect x="5.4" y="5.4" width="8.2" height="8.2" rx="1.8"/><path d="M10.6 5.4V3.8a1.4 1.4 0 0 0-1.4-1.4H3.8a1.4 1.4 0 0 0-1.4 1.4v5.4a1.4 1.4 0 0 0 1.4 1.4h1.6"/>'),
+};
+// Call tools: small 14 pt logo tiles (simplified marks, mockup only).
+const tile = (bg, inner) => `<svg class="tl" width="14" height="14" viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="${bg}"/>${inner}</svg>`;
+const TOOLS = {
+  meet: { name: 'Google Meet', logo: tile('#fff', '<rect x="2.6" y="4.6" width="7.4" height="6.8" rx="1.2" fill="#00AC47"/><path d="M10 7.2 13.4 5v6L10 8.8z" fill="#00832D"/><rect x="2.6" y="4.6" width="3" height="3" fill="#4285F4"/><rect x="2.6" y="8.4" width="3" height="3" fill="#FFBA00"/>'),
+          code: u => u.pathname.slice(1) },
+  zoom: { name: 'Zoom', logo: tile('#0B5CFF', '<rect x="3" y="5.2" width="6.6" height="5.6" rx="1.4" fill="#fff"/><path d="M10.2 7.4 13 5.6v4.8l-2.8-1.8z" fill="#fff"/>'),
+          code: u => (u.pathname.match(/\/j\/(\d+)/) || [0, ''])[1].replace(/(\d{3})(\d{4})(\d+)/, '$1 $2 $3') },
+  teams: { name: 'Microsoft Teams', logo: tile('#5B5FC7', '<path d="M4 5h6.4M7.2 5v6.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="5.2" r="1.4" fill="#fff" opacity=".85"/>'),
+          code: () => '' },
+};
+function tool(e) {
+  let u; try { u = new URL(e.link.trim()); } catch (_) { return null; }
+  const h = u.hostname, k = /(^|\.)meet\.google\.com$/.test(h) ? 'meet' : /(^|\.)zoom\.us$/.test(h) ? 'zoom' : /(^|\.)teams\.(microsoft|live)\.com$/.test(h) ? 'teams' : null;
+  return k ? { ...TOOLS[k], code: TOOLS[k].code(u) } : { name: h.replace(/^www\./, ''), logo: null, code: '' };
+}
+const short = l => l.replace(/^https?:\/\//, '');
+const theme = () => S.scene.startsWith('paper') ? 'paper' : 'ink';
+function deskClass() { return `theme-${theme()}`; }
+// The copied state: after a click, or while the "After a copy" decision is hovered.
+const isCopied = id => A.copied === id || (PV && PV.id === 'fb' && id === ({ long: 'nw', teams: 'tm', other: 'ot' }[S.scene] || 'sam'));
+function copyBtn(e, inEvent) {
+  const on = isCopied(e.id) && C('fb') !== 'toast', word = C('fb') === 'word';
+  if (inEvent && C('copy') !== 'btn') return `<button class="cp cp--sm ${C('copy') === 'row' ? 'cp--row' : ''} ${on ? 'ok' : ''}" data-copy="${e.id}" data-tip="${on ? 'Copied' : 'Copy link'}" aria-label="${on ? 'Copied' : 'Copy link'}">${on ? I.check : I.copy}</button>`;
+  if (on && word) return `<button class="btn btn--icon btn--s cp cp--word ok" data-copy="${e.id}">Copied</button>`;
+  return `<button class="btn btn--icon btn--s cp ${on ? 'ok' : ''}" data-copy="${e.id}" title="${on ? 'Copied' : 'Copy link'}" aria-label="${on ? 'Copied' : 'Copy link'}">${on ? I.check : I.copy}</button>`;
+}
+const KEYS = { cmdj: ['⌘', 'J'], cmdshj: ['⇧', '⌘', 'J'] };
+const kbd = () => KEYS[C('key')].map(k => `<kbd>${k}</kbd>`).join('');
+const join = (cls = '', e, inEvent) => { const t = e && (inEvent ? ['btn', 'btnkey'].includes(C('tool')) : C('cardtool') === 'join') ? tool(e) : null;
+  return `<button class="btn btn--s btn--fill ${cls}" data-join="1" title="Join">${t && t.logo ? t.logo : ''}${t ? `Join ${esc(t.name)}` : 'Join'}<span class="kb">${kbd()}</span></button>`; };
+function videoRow(e) {
+  const t = tool(e), name = C('tool') === 'name';
+  const text = name ? `${esc(t.logo ? t.name : t.name)}${t.code ? `<span class="code">${esc(t.code)}</span>` : ''}` : esc(short(e.link));
+  const lead = C('tool') === 'inline' && t.logo ? t.logo : '';
+  const a = `<a data-join="1" title="${esc(e.link)}">${lead}<span class="lt">${text}</span></a>`, line = `<div class="vr">${a}<span class="sp"></span>${copyBtn(e, true)}</div>`;
+  const J = join('jw', e, true);
+  return { under: line + J, top: line, foot: line,
+           first: J + `<div class="vr vr--sub">${a}<span class="sp"></span>${copyBtn(e, true)}</div>`,
+           well: `<div class="vr"><span class="well">${a}${copyBtn(e, true)}</span></div>` + J }[C('join')];
+}
+function detail(e) {
+  const [d, s, en, dur] = e.when, rows = [
+    [I.clock, `<span class="num">${d}</span><span style="width:18px"></span><span class="num">${s}</span><span class="dim" style="padding:0 4px">${I.arrow}</span><span class="num">${en}</span><span class="dur">${dur}</span>`],
+    e.repeat && [I.repeat, e.repeat],
+    [I.users, e.guests.map(g => `<span class="gs__c"><i class="gs__a">${g.split(' ').map(x => x[0]).join('')}</i>${esc(g)}</span>`).join('') + '<span class="dim">Add a guest</span>'],
+    [(['key', 'name', 'btnkey'].includes(C('tool')) && tool(e).logo) || I.video, `<div class="vstack">${videoRow(e)}</div>`],
+    [I.help, `<div class="rsvp">${['Yes', 'Maybe', 'No'].map(x => `<button class="${A.rsvp === x.toLowerCase() ? 'on' : ''}" data-rsvp="${x.toLowerCase()}">${x}</button>`).join('')}</div>`],
+    [I.cal, `<span class="calpick"><i></i>${esc(e.cal)}<span class="dim">${I.down}</span></span>`],
+  ].filter(Boolean);
+  return `<div class="dt" style="--c:${e.c}"><div class="dt__top"><div class="dt__title">${esc(e.title)}</div>
+      <button class="btn btn--icon btn--s" title="Delete">${I.trash}</button><button class="btn btn--icon btn--s" data-go="today" title="Close">${I.x}</button></div>
+    ${C('join') === 'top' ? `<div class="jtop">${join('jw', e, true)}</div>` : ''}
+    <div class="fl">${rows.map(r => `<div class="fl__k">${r[0]}</div><div class="fl__v">${r[1]}</div>`).join('')}</div>
+    <div class="adds"><button class="add">${I.plus}Place</button><button class="add">${I.plus}Notes</button></div>
+    ${C('join') === 'foot' ? `<div class="jfoot">${join('jw', e, true)}</div>` : ''}</div>`;
+}
+function card(e, live) {
+  const k = live ? `Now<span class="nx__in soon num">38 min left</span>` : `Up next<span class="nx__in soon num">in 12 min</span>`;
+  const t = tool(e), meta = C('cardtool') === 'meta' && t.logo ? `<span class="nx__tool">${t.logo}${esc(t.name)}</span>` : '';
+  const act = { icon: `<div class="nx__act">${join('jw', e)}${copyBtn(e)}</div>`,
+    split: `<div class="nx__act nx__act--split">${join('jw')}<button class="btn btn--s btn--line" data-copy="${e.id}">${isCopied(e.id) && C('fb') !== 'toast' ? 'Copied' : 'Copy link'}</button></div>`,
+    link: `<div class="nx__link"><a data-join="1">${esc(e.link)}</a>${copyBtn(e)}</div><div class="nx__act">${join('jw')}</div>` }[C('card')];
+  return `<div class="nx" style="--c:${e.c}"><div class="nx__k">${k}</div>
+    <button class="nx__b" data-go="${theme() === 'paper' ? 'paper-detail' : 'detail'}"><span class="nx__t">${esc(e.title)}</span><span class="nx__m num">${e.when[1]} – ${e.when[2]}${meta}</span></button>${act}</div>`;
+}
+function today(live) {
+  const later = [['16:15', 'Public Policy', '#6E8BFF'], ['18:00', '[P1] Water the plants', '#9A98A6'], ['19:00', 'Board game night', '#6E8BFF'], ['22:00', 'Call with Jamie', '#6E8BFF']];
+  return `<div class="td"><div class="td__h">Today<span class="num">Tue 29 Sep</span></div>${card(A.events.sam, live)}
+    <div class="lk"><div class="lk__k">Later</div>${later.map(([t, n, c]) => `<div class="lk__r" style="--c:${c}"><span class="num">${t}</span><i></i>${esc(n)}</div>`).join('')}</div></div>`;
+}
+function app() {
+  const sc = S.scene.replace('paper-', '');
+  const body = sc === 'today' ? today(false) : sc === 'live' ? today(true) : detail(A.events[{ long: 'nw', teams: 'tm', other: 'ot' }[sc] || 'sam']);
+  const toast = A.toast || (PV && PV.id === 'fb' && C('fb') === 'toast' ? 'Link copied' : null);
+  return `<div class="col" data-area="panel">${body}</div>${toast ? `<div class="to">${esc(toast)}</div>` : ''}`;
+}
+let FB_T = null;
+function flash(id, toast) {
+  A.copied = id; A.toast = toast; clearTimeout(FB_T);
+  FB_T = setTimeout(() => { A.copied = null; A.toast = null; render(); }, toast && toast.startsWith('Would') ? 2200 : 1500);
+}
+function appClick(t) {
+  if (t.dataset.go) S.scene = t.dataset.go;
+  else if (t.dataset.copy) { const e = A.events[t.dataset.copy]; try { navigator.clipboard?.writeText(e.link.trim()).catch(() => {}); } catch (_) {} flash(e.id, C('fb') === 'toast' ? 'Link copied' : null); }
+  else if (t.dataset.join) flash(null, 'Would open the call in your browser');
+  else if (t.dataset.rsvp) A.rsvp = t.dataset.rsvp;
+  else return false;
+  return true;
+}
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  // The right column is small: scale it up (to 1.6x) to fit the stage, centred. Shots (#scene&shot) stay at 1x.
+  const st = document.getElementById('stage').getBoundingClientRect();
+  const k = shot ? 1 : Math.min((st.width - 48) / DESK.w, (st.height - 48) / DESK.h, 1.6);
+  desk.style.width = DESK.w + 'px'; desk.style.height = DESK.h + 'px';
+  desk.style.transform = `translate(-50%, -50%) scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p>${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${notes ? `\n## Notes on elements\n${notes}` : ''}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') A = fresh();
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+desk.addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+// The Join shortcut: the picked key joins the selected event's call, or the Up next call on Today.
+document.addEventListener('keydown', ev => {
+  if (!ev.metaKey || ev.key.toLowerCase() !== 'j' || ev.altKey || ev.ctrlKey) return;
+  if (ev.shiftKey !== (C('key') === 'cmdshj')) return;
+  ev.preventDefault(); flash(null, 'Would open the call in your browser'); render();
+});
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-d', 'data-v', 'data-go', 'data-copy', 'data-join'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>

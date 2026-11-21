@@ -103,6 +103,8 @@
     "empty-access": {},
     "create-event": {},
     "delete-recurring": {},
+    "call-link": {},
+    "call-link-card": {},
     "readonly-event": {},
     "menubar-empty": {},
     "week-reference-size": {

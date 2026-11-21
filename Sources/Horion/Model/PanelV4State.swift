@@ -342,10 +342,26 @@ extension AppModel {
         reload()
     }
 
-    func copyCallLink() {
-        guard let e = selectedEvent, let c = CallLink.parse(e) else { return }
-        copyToPasteboard(c.url.absoluteString)
-        showToast("Copied link")
+    /// The link Copy puts on the pasteboard: the parsed call's URL, else the trimmed text in the call field (nil when there is none).
+    func callLinkText(_ e: CalendarEvent) -> String? {
+        if let c = CallLink.parse(e) { return c.url.absoluteString }
+        let link = e.conferencing.trimmingCharacters(in: .whitespacesAndNewlines)
+        return link.isEmpty ? nil : link
+    }
+
+    /// design/call-link round 3: Copy next to the link and next to Join on the Up next card. Plain text only; the feedback is the
+    /// button's own check for 1.5 s, no toast. Writes to `pasteboard` when given (tests), else to the general one outside headless runs.
+    /// Returns whether there was a link to copy.
+    @discardableResult
+    func copyCallLink(_ event: CalendarEvent? = nil, to pasteboard: NSPasteboard? = nil) -> Bool {
+        guard let e = event ?? selectedEvent, let link = callLinkText(e) else { return false }
+        if let pasteboard {
+            pasteboard.clearContents()
+            pasteboard.setString(link, forType: .string)
+        } else {
+            copyToPasteboard(link)
+        }
+        return true
     }
 
     // MARK: Participants

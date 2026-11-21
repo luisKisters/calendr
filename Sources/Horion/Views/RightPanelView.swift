@@ -208,7 +208,12 @@ struct PanelNextCard: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
             if let call = CallLink.parse(event) {
-                JoinCallButton(event: event, call: call, ghost: !live).padding(.top, Space.m).padding(.leading, textEdge)
+                // design/call-link round 3: Copy beside the wide Join.
+                HStack(spacing: Space.xs) {
+                    JoinCallButton(event: event, call: call, ghost: !live)
+                    CopyLinkButton { model.copyCallLink(event) }
+                }
+                .padding(.top, Space.m).padding(.leading, textEdge)
             }
         }
         // `.card.dc.lead`: margin 2 20 6, padding 10 0 16, a pane edge below; the others margin 0 20 4, padding 8 0 10.
