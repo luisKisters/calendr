@@ -37,13 +37,13 @@ public struct Placement: Equatable, Sendable {
     /// v5 level: 0 for the base, +1 per cascade step, 8 unaccepted, 9 short items.
     public var level: Int = 0
     public var order: Int = 0
-    /// Not drawn: the event is in a "+N" group of its day (`RangeLayout.overflow`).
-    public var hidden = false
     /// Where the block is drawn to when that differs from the event end (a short item spans 22 minutes).
     public var drawEndMinute: Int?
-    /// A later block starts on it within `RangeLayoutBuilder.coverMinutes` of its start (mockup-v11 `cut`): its text keeps to one line,
-    /// so nothing peeks out half hidden.
+    /// A later block starts on it within `RangeLayoutBuilder.coverMinutes` of its start (mockup-v11 `cut`).
     public var covered = false
+    /// Minutes from the start that show: up to the first later block drawn over it (mockup-v14). The text is planned on this part,
+    /// so a tall block covered low down still wraps its title and shows its time, and nothing peeks out half hidden. Nil: uncovered.
+    public var visibleMinutes: Int?
     /// Paint order: the mockup's `z-index: 1 + min(level, 4)`, then the layout order.
     public var z: Int { min(level, 4) * 1000 + order }
 }
@@ -207,13 +207,11 @@ public struct PlacedEvent: Identifiable, Equatable, Sendable {
 
 public struct RangeLayout: Sendable {
     public var days: [Date]
-    public var timed: [[PlacedEvent]]         // per day, hidden ("+N") events included with `placement.hidden`
+    public var timed: [[PlacedEvent]]         // per day, in paint order
     public var allDay: AllDayLayout
     public var allDayEvents: [String: CalendarEvent]
     /// Hour height on screen. The v5 layout is in minutes, so it does not depend on it.
     public var pointsPerHour: Double = 56
-    /// "+N" groups per day; their ids are event ids.
-    public var overflow: [[OverflowGroup]] = []
     public static let empty = RangeLayout(days: [], timed: [], allDay: .empty, allDayEvents: [:])
 
     public var timedCount: Int { timed.reduce(0) { $0 + $1.count } }
@@ -225,17 +223,6 @@ public struct RangeLayout: Sendable {
         return r
     }
 
-    /// The "+N" groups of `day` (empty when there are none).
-    public func groups(day: Int) -> [OverflowGroup] { overflow.indices.contains(day) ? overflow[day] : [] }
-
-    /// The rows of a "+N" stack: every event of the day that overlaps the hidden events' busy time, by start (mockup :1510-1516).
-    public func stackRows(day: Int, group: OverflowGroup) -> [PlacedEvent] {
-        guard timed.indices.contains(day) else { return [] }
-        let evs = timed[day]
-        let items = evs.map { RangeLayoutBuilder.item($0, id: $0.event.id) }
-        let rows = group.stackRows(dayEvents: items)
-        return rows.compactMap { r in evs.first { $0.event.id == r.id } }
-    }
 }
 
 public enum RangeLayoutBuilder {
@@ -253,46 +240,27 @@ public enum RangeLayoutBuilder {
         return V5Item(id: id, startMinute: p.startMinute, endMinute: p.endMinute, isShort: short, isUnaccepted: e.isUnaccepted)
     }
 
-    /// Where an event that must show goes when it would overflow (the draft, the block being dragged): the right half, above all.
-    public static func forcedPlacement(_ p: PlacedEvent, order: Int) -> Placement {
-        let span = item(p, id: p.id)
-        return Placement(v5: V5Placement(id: p.id, left: OverlapV5.unacceptedLeft, width: 1 - OverlapV5.unacceptedLeft, indent: 0, level: 9, cut: true,
-                                         startMinute: span.startMinute, endMinute: span.isShort ? span.startMinute + OverlapV5.shortSpan : span.endMinute),
-                         order: order)
-    }
-
-    /// Lays out one day with `OverlapV11` (the v11 cascade) and sorts it into paint order; events that do not fit (none since v11) are kept with `placement.hidden`
-    /// and listed in the returned "+N" groups (by event id). `keepVisible` (the draft, a drag preview) is never hidden: when it
-    /// would overflow it gets `forcedPlacement` and stays out of the groups.
-    public static func packDay(_ day: [PlacedEvent], keepVisible: Set<String> = []) -> (events: [PlacedEvent], groups: [OverflowGroup]) {
+    /// Lays out one day with `OverlapV11` (the v11 cascade; crowded spots side by side) and sorts it into paint order.
+    /// Every event shows: nothing is folded into "+N" (removed in mockup-v14).
+    public static func packDay(_ day: [PlacedEvent]) -> [PlacedEvent] {
         var placed = day
-        // v11: the locked cascade (`OverlapV11`); nothing is folded into "+N" any more, so `groups` stays empty.
-        let r = OverlapV5.Result(placements: OverlapV11.layout(placed.indices.map { item(placed[$0], id: String($0)) }), groups: [])
-        for i in placed.indices { placed[i].placement.hidden = true }
-        for (k, p) in r.placements.enumerated() { if let i = Int(p.id) { placed[i].placement = Placement(v5: p, order: k) } }
-        var kept = Set<Int>()
-        for i in placed.indices where placed[i].placement.hidden && (keepVisible.contains(placed[i].event.id) || keepVisible.contains(placed[i].id)) {
-            placed[i].placement = forcedPlacement(placed[i], order: r.placements.count + i)
-            kept.insert(i)
-        }
-        let groups: [OverflowGroup] = r.groups.compactMap { g in
-            let ids = g.ids.compactMap { Int($0) }.filter { !kept.contains($0) }.map { placed[$0].event.id }
-            return ids.isEmpty ? nil : OverflowGroup(startMinute: g.startMinute, ids: ids)
-        }
+        let placements = OverlapV11.layout(placed.indices.map { item(placed[$0], id: String($0)) })
+        for (k, p) in placements.enumerated() { if let i = Int(p.id) { placed[i].placement = Placement(v5: p, order: k) } }
         markCovered(&placed)
-        // Sort small integer keys, not the (large) PlacedEvent values; hidden events go first.
-        let keys = placed.map { $0.placement.hidden ? -1 : $0.placement.z }
+        // Sort small integer keys, not the (large) PlacedEvent values.
+        let keys = placed.map { $0.placement.z }
         let order = (0..<placed.count).sorted { keys[$0] != keys[$1] ? keys[$0] < keys[$1] : $0 < $1 }
-        return (order.map { placed[$0] }, groups)
+        return order.map { placed[$0] }
     }
 
     /// A block covered by a later one within this many minutes of its start keeps one line (mockup-v11 `cascade`: `c.s - it.s < 40`).
     public static let coverMinutes = 40
 
-    /// Sets `placement.covered` on the visible blocks: in start order (the longer first), the first later block that starts before
-    /// this one ends covers it when it starts within `coverMinutes` (mockup-v11 app.js `cascade`, the `cut` pass).
+    /// Sets `placement.covered` and `visibleMinutes` on the visible blocks: in start order (the longer first), the first later block
+    /// that starts before this one ends and is drawn over it (their columns overlap) covers it from its start (mockup-v11 app.js
+    /// `cascade`, the `cut` pass; mockup-v14 adds the column check, so a block beside it does not count).
     static func markCovered(_ placed: inout [PlacedEvent]) {
-        let vis = placed.indices.filter { !placed[$0].placement.hidden }
+        let vis = Array(placed.indices)
         func end(_ i: Int) -> Int { max(placed[i].endMinute, placed[i].placement.drawEndMinute ?? 0) }
         let order = vis.sorted {
             let a = placed[$0], b = placed[$1]
@@ -300,19 +268,22 @@ public enum RangeLayoutBuilder {
             if end($0) - a.startMinute != end($1) - b.startMinute { return end($0) - a.startMinute > end($1) - b.startMinute }
             return $0 < $1
         }
+        func across(_ a: Int, _ b: Int) -> Bool {
+            let pa = placed[a].placement, pb = placed[b].placement
+            return pb.left < pa.left + pa.width - 0.001 && pa.left < pb.left + pb.width - 0.001
+        }
         for (k, i) in order.enumerated() {
             placed[i].placement.covered = false
-            if let j = order[(k + 1)...].first(where: { placed[$0].startMinute < end(i) }) {
-                placed[i].placement.covered = placed[j].startMinute - placed[i].startMinute < coverMinutes
+            placed[i].placement.visibleMinutes = nil
+            if let j = order[(k + 1)...].first(where: { placed[$0].startMinute < end(i) && across(i, $0) }) {
+                let shown = placed[j].startMinute - placed[i].startMinute
+                placed[i].placement.covered = shown < coverMinutes
+                placed[i].placement.visibleMinutes = shown
             }
         }
     }
 
-    /// `packDay` without the groups (the drag preview).
-    public static func pack(_ day: [PlacedEvent], pointsPerHour: Double = 56) -> [PlacedEvent] { packDay(day).events }
-
-    /// `keepVisible`: event ids that never go into a "+N" group (the draft).
-    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56, keepVisible: Set<String> = []) -> RangeLayout {
+    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56) -> RangeLayout {
         let dayCount = days.count
         guard dayCount > 0 else { return .empty }
         let rangeEnd = math.addDays(days[dayCount - 1], 1)
@@ -354,19 +325,16 @@ public enum RangeLayoutBuilder {
         }
 
         var timed: [[PlacedEvent]] = []
-        var overflow: [[OverflowGroup]] = []
         timed.reserveCapacity(dayCount)
         for d in 0..<dayCount {
             let placed = perDaySpans[d].map { sp in
                 PlacedEvent(id: "\(sp.event.id)|\(d)", event: sp.event, dayIndex: d, startMinute: sp.s, endMinute: sp.e,
                             placement: Placement(id: "", column: 0, columns: 1), continuesFromPrevious: sp.from, continuesToNext: sp.to)
             }
-            let r = packDay(placed, keepVisible: keepVisible)
-            timed.append(r.events)
-            overflow.append(r.groups)
+            timed.append(packDay(placed))
         }
         return RangeLayout(days: days, timed: timed, allDay: AllDayPacker.pack(allDayItems, dayCount: dayCount), allDayEvents: allDayMap,
-                           pointsPerHour: pointsPerHour, overflow: overflow)
+                           pointsPerHour: pointsPerHour)
     }
 }
 

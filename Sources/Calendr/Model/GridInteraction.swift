@@ -37,23 +37,12 @@ struct GridGeometry: Equatable {
         rect(day: p.dayIndex, start: p.startMinute, end: max(p.endMinute, p.placement.drawEndMinute ?? 0), left: p.placement.left,
              width: p.placement.width, indent: p.placement.indent)
     }
-
-    /// The "+N" button of an overflow group (`.evmore`): 16 pt high, 3 pt from the column's right edge, 2 pt below the group start.
-    @MainActor
-    func moreRect(day: Int, group: OverflowGroup) -> CGRect {
-        let w = max(22, TextCache.line(Self.moreLabel(group), .moreChip).width + 10)
-        return CGRect(x: Double(day + 1) * dayWidth - 3 - w, y: yPos(group.startMinute) + 2, width: w, height: 16)
-    }
-
-    static func moreLabel(_ g: OverflowGroup) -> String { "+\(g.ids.count)" }
 }
 
 enum GridHit: Equatable {
     enum Edge { case top, bottom }
     case event(id: String, dayIndex: Int, startMinute: Int, endMinute: Int, edge: Edge?)
     case empty(dayIndex: Int, minute: Double)
-    /// The "+N" button of the `group`-th overflow group of a day.
-    case more(dayIndex: Int, group: Int)
 }
 
 struct GridPress {
@@ -72,10 +61,8 @@ extension AppModel {
         guard p.x >= 0, p.y >= 0, g.dayWidth > 0 else { return nil }
         let day = min(g.dayCount - 1, Int(p.x / g.dayWidth))
         guard day >= 0, day < layout.timed.count else { return nil }
-        // "+N" buttons sit above every block.
-        for (i, grp) in layout.groups(day: day).enumerated() where g.moreRect(day: day, group: grp).contains(p) { return .more(dayIndex: day, group: i) }
         // Paint order is ascending, so the topmost block is the last one that contains the point.
-        let order = layout.timed[day].filter { !$0.placement.hidden || $0.event.id == draftEventID }.sorted { paintRank($0) < paintRank($1) }
+        let order = layout.timed[day].sorted { paintRank($0) < paintRank($1) }
         for pe in order.reversed() {
             let r = gridGeometry.rect(for: pe)
             guard r.contains(p) else { continue }
@@ -105,16 +92,12 @@ extension AppModel {
 
     func gridMouseDown(_ p: CGPoint, clickCount: Int = 1) {
         guard let hit = hitTest(p) else { return }
-        if case .more(let d, let i) = hit { toggleStack(day: d, group: i); return }
-        // A press outside an open "+N" stack only closes it (`PanelClickAway` does the same outside the grid).
-        if visibleStack != nil { closeStack(); return }
         if case .event = hit { gridState.dayList = nil }
         let now = ProcessInfo.processInfo.systemUptime
         switch hit {
         case .event(let id, _, let s, _, _):
             if id == draftEventID { requestTitleFocus(); return }      // the block under construction hands the keyboard back to its field
             press = GridPress(hit: hit, origin: p, grabMinutes: gridGeometry.minute(atY: p.y) - Double(s), clickCount: clickCount)
-        case .more: return
         case .empty:
             if draftEventID != nil && now - gridState.draftMadeAt < 0.5 { requestTitleFocus(); return }
             press = GridPress(hit: hit, origin: p, grabMinutes: 0, clickCount: clickCount, dismissed: gridDismiss())
@@ -135,7 +118,6 @@ extension AppModel {
         let cur = g.snapped(m)
         let snap = GridGeometry.snap
         switch pr.hit {
-        case .more: return
         case .empty(let d0, let m0):
             // Anchored at the slot that was pressed; dragging upwards works too.
             let t0 = min(1440 - snap, Int(m0) / snap * snap)
@@ -174,8 +156,7 @@ extension AppModel {
                 let double = pr.clickCount >= 2 || (lastClick.map { now - $0.time < 0.42 && $0.id == id } ?? false)
                 select(eventID: id, focusTitle: double)
                 lastClick = double ? nil : (now, d, s, id)
-            case .more: return
-            case .empty(let d, let m):
+                case .empty(let d, let m):
                 // A click only dismisses; the second click of a double-click creates an event at the half hour under the pointer.
                 let twice = !pr.dismissed && (pr.clickCount >= 2 || (lastClick.map { now - $0.time < 0.42 && $0.id == nil && $0.day == d && abs(Double($0.minute) - m) < 10 } ?? false))
                 lastClick = twice ? nil : (now, d, Int(m), nil)
@@ -219,10 +200,10 @@ extension AppModel {
     }
 
     /// While dragging, the day columns the drag touches are laid out again with the preview in place of the event (as the
-    /// mockup re-packs on every move). Returns the events to draw, the preview with its placement and the "+N" groups per day.
+    /// mockup re-packs on every move). Returns the events to draw and the preview with its placement.
     /// The ghost carries the times it will be saved with, so it lays out exactly as the saved event will (short or not, replies).
-    func gridPreviewLayout() -> (events: [PlacedEvent], preview: PlacedEvent?, groups: [[OverflowGroup]]) {
-        guard let pv = dragPreview, layout.timed.indices.contains(pv.dayIndex) else { return (flatTimed, nil, layout.overflow) }
+    func gridPreviewLayout() -> (events: [PlacedEvent], preview: PlacedEvent?) {
+        guard let pv = dragPreview, layout.timed.indices.contains(pv.dayIndex) else { return (flatTimed, nil) }
         let moving = pv.kind == .create ? nil : pv.eventID
         var touched: Set<Int> = [pv.dayIndex]
         if let id = moving { for p in flatTimed where p.event.id == id { touched.insert(p.dayIndex) } }
@@ -235,23 +216,18 @@ extension AppModel {
         }
         let ghost = PlacedEvent(id: "\(e.id)|preview", event: e, dayIndex: pv.dayIndex, startMinute: pv.startMinute, endMinute: pv.endMinute,
                                 placement: Placement(id: "", column: 0, columns: 1))
-        var keep: Set<String> = [ghost.id]
-        if let d = draftEventID { keep.insert(d) }
         var out: [PlacedEvent] = []
         out.reserveCapacity(flatTimed.count)
         var preview: PlacedEvent?
-        var groups = layout.overflow
         for d in layout.timed.indices {
             guard touched.contains(d) else { out += layout.timed[d]; continue }
             var day = layout.timed[d].filter { $0.event.id != moving }
             if d == pv.dayIndex { day.append(ghost) }
-            let r = RangeLayoutBuilder.packDay(day, keepVisible: keep)
-            if groups.indices.contains(d) { groups[d] = r.groups }
-            for p in r.events {
+            for p in RangeLayoutBuilder.packDay(day) {
                 if p.id == ghost.id { preview = p } else { out.append(p) }
             }
         }
-        return (out, preview, groups)
+        return (out, preview)
     }
 
     /// Month view: a double-click on a day cell creates an all-day event there.
@@ -264,6 +240,6 @@ extension AppModel {
 
 extension GridHit {
     var dayIndex: Int {
-        switch self { case .event(_, let d, _, _, _): d; case .empty(let d, _): d; case .more(let d, _): d }
+        switch self { case .event(_, let d, _, _, _): d; case .empty(let d, _): d }
     }
 }

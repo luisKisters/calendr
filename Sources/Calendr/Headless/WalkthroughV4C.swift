@@ -26,8 +26,6 @@ extension WalkthroughV4 {
 
     static func unhover(_ m: AppModel) {
         m.gridState.pointer.hoveredEventID = nil
-        m.gridState.pointer.hoveredMore = nil
-        m.gridState.pointer.hoveredStackRow = nil
     }
 
     static func style(_ m: AppModel, _ p: PlacedEvent) -> EventStyle {
@@ -109,10 +107,10 @@ extension WalkthroughV4 {
         d.section("Text rules")
         if let founder = Walkthrough.placed(m, "Founder meetup", day: 2) {
             d.moveCursor(to: d.windowPoint(fromGrid: Walkthrough.centerOf(d, founder)), duration: 0.45)
-            d.say("A covered block keeps one line; under 120 pt it drops the time")
+            d.say("A covered block uses the part that shows: title, then the time")
             _ = hoverBlock(d, m, founder)
             let pl = plan(m, founder)
-            d.check(pl.lines == .one && pl.maxTitleLines == 1 && pl.time == .none, "Founder meetup is covered: one line, no time (under 120 pt)")
+            d.check(pl.lines == .stacked && pl.time == .start, "Founder meetup: title and its start above Flat cleaning (\(pl.lines), \(pl.time))")
             d.hold(1.6)
         } else { d.check(false, "Founder meetup is on Wednesday") }
         if let task = Walkthrough.placed(m, "Wish Nina a happy birthday", day: 2) {
@@ -139,30 +137,14 @@ extension WalkthroughV4 {
         d.endCaption()
     }
 
-    // MARK: v4-c-2: the cascade (v5 H; was "+N" and the stack)
-
-    static func moreWindowPoint(_ d: Driver, _ m: AppModel, day: Int, group: Int) -> (grid: CGPoint, window: CGPoint)? {
-        let groups = m.layout.groups(day: day)
-        guard groups.indices.contains(group) else { return nil }
-        let r = m.gridGeometry.moreRect(day: day, group: groups[group])
-        let g = CGPoint(x: r.midX, y: r.midY)
-        return (g, d.windowPoint(fromGrid: g))
-    }
-
-    /// The centre of the i-th row of the open stack, in window points.
-    static func stackRow(_ m: AppModel, _ i: Int) -> CGPoint {
-        let f = m.gridState.stackFrame
-        return CGPoint(x: f.midX, y: f.minY + 4 + CGFloat(i) * (Dim.row + 3) + Dim.row / 2)
-    }
+    // MARK: v4-c-2: the cascade (v5 H; "+N" and the stack are gone, mockup-v14)
 
     /// v5 H: the v11 cascade. Wednesday evening shows every block (nothing is folded into "+N"): a block that starts later
     /// indents one step and is drawn on top with a 1 pt window-coloured ring, one that starts within a title line takes the right
-    /// half, and a block covered within 40 minutes keeps one line of text. Each block is hit where it shows.
+    /// half, and a block plans its text on the part above the first block drawn over it (mockup-v14). Each block is hit where it shows.
     static func c2(_ d: Driver, _ m: AppModel) {
         d.section("Cascade")
         scrollGrid(d, m, to: SnapshotV4.eveningScroll)
-        d.check(m.layout.overflow.allSatisfy { $0.isEmpty } && m.layout.timed.joined().allSatisfy { !$0.placement.hidden },
-                "nothing is folded into +N")
         d.say("Wednesday evening: overlapping events cascade")
         d.moveCursor(to: CGPoint(x: 590, y: 380), duration: 0.6)
         d.hold(1.0)
@@ -185,7 +167,8 @@ extension WalkthroughV4 {
             d.say("Within a title line: the right half. Later: one indent step")
             d.check(idea.placement.left == 0.5 && flat.placement.indent == 2 * OverlapV11.indentStep && flat.placement.over,
                     "Idea session takes the right half; Flat cleaning cascades two steps")
-            d.check(founder.placement.covered && plan(m, founder).lines == .one, "Founder meetup is covered within 40 minutes: one line")
+            d.check(!founder.placement.covered && founder.placement.visibleMinutes == 60 && plan(m, founder).time != .none,
+                    "Idea session beside it does not cover Founder meetup; its text uses the hour above Flat cleaning, time shown")
             d.hold(1.2)
         }
         unhover(m)

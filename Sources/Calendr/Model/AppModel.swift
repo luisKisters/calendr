@@ -349,7 +349,7 @@ final class AppModel {
         } else {
             var shown = visibleIdx.map { windowEvents[$0] }
             if let d = draft { shown.append(d) }
-            layout = gridLayout(RangeLayoutBuilder.build(events: shown, days: visibleDays, math: math, keepVisible: Set([draftEventID].compactMap { $0 })))
+            layout = gridLayout(RangeLayoutBuilder.build(events: shown, days: visibleDays, math: math))
         }
 
         var teamEvents: [CalendarEvent] = []

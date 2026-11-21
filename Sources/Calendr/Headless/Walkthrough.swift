@@ -95,7 +95,7 @@ enum Walkthrough {
         // 3. Create by dragging, then resize
         d.section("Create")
         d.say("Drag to create an event")
-        let visible = { m.layout.timed.joined().filter { !$0.placement.hidden }.count }
+        let visible = { m.layout.timedCount }
         let before = visible()
         d.drag(from: d.gridPoint(day: 3, minute: 14 * 60 + 30), to: d.gridPoint(day: 3, minute: 15 * 60 + 30))
         d.check(m.draft != nil && m.isDraftOpen, "drag opens a draft")

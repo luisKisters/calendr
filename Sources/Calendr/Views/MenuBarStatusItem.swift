@@ -335,7 +335,7 @@ enum MenuBarArt {
 
     static func bar(color: NSColor, height: CGFloat, tentative: Bool) -> NSImage {
         NSImage(size: NSSize(width: 3, height: height), flipped: true) { r in
-            let path = NSBezierPath(roundedRect: r, xRadius: 1.5, yRadius: 1.5)
+            let path = NSBezierPath(roundedRect: r, xRadius: Radius.bar, yRadius: Radius.bar)
             if tentative {
                 path.addClip()
                 color.setFill()
