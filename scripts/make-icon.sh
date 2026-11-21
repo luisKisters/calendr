@@ -1,13 +1,13 @@
 #!/bin/bash
 # Regenerates design/icon/AppIcon.icns (+ MenuBarTemplate PNGs) from the SVG masters.
-# Skips if AppIcon.icns exists unless --force is given.
+# Skips when AppIcon.icns is newer than both SVGs, unless --force is given.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
 OUT=design/icon/AppIcon.icns
-if [ -f "$OUT" ] && [ "${1:-}" != "--force" ]; then
-  echo "$OUT exists (use --force to regenerate)"; exit 0
+if [ "${1:-}" != "--force" ] && [ -f "$OUT" ] && [ ! design/icon/icon.svg -nt "$OUT" ] && [ ! design/icon/menubar.svg -nt "$OUT" ]; then
+  echo "$OUT is up to date (use --force to regenerate)"; exit 0
 fi
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
