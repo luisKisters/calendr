@@ -27,6 +27,10 @@ public struct MenuBarMenuModel: Equatable, Sendable {
         public var left: String?
         /// Only events whose row menu offers more than Show in Calendr get one.
         public var hasSubmenu: Bool
+        /// The event's call (`CallLink`): Meet, Zoom, Teams or another known host. Nil for no link or a website.
+        public var call: CallLink? = nil
+        /// The logo the Join button shows: "meet", "zoom", or "video" for any other call host. Nil without a call.
+        public var logo: String? { call.map { MenuBarMenu.logo($0.kind) } }
     }
 
     public struct Section: Equatable, Sendable {
@@ -39,6 +43,13 @@ public struct MenuBarMenuModel: Equatable, Sendable {
     public var head: Row?
     /// "Today" (what has not ended), "Tomorrow", and the day after ("Thu 1 Oct"); empty days are left out.
     public var sections: [Section]
+    /// The rows drawn with a Join button (indices into `rows`), as the mockup's menu: every timed row of today (the head row
+    /// included) whose event has a call. Empty when nothing today has a call.
+    public var joinIndices: [Int] = []
+    /// The first of them.
+    public var joinIndex: Int? { joinIndices.first }
+    /// That row.
+    public var joinRow: Row? { joinIndex.map { rows[$0] } }
 
     /// "Up next", "Now", or "Nothing else today".
     public var headLabel: String { focus.map { $0.running ? "Now" : "Up next" } ?? "Nothing else today" }
@@ -107,7 +118,8 @@ public enum MenuBarMenu {
             let running = isToday && !e.isAllDay && e.start <= t && e.end > t
             return .init(event: e, start: e.isAllDay ? "all-day" : fmt.time(e.start), end: e.isAllDay ? nil : fmt.time(e.end),
                          colorHex: colorHex(e), left: running ? "\(span(minutes(t, e.end))) left" : nil,
-                         hasSubmenu: submenu(for: e, canRespond: canRespond, guestAddresses: guestAddresses(e)) != [.show])
+                         hasSubmenu: submenu(for: e, canRespond: canRespond, guestAddresses: guestAddresses(e)) != [.show],
+                         call: CallLink.parse(e))
         }
 
         let todays = day(0)
@@ -119,7 +131,27 @@ public enum MenuBarMenu {
             guard !list.isEmpty else { continue }
             sections.append(.init(title: sectionTitle(math.addDays(today, k), k: k, fmt: fmt), rows: list.map { row($0, today: k == 0) }))
         }
-        return MenuBarMenuModel(focus: f, head: f.map { row($0.event, today: true) }, sections: sections)
+        var m = MenuBarMenuModel(focus: f, head: f.map { row($0.event, today: true) }, sections: sections)
+        m.joinIndices = joinIndices(m, today: sectionTitle(today, k: 0, fmt: fmt))
+        return m
+    }
+
+    /// The head row if it has a call, and every timed row of the Today section with one.
+    static func joinIndices(_ m: MenuBarMenuModel, today: String) -> [Int] {
+        var out: [Int] = []
+        if let h = m.head, h.call != nil { out.append(0) }
+        guard let first = m.sections.first, first.title == today else { return out }
+        let offset = m.head == nil ? 0 : 1
+        return out + first.rows.indices.filter { first.rows[$0].call != nil && !first.rows[$0].event.isAllDay }.map { $0 + offset }
+    }
+
+    /// "meet", "zoom", or "video" (Teams and the other hosts).
+    public static func logo(_ kind: CallLink.Kind) -> String {
+        switch kind {
+        case .meet: "meet"
+        case .zoom: "zoom"
+        case .teams, .other: "video"
+        }
     }
 
     static func focus(_ timed: [CalendarEvent], t: Date) -> MenuBarMenuModel.Focus? {

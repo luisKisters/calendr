@@ -10,9 +10,15 @@ struct ChromeV3State: Equatable {
     /// The command menu's rows for the inputs they were built from. A reference, so filling it inside a view body is not a
     /// state change (hovering a row re-renders the menu and must not rank every event again).
     let paletteCache = PaletteCache()
+    /// The right column's search field (v4): its text, whether it has the keyboard, and a tick that asks the field to take it
+    /// (`/`, Command-F, the command menu's Search events).
+    var columnQuery = ""
+    var searchFocused = false
+    var searchFocusTick = 0
 
     static func == (a: ChromeV3State, b: ChromeV3State) -> Bool {
         a.paletteMode == b.paletteMode && a.paletteQuery == b.paletteQuery && a.paletteIndex == b.paletteIndex
+            && a.columnQuery == b.columnQuery && a.searchFocused == b.searchFocused && a.searchFocusTick == b.searchFocusTick
     }
 }
 

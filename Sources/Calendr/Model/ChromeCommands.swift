@@ -181,7 +181,7 @@ extension AppModel {
     func run(_ id: CommandID) {
         switch id {
         case .goToDate: openPalette(.goTo); return
-        case .searchEvents: openPalette(.search); return
+        case .searchEvents: focusColumnSearch(); return
         case .meetWith: openPalette(.meet); return
         case .settings: overlay = .settings; return
         case .shortcuts: overlay = .shortcuts; return
@@ -217,7 +217,7 @@ extension AppModel {
         case .escape: return escapeOneLayer()
         case .commandMenu: overlay == .command ? (overlay = nil) : openPalette(.all)
         case .goToDate: openPalette(.goTo)
-        case .searchEvents: openPalette(.search)
+        case .searchEvents: focusColumnSearch()
         case .meetWith: store.canOverlayTeammates ? openPalette(.meet) : showToast(Self.meetWithUnavailable)
         case .showShortcuts: overlay = .shortcuts
         case .settings: overlay = .settings
@@ -246,9 +246,11 @@ extension AppModel {
     /// Esc peels one layer: command menu or sheet, then the event being created, then the selection, then the toast.
     func escapeOneLayer() -> Bool {
         if gridCancelDrag() {}
+        else if panelMenus.open != nil { closePanelMenu() }
         else if overlay != nil { overlay = nil }
         else if draftEventID != nil { discardDraft() }
         else if selectedEventID != nil || selectedSlot != nil { deselect() }
+        else if !chromeState.columnQuery.isEmpty { clearColumnSearch() }
         else if toast != nil { toast = nil }
         else { return false }
         return true
@@ -277,15 +279,18 @@ extension AppModel {
 
     // MARK: Header
 
-    /// "Sep – Oct" / "September" for a week, "Tuesday, 29 September" for a day, the month for a month; the year of the last day.
+    /// The month for a week (the one most of its days fall in, as the mockup's "October 2026" for Mon 28 Sep - Sun 4 Oct),
+    /// "Tuesday, 29 September" for a day, the month for a month; the year of that month.
     var chromeTitle: (main: String, year: String) {
         switch viewMode {
         case .month: return (fmt.monthLong(visibleStart), String(math.year(visibleStart)))
         case .day: return ("\(fmt.weekdayLong(visibleStart)), \(math.day(visibleStart)) \(fmt.monthLong(visibleStart))", String(math.year(visibleStart)))
         default:
-            let a = visibleStart, b = visibleDays.last ?? visibleStart
-            if math.month(a) == math.month(b) { return (fmt.monthLong(a), String(math.year(b))) }
-            return ("\(fmt.monthShort(a)) \u{2013} \(fmt.monthShort(b))", String(math.year(b)))
+            let days = visibleDays.isEmpty ? [visibleStart] : visibleDays
+            let b = days.last!
+            // ties (an even number of custom days) go to the later month
+            let m = days.filter { !math.isSameMonth($0, b) }.count > days.count / 2 ? days[0] : b
+            return (fmt.monthLong(m), String(math.year(m)))
         }
     }
 
@@ -310,11 +315,6 @@ extension AppModel {
     func undoToastText(old: CalendarEvent, new: CalendarEvent) -> String {
         if old.start == new.start && old.end != new.end { return "Ends \(fmt.time(new.end))" }
         return "Moved to \(chromeDay(new.start))" + (new.isAllDay ? "" : ", \(fmt.time(new.start))")
-    }
-
-    /// The account's short name for the sidebar: its default calendar, else its first writable one (the address shows on hover).
-    func shortName(of acc: CalendarAccount) -> String {
-        (acc.calendars.first(where: \.isDefault) ?? acc.calendars.first(where: \.isWritable))?.title ?? acc.name
     }
 
     /// Opens the week of a mini-month week number.

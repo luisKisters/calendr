@@ -15,6 +15,7 @@ func after(_ delay: TimeInterval, _ block: @escaping @MainActor () -> Void) {
 enum Overlay: Equatable {
     case command, shortcuts, settings
     case deleteRecurring(String)   // event id
+    case deleteWithGuests(String)  // event id: the v4 dialog with the guest list
 }
 
 /// Everything the views bind to. Derived data (layouts, month cells, upcoming) is computed in `reload()`
@@ -50,7 +51,12 @@ final class AppModel {
 
     // MARK: Selection
     /// Selecting anything else settles the draft, so a draft is always the selected event.
-    var selectedEventID: String? { didSet { if let d = draft, selectedEventID != d.id { settleDraft() } } }
+    var selectedEventID: String? {
+        didSet {
+            if let d = draft, selectedEventID != d.id { settleDraft() }
+            if selectedEventID != oldValue { resetEditorTransients() }
+        }
+    }
     var selectedSlot: Date?
     private(set) var pendingEdit: (event: CalendarEvent, span: EditSpan)?
     private var editTimer: Timer?
@@ -62,7 +68,7 @@ final class AppModel {
     var overlay: Overlay? {
         didSet {
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
-            if oldValue == .command && overlay != .command { searchText = "" }
+            if oldValue == .command && overlay != .command { searchText = chromeState.columnQuery.trimmingCharacters(in: .whitespaces) }
             if overlay == nil && oldValue != nil {
                 // Submitting with Return re-focuses the field after the action returns, so resign now and again once the event is done.
                 resignTextFocus()
@@ -88,6 +94,7 @@ final class AppModel {
     var gridState = GridV3State()
     var chromeState = ChromeV3State()
     var panelState = PanelV3State()
+    let panelMenus = PanelMenuState()
     /// Bumped on every store change, for observers that read the store directly (the menu bar item).
     private(set) var storeVersion = 0
 
@@ -254,6 +261,7 @@ final class AppModel {
         var s = EventStyle(palette: pal, past: short ? e.start < now : e.end <= now, selected: selected, overlapping: overlapping)
         s.reply = EventReply(e)
         s.isShort = short
+        s.unsent = !panelState.unsent.isEmpty && panelState.unsent[e.id] != nil
         return s
     }
 
@@ -274,6 +282,11 @@ final class AppModel {
             windowEvents = store.events(in: windowRange)
             eventsByID.removeAll(keepingCapacity: true)
             for e in windowEvents { eventsByID[e.id] = e }
+        }
+        // Unsent edits (events with guests) show on the grid as the editor holds them.
+        for (id, u) in panelState.unsent {
+            if let i = windowEvents.firstIndex(where: { $0.id == id }) { windowEvents[i] = u.edited }
+            eventsByID[id] = u.edited
         }
         // Filter and sort by index: CalendarEvent is a large reference-heavy struct, so copying it around is the real cost.
         let showDeclined = settings.showDeclined
@@ -377,6 +390,7 @@ final class AppModel {
     func event(id: String?) -> CalendarEvent? {
         guard let id else { return nil }
         if let d = draft, d.id == id { return d }
+        if let u = panelState.unsent[id] { return u.edited }
         return eventsByID[id]
     }
     var selectedEvent: CalendarEvent? { event(id: selectedEventID) }
@@ -527,6 +541,7 @@ final class AppModel {
             if textOnly { patchLayout(e) } else { reload() }
             return
         }
+        if holdUnsent(before: before, after: e) { return }
         // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
         if store.coalescesTextEdits && textOnly {
             pendingEdit = (e, span)
@@ -561,10 +576,12 @@ final class AppModel {
     func requestDeleteSelected() {
         guard let e = selectedEvent, isWritable(e) else { return }
         if isDraftOpen { discardDraft(); return }
+        if deleteNeedsGuestDialog(e) && !(e.isRecurring && store.series(of: e).count > 1) { overlay = .deleteWithGuests(e.id); return }
         if e.isRecurring && store.series(of: e).count > 1 { overlay = .deleteRecurring(e.id) } else { delete(e, span: .this) }
     }
 
-    func delete(_ e: CalendarEvent, span: EditSpan) {
+    @discardableResult
+    func delete(_ e: CalendarEvent, span: EditSpan, notify: Bool = true) -> Bool {
         flushPendingEdit()
         let removed: [CalendarEvent]
         switch span {
@@ -573,12 +590,13 @@ final class AppModel {
         case .future: removed = store.series(of: e).filter { $0.start >= e.start }
         }
         do {
-            try store.delete(e, span: span)
+            try store.delete(e, span: span, notify: notify)
             undoStack.push(.deleted(removed))
             selectedEventID = nil
             overlay = nil
             showToast("Deleted \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}", undo: true)
-        } catch { showToast("Could not delete event") }
+            return true
+        } catch { showToast("Could not delete event"); return false }
     }
 
     func undo() {
@@ -634,6 +652,7 @@ final class AppModel {
 
     /// Menu bar: open main window at that event.
     func open(event e: CalendarEvent) {
+        chromeState.columnQuery = ""
         searchText = ""
         openSearchResult(e)
         NSApp.activate(ignoringOtherApps: true)
@@ -652,10 +671,10 @@ final class AppModel {
     func dismissToast() { toast = nil }
 
     private var isoCalendar = Calendar(identifier: .iso8601)
-    /// ISO week number of the first visible day ("W40").
+    /// ISO week number of the first visible day ("Week 40", as the mockup's header).
     var weekLabel: String {
         if isoCalendar.timeZone != math.timeZone { isoCalendar.timeZone = math.timeZone }
-        return "W\(isoCalendar.component(.weekOfYear, from: visibleStart))"
+        return "Week \(isoCalendar.component(.weekOfYear, from: visibleStart))"
     }
 
     // MARK: Commands

@@ -89,3 +89,32 @@ public enum ShortcutResolver {
         }
     }
 }
+
+/// A row of the right column's "Useful shortcuts": its label, its key hint (one glyph per key) and what it runs.
+public struct UsefulShortcut: Equatable, Sendable {
+    public var title: String
+    public var keys: [String]
+    public var action: ShortcutAction
+}
+
+public enum Shortcuts {
+    /// The right column's "Useful shortcuts" under Today (design/mockup-v4 `.short`), in order.
+    public static let useful: [UsefulShortcut] = [
+        .init(title: "Command menu", keys: ["\u{2318}", "K"], action: .commandMenu),
+        .init(title: "Meet with", keys: ["F"], action: .meetWith),
+        .init(title: "New event", keys: ["C"], action: .createEvent),
+        .init(title: "Menu bar calendar", keys: ["\u{2303}", "\u{2318}", "K"], action: .menuBarCalendar),
+        .init(title: "Toggle sidebar", keys: ["`"], action: .toggleSidebar),
+        .init(title: "All keyboard shortcuts", keys: ["?"], action: .showShortcuts),
+    ]
+}
+
+public enum AccountName {
+    /// The account as the sidebar and the calendar menu name it: the address without its domain ("sam@northwind.example" -> "sam").
+    /// A name that is not an address stays as it is.
+    public static func display(_ name: String) -> String {
+        let t = name.trimmingCharacters(in: .whitespaces)
+        guard let at = t.firstIndex(of: "@"), at != t.startIndex else { return t }
+        return String(t[..<at])
+    }
+}

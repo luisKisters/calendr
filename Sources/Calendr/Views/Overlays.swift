@@ -9,7 +9,7 @@ extension AnyTransition {
     static var toast: AnyTransition { .offset(y: 10).combined(with: .opacity) }
 }
 
-/// Floating surfaces over the whole window: the command menu (top 168), the sheets (centred), all over the scrim.
+/// Floating surfaces over the whole window: the command menu (top 102, as in design/mockup-v4), the sheets (centred), all over the scrim.
 struct OverlayHost: View {
     @Environment(AppModel.self) private var model
 
@@ -19,10 +19,11 @@ struct OverlayHost: View {
             if let o = model.overlay {
                 Theme.scrim.ignoresSafeArea().onTapGesture { model.closeOverlay() }.transition(.opacity)
                 switch o {
-                case .command: CommandMenu().padding(.top, 168).transition(.palette)
+                case .command: CommandMenu().padding(.top, 102).transition(.palette)
                 case .shortcuts: ShortcutsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .settings: SettingsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .deleteRecurring(let id): DeleteRecurringDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)
+                case .deleteWithGuests(let id): DeleteWithGuestsDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)
                 }
             }
         }
@@ -382,14 +383,20 @@ struct SettingsSheet: View {
 struct DeleteRecurringDialog: View {
     @Environment(AppModel.self) private var model
     let eventID: String
+    /// An event I organise with guests (Google): whether they get the cancellation email.
+    @State private var notify = true
     var body: some View {
+        let guests = model.event(id: eventID).map { model.deleteNeedsGuestDialog($0) } ?? false
         SheetFrame(title: "Delete recurring event", width: 400, closable: false, bottom: 20) {
             Text("This event repeats. Which events should be deleted?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
+            if guests {
+                PanelSwitch(label: "Send the guests a cancellation email", isOn: notify) { notify.toggle() }.padding(.top, 10)
+            }
             HStack(spacing: 8) {
                 Spacer()
                 SecondaryButton(title: "Cancel") { model.closeOverlay() }
-                SecondaryButton(title: "This event") { if let e = model.event(id: eventID) { model.delete(e, span: .this) } }
-                PrimaryButton(title: "All events") { if let e = model.event(id: eventID) { model.delete(e, span: .all) } }
+                SecondaryButton(title: "This event") { model.deleteRecurring(eventID, span: .this, notify: notify) }
+                PrimaryButton(title: "All events") { model.deleteRecurring(eventID, span: .all, notify: notify) }
             }
             .padding(.top, 16)
         }

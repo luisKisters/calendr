@@ -59,6 +59,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+    /// Changes to events with guests that were not sent yet are never dropped silently: send them, save them without sending,
+    /// or stay.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        MainActor.assumeIsolated {
+            let m = AppContext.model
+            let n = m.panelState.unsent.count
+            guard n > 0 else { return .terminateNow }
+            let a = NSAlert()
+            a.messageText = n == 1 ? "1 event has changes that are not sent" : "\(n) events have changes that are not sent"
+            a.informativeText = "Send the update to the guests, save the changes without sending, or go back."
+            a.addButton(withTitle: "Send update")
+            a.addButton(withTitle: "Save without sending")
+            a.addButton(withTitle: "Cancel")
+            switch a.runModal() {
+            case .alertFirstButtonReturn: return m.sendAllUnsent(notify: true) ? .terminateNow : .terminateCancel
+            case .alertSecondButtonReturn: return m.sendAllUnsent(notify: false) ? .terminateNow : .terminateCancel
+            default: return .terminateCancel
+            }
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         MainActor.assumeIsolated { MenuBarHotKey.unregister() }
     }

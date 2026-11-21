@@ -44,7 +44,7 @@ enum SnapshotV4 {
         return true
     }
 
-    private static func scroll(_ m: AppModel, to y: Double) {
+    static func scroll(_ m: AppModel, to y: Double) {
         after(0.05) {
             m.gridState.scrollTarget = y
             m.gridState.scrollTick += 1

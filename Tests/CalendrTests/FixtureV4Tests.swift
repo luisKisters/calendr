@@ -53,7 +53,7 @@ struct FixtureV4Tests {
 
     @Test func flatDinnerCarriesTheMockupDetails() {
         let e = DemoDataV4.buildEvents().first { $0.id == "v4.wg" }!
-        #expect(e.colorHex == "#5FB97E" && e.participants == ["Mara Hoffmann", "Jonas Weber", "Dion Kraft", "Sam Rivera"])
+        #expect(e.colorHex == "#5FB97E" && e.participants == ["Mara Hoffmann", "Jonas Weber", "dion.k@example.com", "sam@example.net"])
         #expect(e.iAmOrganizer && e.myReply == .confirmed && e.attendees.count == 5 && e.attendees.last?.status == .needsAction)
         #expect(e.location == "Kitchen, 12 Harbour Street" && e.reminderMinutes == 10 && e.recurrence?.weekdays == [1])
     }

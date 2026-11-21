@@ -91,7 +91,8 @@ struct ChromeTests {
 
     @Test func headerTitleSpansMonths() {
         let m = model()
-        #expect(m.chromeTitle.main == "Sep \u{2013} Oct" && m.chromeTitle.year == "2026")
+        // Mon 28 Sep - Sun 4 Oct: most days are in October (the mockup's "October 2026  Week 40")
+        #expect(m.chromeTitle.main == "October" && m.chromeTitle.year == "2026" && m.weekLabel == "Week 40")
         m.setMode(.month)
         #expect(m.chromeTitle.main == "September")
     }

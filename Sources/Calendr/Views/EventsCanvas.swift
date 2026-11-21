@@ -370,6 +370,10 @@ enum EventPainter {
             cg.addPath(roundedPath(bar, Radius.bar)); cg.setFillColor(c.bar.cg.copy(alpha: c.barAlpha) ?? c.bar.cg); cg.fillPath()
         }
 
+        if style.unsent && r.width >= 20 {
+            cg.addEllipse(in: CGRect(x: r.maxX - 10, y: r.minY + 4, width: 6, height: 6)); cg.setFillColor(ink.fg); cg.fillPath()
+        }
+
         // Text.
         let title = e.title.isEmpty ? (style.draft || e.id.isEmpty ? "New event" : "(No title)") : e.title
         let titleColor = style.draft ? ink.fg : c.title.cg, timeColor = style.draft ? ink.fg2 : c.time.cg

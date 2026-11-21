@@ -60,6 +60,24 @@ public struct CallLink: Equatable, Sendable {
         return CallLink(kind: kind, url: url, code: code)
     }
 
+    /// The text with every call link taken out (the word that held it, and the brackets around it); a line left empty goes too.
+    /// Other text, websites included, stays as written.
+    public static func removingCalls(from text: String) -> String {
+        guard parse(conferencing: "", notes: text) != nil else { return text }
+        let lines = text.components(separatedBy: "\n").compactMap { line -> String? in
+            var l = line
+            for t in tokens(line) where link(t) != nil {
+                for wrapped in ["(\(t))", "[\(t)]", "<\(t)>", t] { l = l.replacingOccurrences(of: wrapped, with: "") }
+            }
+            if l == line { return line }
+            l = l.replacingOccurrences(of: "  ", with: " ").trimmingCharacters(in: .whitespaces)
+            if l.hasSuffix(":") { return nil }      // "Join: <link>": the label goes with its link
+            while let c = l.last, ":,;".contains(c) { l.removeLast(); l = l.trimmingCharacters(in: .whitespaces) }
+            return l.isEmpty ? nil : l
+        }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Words of a text, split at white space and at the brackets and quotes that wrap links; trailing punctuation dropped.
     static func tokens(_ text: String) -> [String] {
         text.split(whereSeparator: { $0.isWhitespace || "<>()[]\"'".contains($0) }).map { w in

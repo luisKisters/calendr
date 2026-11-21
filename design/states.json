@@ -81,6 +81,48 @@
       "shot": "allday-expanded",
       "js": "document.querySelector('.ad .tog').click()",
       "fixture": "v4"
+    },
+    "v4-search": {
+      "mockup": "week",
+      "shot": "search",
+      "js": "const i=document.querySelector('[data-f=search]'); i.value='walk'; i.dispatchEvent(new Event('input',{bubbles:true}))",
+      "fixture": "v4"
+    },
+    "v4-invited": {
+      "mockup": "invited",
+      "fixture": "v4"
+    },
+    "v4-call": {
+      "mockup": "call",
+      "fixture": "v4"
+    },
+    "v4-location": {
+      "mockup": "location",
+      "fixture": "v4"
+    },
+    "v4-maps": {
+      "mockup": "maps",
+      "fixture": "v4"
+    },
+    "v4-calendar": {
+      "mockup": "calendar",
+      "fixture": "v4"
+    },
+    "v4-reminders": {
+      "mockup": "reminders",
+      "fixture": "v4"
+    },
+    "v4-guests": {
+      "mockup": "guests",
+      "fixture": "v4"
+    },
+    "v4-invite": {
+      "mockup": "invite",
+      "fixture": "v4"
+    },
+    "v4-pending": {
+      "mockup": "pending",
+      "fixture": "v4"
     }
   }
 }
