@@ -23,6 +23,7 @@ Superseded and kept for history: `design/LOCKED.md` (v3), `design/DESIGN.md` (v2
 8. Chrome steps back. Sidebars are one surface step darker than the canvas (Dark) or a light grey (Paper). The only grid line that must stay visible is the hour line (≥ 1.15:1).
 
 ## Check
+- `swift test` runs `ViewTokenTests`: views may not use hex literals, named colours, system text fonts or literal font sizes. Add a token to `Theme.swift` / `Typeface.swift` and `foundations.md` instead.
 - Run `node design/mockup-v11/contrast.mjs --rd`. The sweep checks every combination of the levers and a sampled sweep of the sliders, in Dark and Paper. The result must be 0 below target and 0 guard mismatches.
 - In the mockup, the counter (X) must show 3 sizes (15, 12, 11) and 3 weights in the week view of R10, and G must show 0 red boxes in Dark and Paper.
 - In the app, compare screenshots of the week view (demo data, Wed 18:15) with `design/mockup-v11` R10 in Dark and Paper at 1440 × 900.
