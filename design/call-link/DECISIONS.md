@@ -5,6 +5,19 @@ Drawn on the v3 look; only these two places are in this mockup. Built into the c
 
 Open with `python3 -m http.server 8811 --bind 127.0.0.1` in `design/`, then http://127.0.0.1:8811/call-link/.
 
+## Round 4 (21 Nov 2026), open
+
+The mockup now uses the current Horion look (Geist, Theme.swift colours, radius 5 · 9 · 13), not the v3 one.
+
+| Decision | Feedback | Options (first is recommended) |
+|---|---|---|
+| The call row in the event | "go to something earlier where the link is actually there in the row with the camera icon and under it is the Join button" | Link on the camera row, Join under it · Join on the camera row, link under it (as built) |
+| Edit, copy and remove the link | "the x being there is actually a good idea i think it just wasnt visible … there is no good way currently to remove it" | Click to edit, Copy and ✕ always shown · Click to edit, Copy always, ✕ on hover · Link opens the call, Copy and a ⋯ menu (Change link…, Copy link, Remove call) |
+| Inside the Join button | "the icon starts at a point that doesn't really make sense to me" | Logo and name on the left, keys on the right · Centred (as built) |
+| Where Join starts on the Up next card | same | The card's full width, Copy beside it · From the title (as built) · Full width, no Copy |
+
+Locked, shown for context: adding a call (v4 round 2, built). "Add conferencing" opens a menu with Google Meet (the link is made when you save) and Paste a link…
+
 ## Round 3 (21 Nov 2026), locked
 
 Owner's picks, all three the recommendation: Tool icon on the Join button · Small icon on the right, "Copy link" tip on hover · Logo inside Join on the Up next card ("Join Google Meet").
