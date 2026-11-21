@@ -71,6 +71,13 @@ struct InkRGB: Equatable {
     static let black = RGB(0, 0, 0)
     /// The neutral shadow on Paper (`rgba(20, 20, 30, …)` in the mockup's `--shadow-pop`).
     static let paperShadow = RGB(hex: "#14141E")
+    /// The warm shadow of a selected segment in Paper (`0 1px 2px rgba(60,50,35,.10)`).
+    static let segShadow = RGB(hex: "#3C3223")
+    /// Chrome buttons on `raised` (v11 looks.css): the Join button's edge, Dark `inset 0 0 0 1px rgba(255,255,255,.09)` on raised,
+    /// Paper `0 0 0 1px rgba(20,20,30,.12)` on the rail; the Today button's edge, none in Dark, Paper `inset 0 0 0 1px
+    /// rgba(60,50,35,.16)` on white. Solid mixes over the surface they sit on.
+    static let joinEdgeDark = RGB(hex: "#313132"), joinEdgeLight = RGB(hex: "#D9D9DB")
+    static let buttonEdgeLight = RGB(hex: "#E0DEDC")
     /// A calendar with no colour.
     static let neutralHex = "#888888"
     /// The dark greys the Paper / Dark event recipe starts dark text from when a fill is light (readability.js `recipe`).
@@ -110,6 +117,16 @@ enum Theme {
     /// The selected segment of a `Segmented` (`--thumb`) and its edge.
     static let thumb = Color.ink(\.thumb)
     static let segRing = Color.ink(\.segRing)
+    /// Edges of the chrome's raised buttons (Join, Today).
+    static let joinEdge = Color.dyn(InkRGB.joinEdgeDark.color, InkRGB.joinEdgeLight.color)
+    static let buttonEdge = Color.dyn(.clear, InkRGB.buttonEdgeLight.color)
+    /// The right column's search field edge: none in Dark, hair2 in Paper (`.srch label`).
+    static let searchEdge = Color.dyn(.clear, InkRGB.light.hairStrong.color)
+    /// The sidebar eye under the pointer (`.cal .eye:hover`: fg1 8 % over the row's rail hover).
+    static let eyeHover = Color.dyn(InkRGB.dark.hoverRail.mixed(with: InkRGB.dark.fg, 0.08).color, InkRGB.light.hoverRail.mixed(with: InkRGB.light.fg, 0.08).color)
+    /// Hover of a `raised` chrome button: fg1 mixed in by 6 % (Today) or 5 % (Join).
+    static let buttonHover = Color.dyn(InkRGB.dark.bg2.mixed(with: InkRGB.dark.fg, 0.06).color, InkRGB.light.bg2.mixed(with: InkRGB.light.fg, 0.06).color)
+    static let joinHover = Color.dyn(InkRGB.dark.bg2.mixed(with: InkRGB.dark.fg, 0.05).color, InkRGB.light.bg2.mixed(with: InkRGB.light.fg, 0.05).color)
     /// The tick on a filled calendar checkbox.
     static let tick = fg
 
@@ -141,8 +158,9 @@ enum Dim {
     static let sidebarWidth: CGFloat = 236
     static let panelWidth: CGFloat = 320
     static let hourGutter: CGFloat = 56
-    static let toolbarHeight: CGFloat = 60
-    static let dayHeaderHeight: CGFloat = 38
+    /// Window header (`.hdr`) and day header (`.dh`), v11: 48 and 32.
+    static let toolbarHeight: CGFloat = 48
+    static let dayHeaderHeight: CGFloat = 32
     static let inset: CGFloat = 16
     /// List rows, menu rows, small buttons, sidebar rows.
     static let row: CGFloat = 28
@@ -193,8 +211,10 @@ enum Radius {
     static let rule: CGFloat = 1
     /// Calendar checkboxes.
     static let check: CGFloat = 4
-    /// The teammate swatch.
+    /// The teammate swatch and the sidebar's 12 pt calendar square (`.cal .cb`).
     static let swatch: CGFloat = 3
+    /// The right column's 3 × 31 lead bars (`.card.dc .ttl .b`).
+    static let leadBar: CGFloat = 2
 }
 
 /// Shadows only exist on surfaces above the window.

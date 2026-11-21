@@ -68,14 +68,17 @@ struct JoinBigButton: View {
     @State private var hover = false
     var body: some View {
         let h = hover || HoverProbe.shared.target == "joinbig"
+        // v5 I: the calm v11 `.join` (raised, a 1 pt edge, fg1 500, the ⌘J hint), as in the right column; no inverted slab.
         Button(action: action) {
             HStack(spacing: 8) {
-                CallLogo(kind: call.kind, size: 16, glyphColor: Theme.onAct)
-                Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textSemibold)
+                CallLogo(kind: call.kind, size: 16, glyphColor: Theme.fg)
+                Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textMedium).tracking(TypeTrack.text)
+                Keycaps(keys: ["\u{2318}J"])
             }
-            .foregroundStyle(Theme.onAct)
+            .foregroundStyle(Theme.fg)
             .frame(maxWidth: .infinity).frame(height: Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.actHover : Theme.act))
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.joinHover : Theme.bg2))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.joinEdge, lineWidth: 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle(scale: 0.98))

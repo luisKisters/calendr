@@ -7,6 +7,7 @@ extension AppModel {
     /// `/`, Command-F and the command menu's Search events: the right column's field takes the keyboard.
     func focusColumnSearch() {
         if overlay == .command { overlay = nil }
+        rightColumnVisible = true
         chromeState.searchFocused = true
         chromeState.searchFocusTick += 1
     }
@@ -35,12 +36,4 @@ extension AppModel {
     }
 
     func clearColumnSearch() { setColumnQuery("") }
-
-    /// Runs a "Useful shortcuts" row the way its keys would.
-    func runUseful(_ s: UsefulShortcut) { handle(s.action) }
-
-    /// The useful shortcuts this store offers (Meet with only where it exists, as in the shortcuts sheet).
-    var usefulShortcuts: [UsefulShortcut] {
-        Shortcuts.useful.filter { $0.action != .meetWith || store.canOverlayTeammates }
-    }
 }

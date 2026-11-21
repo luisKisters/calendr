@@ -7,8 +7,9 @@ import CalendrKit
 @MainActor
 enum WalkthroughV4 {
     /// Window points of the header's Day / Week / Month segments and of the settings rows (1440x900 window, v4 tokens).
-    static let tabs: [(ViewMode, String, CGPoint)] = [(.day, "Day", CGPoint(x: 848, y: 30)), (.week, "Week", CGPoint(x: 895, y: 30)),
-                                                      (.month, "Month", CGPoint(x: 948, y: 30))]
+    /// v5 I: the v11 header (48 pt, the right-column button after ‹ Today ›) puts the segments at these centres.
+    static let tabs: [(ViewMode, String, CGPoint)] = [(.day, "Day", CGPoint(x: 817, y: 24)), (.week, "Week", CGPoint(x: 863, y: 24)),
+                                                      (.month, "Month", CGPoint(x: 917, y: 24))]
     static let weekNumbersOn = CGPoint(x: 975, y: 413)
 
     /// Brightness (0...1) of the frame at a window point: hover and selection fills change it.
@@ -20,8 +21,18 @@ enum WalkthroughV4 {
         return (Double(bytes[o]) + Double(bytes[o + 1]) + Double(bytes[o + 2])) / (3 * 255)
     }
 
-    /// A point on a segment's fill, left of its label.
-    static func fillPoint(_ p: CGPoint) -> CGPoint { CGPoint(x: p.x - 16, y: p.y - 8) }
+    /// Mean brightness (0...1) of a segment's label box: v11 hover only turns the label fg1 (no fill).
+    static func labelLuma(_ d: Driver, at p: CGPoint) -> Double {
+        d.settle(2)
+        guard let img = d.win.image(scale: 1), let data = img.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else { return -1 }
+        let bpp = img.bitsPerPixel / 8
+        var sum = 0.0, n = 0.0
+        for y in Int(p.y) - 5...Int(p.y) + 5 { for x in Int(p.x) - 14...Int(p.x) + 14 {
+            let o = y * img.bytesPerRow + x * bpp
+            sum += (Double(bytes[o]) + Double(bytes[o + 1]) + Double(bytes[o + 2])) / (3 * 255); n += 1
+        } }
+        return sum / n
+    }
 
     static func hover(_ d: Driver, _ target: String?, at p: CGPoint) {
         d.moveCursor(to: p, duration: 0.4)
@@ -35,7 +46,8 @@ enum WalkthroughV4 {
         d.section("v4 tokens")
         d.check(m.viewMode == .week && m.math.day(m.now) == 4 && m.settings.hourHeight == 46, "v4 fixture: the week of Sun 4 Oct, 46 pt hours")
         let bg = InkRGB.dark.bg
-        d.check(abs(luma(d, at: CGPoint(x: 700, y: 400)) - (bg.r + bg.g + bg.b) / 3) < 0.003, "the grid background is the v5 canvas (#0B0B0C)")
+        // v5 I: sampled in the day header (the canvas behind the grid), clear of events at any scroll.
+        d.check(abs(luma(d, at: CGPoint(x: 740, y: 64)) - (bg.r + bg.g + bg.b) / 3) < 0.003, "the grid background is the v5 canvas (#0B0B0C)")
         d.say("v5 tokens: near-black canvas, Geist, one segmented control")
         d.frame(hold: 1.6)
 
@@ -43,9 +55,10 @@ enum WalkthroughV4 {
         for name in ["Month", "Day", "Week"] {
             let (mode, title, p) = tab(name)
             d.say("Hover, then click \(title)")
-            let before = luma(d, at: fillPoint(p))
+            let before = labelLuma(d, at: p), track = luma(d, at: CGPoint(x: p.x, y: p.y - 9.5))
             hover(d, title, at: p)
-            d.check(luma(d, at: fillPoint(p)) > before, "\(title) shows the hover fill")
+            d.check(labelLuma(d, at: p) > before && abs(luma(d, at: CGPoint(x: p.x, y: p.y - 9.5)) - track) < 0.003,
+                    "\(title) brightens its label on hover, with no fill")
             d.hold(0.5)
             HoverProbe.shared.target = nil
             d.clickPoint(p, seconds: 0.6)
@@ -72,9 +85,9 @@ enum WalkthroughV4 {
         d.check(m.overlay == .settings, "Cmd-, opens Settings")
         d.hold(0.6)
         d.say("Every switch is the same segmented control")
-        let before = luma(d, at: fillPoint(weekNumbersOn))
+        let before = labelLuma(d, at: weekNumbersOn)
         hover(d, "On", at: weekNumbersOn)
-        d.check(luma(d, at: fillPoint(weekNumbersOn)) > before, "On shows the hover fill")
+        d.check(labelLuma(d, at: weekNumbersOn) > before, "On brightens its label on hover (no fill)")
         d.hold(0.4)
         HoverProbe.shared.target = nil
         d.clickPoint(weekNumbersOn, seconds: 0.5)

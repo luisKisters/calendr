@@ -71,7 +71,7 @@ struct EventsCanvas: View {
 @MainActor
 enum TextCache {
     enum Kind: Int {
-        case title, titleMedium, titleSmall, time, hour, hourBold, header, headerToday, headerNum, headerNumToday, headerPast, allDayLabel, more, monthTitle, monthNum, monthNumToday, micro, dayNum, moreChip
+        case title, titleMedium, titleSmall, time, hour, hourBold, header, headerLight, headerToday, headerNum, headerNumToday, headerPast, allDayLabel, more, monthTitle, monthNum, monthNumToday, micro, dayNum, moreChip
     }
     struct Key: Hashable { var text: String; var kind: Int }
     private static var lines: [Key: (CTLine, CGFloat, CGFloat, CGFloat)] = [:]   // line, width, ascent, descent
@@ -86,8 +86,9 @@ enum TextCache {
         case .time: return f(TypeSize.small, 400, true)
         case .hour: return f(TypeSize.small, 400, true)
         case .hourBold: return f(TypeSize.small, 600, true)          // the now pill (11 / 600 on live red)
-        // Day header: weekday 12 / 500 fg3, date 12 / 500, today's date 12 / 600 (the only 600 in the grid).
+        // Day header: weekday 12 / 500 fg3 (400 in Paper), date 12 / 500, today's date 12 / 600 (the only 600 in the grid).
         case .header: return f(TypeSize.text, 500)
+        case .headerLight: return f(TypeSize.text, 400)
         case .headerToday: return f(TypeSize.text, 500)
         case .headerNum: return f(TypeSize.text, 500, true)
         case .headerNumToday: return f(TypeSize.text, 600, true)
@@ -193,7 +194,7 @@ enum TextCache {
         switch kind {
         case .title, .titleMedium, .titleSmall: attrs[.kern] = TypeTrack.text
         case .time, .allDayLabel, .micro: attrs[.kern] = TypeTrack.small
-        case .header, .headerToday: attrs[.kern] = TypeTrack.label
+        case .header, .headerLight, .headerToday: attrs[.kern] = TypeTrack.label
         case .headerNum, .headerNumToday, .headerPast: attrs[.kern] = TypeTrack.text
         default: break
         }

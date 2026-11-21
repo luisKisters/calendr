@@ -2,10 +2,19 @@ import SwiftUI
 import AppKit
 import CalendrKit
 
-/// Inline day header ("Tue 29"), one Canvas: 38 pt, text 11 pt into the column on the same rail as event titles.
-/// Today's numeral sits in an inverted pill. A click opens that day in day view.
+/// Inline day header ("Tue 3"), one Canvas (mockup-v11 `.dh`): 32 pt, the weekday 8 pt into the column, 6 pt before the date.
+/// Weekdays are 12 / 500 fg3 (400 in Paper), dates 12 / 500 fg1 (fg2 before today); today's weekday is fg1 and its date sits on
+/// an fg1 pill (bg text, 600, 18 pt high, at least 20 wide). Hover only brightens the text. A click opens that day in day view.
 struct DayHeaderView: View {
-    static let height: CGFloat = 38
+    static let height: CGFloat = Dim.dayHeaderHeight
+    /// `.dh .c { padding-left: 8px; gap: 6px }`.
+    static let textInset: CGFloat = 8
+    static let gap: CGFloat = 6
+    /// Today's date pill: 18 high, the numeral plus 5 either side, at least 20 wide, centred in the header.
+    static func todayPill(x: CGFloat, numeralWidth: CGFloat, height: CGFloat) -> CGRect {
+        let w = max(20, numeralWidth + 10)
+        return CGRect(x: x, y: (height - 18) / 2, width: w, height: 18)
+    }
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
     @State private var hover: Int?
@@ -23,31 +32,27 @@ struct DayHeaderView: View {
             Canvas { ctx, size in
                 let ink = EventPainter.Ink.of(dark)
                 ctx.withCGContext { cg in
-                    // `.dh { border-bottom: 1px solid var(--hair) }`
-                    cg.setFillColor(ink.hair); cg.fill(CGRect(x: 0, y: size.height - 1, width: size.width, height: 1))
+                    // No rule under the day header: the all-day lane's bottom edge is the one line above the grid.
                     for (i, d) in days.enumerated() {
                         let x0 = gw + CGFloat(i) * colW
-                        // `.dh .c.today`: the today column's tint continues into its header.
-                        if math.isSameDay(d, todayStart) { cg.setFillColor(ink.todayTint); cg.fill(CGRect(x: x0, y: 0, width: colW, height: size.height - 1)) }
-                        if hovered == i {
-                            cg.addPath(EventPainter.roundedPath(CGRect(x: x0, y: 0, width: colW, height: size.height), Radius.row)); cg.setFillColor(ink.hover); cg.fillPath()
-                        }
                         let today = math.isSameDay(d, todayStart)
                         let past = d < todayStart
+                        let hot = hovered == i
+                        // `.dh .c.today`: the today column's tint continues into its header.
+                        if today { cg.setFillColor(ink.todayTint); cg.fill(CGRect(x: x0, y: 0, width: colW, height: size.height)) }
                         let wd = fmt.weekdayShort(d), num = "\(math.day(d))"
-                        let wdKind: TextCache.Kind = today ? .headerToday : past ? .headerPast : .header
-                        let numKind: TextCache.Kind = today ? .headerNumToday : past ? .headerPast : .headerNum
-                        let x = x0 + 12
-                        let w1 = EventPainter.text(cg, wd, wdKind, x: x, top: 0, box: size.height, color: today ? ink.fg : past ? ink.fg3 : ink.fg2)
-                        let nx = x + w1 + 6
+                        let x = x0 + Self.textInset
+                        let w1 = EventPainter.text(cg, wd, dark ? .header : .headerLight, x: x, top: 0, box: size.height,
+                                                   color: today || hot ? ink.fg : ink.fg3)
+                        let nx = x + w1 + Self.gap
                         if today {
-                            // `.dh .c.today .n`: the accent pill, radius 6, 1 pt above and below the text and 6 pt either side.
-                            let nw = TextCache.line(num, numKind).width
-                            let pill = CGRect(x: nx, y: (size.height - EventPainter.lineHeight) / 2 - 1, width: nw + 12, height: EventPainter.lineHeight + 2)
-                            cg.addPath(EventPainter.roundedPath(pill, Radius.row)); cg.setFillColor(ink.act); cg.fillPath()
-                            EventPainter.text(cg, num, numKind, x: pill.minX + 6, top: 0, box: size.height, color: ink.onAct)
+                            // `.dh .c.today .n`: line-height 18, padding 0 5, radius 999 (a 20 × 18 pill for one digit).
+                            let nw = TextCache.line(num, .headerNumToday).width
+                            let pill = Self.todayPill(x: nx, numeralWidth: nw, height: size.height)
+                            cg.addPath(EventPainter.roundedPath(pill, pill.height / 2)); cg.setFillColor(ink.act); cg.fillPath()
+                            EventPainter.text(cg, num, .headerNumToday, x: pill.minX + (pill.width - nw) / 2, top: pill.minY, box: pill.height, color: ink.onAct)
                         } else {
-                            EventPainter.text(cg, num, numKind, x: nx, top: 0, box: size.height, color: past ? ink.fg3 : ink.fg)
+                            EventPainter.text(cg, num, .headerNum, x: nx, top: 0, box: size.height, color: past && !hot ? ink.fg2 : ink.fg)
                         }
                     }
                 }
@@ -84,6 +89,10 @@ struct AllDayView: View {
     /// Lanes before "+N more": two lanes and the "+N more" row.
     static let shownLanes = 2
     static let maxRows = shownLanes + 1
+    /// The "all-day" label: line 20, 4 pt from the lane's top, 8 pt before the first day column.
+    static let labelLine: CGFloat = 20
+    static let labelTop: CGFloat = 4
+    static let labelInset: CGFloat = 8
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
     @State private var hoverToggle = false
@@ -103,7 +112,10 @@ struct AllDayView: View {
         let height = all.laneCount == 0 ? 0 : expanded ? Self.expandedHeight(lanes: all.laneCount) : Self.contentHeight(rows: rows)
         let dark = scheme == .dark
         HStack(spacing: 0) {
-            VStack(spacing: 2) {
+            VStack(alignment: .trailing, spacing: 2) {
+                // `.ad .g .lbl`: 11 / 500 fg3 (400 in Paper), line 20, right-aligned 8 pt before the first day, 4 pt from the top.
+                Text("all-day").font(.smallLabel(dark: dark)).tracking(TypeTrack.small).foregroundStyle(Theme.fg3)
+                    .frame(height: Self.labelLine).padding(.trailing, Self.labelInset)
                 if expanded || fold != nil {
                     Button { model.toggleAllDayExpanded() } label: {
                         AllDayToggleIcon(expand: !expanded).stroke(hoverToggle ? Theme.fg : Theme.fg2,
@@ -116,11 +128,11 @@ struct AllDayView: View {
                     .buttonStyle(.plain)
                     .onHover { hoverToggle = $0 }
                     .help(expanded ? "Collapse all-day section" : "Expand all-day section")
+                    .padding(.trailing, Self.labelInset - 4)
                 }
-                Text("all-day").font(.small).tracking(TypeTrack.small).foregroundStyle(Theme.fg3)
             }
-            .padding(.top, 5)
-            .frame(width: Theme.gutterWidth)
+            .padding(.top, Self.labelTop)
+            .frame(width: Theme.gutterWidth, alignment: .trailing)
             .frame(maxHeight: .infinity, alignment: .top)
             GeometryReader { geo in
                 let dw = geo.size.width / CGFloat(n)
@@ -132,7 +144,8 @@ struct AllDayView: View {
                 let canvas = Canvas { ctx, size in
                     ctx.withCGContext { cg in
                         let ink = EventPainter.Ink.of(dark)
-                        cg.setFillColor(ink.hair)
+                        // `.ad .cols i { border-left-color: var(--grid-v) }`: the day dividers of the grid continue up.
+                        cg.setFillColor(ink.dayDivider)
                         for d in 0..<n { cg.fill(CGRect(x: CGFloat(d) * dw, y: 0, width: 1, height: size.height)) }
                         for p in chips {
                             guard let e = model.layout.allDayEvents[p.id] else { continue }
@@ -185,6 +198,7 @@ struct AllDayView: View {
             .animation(Motion.base, value: model.periodID)
         }
         .frame(height: height)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.hair2).frame(height: 1) }
         .clipped()
     }
 
@@ -257,6 +271,7 @@ enum AllDayPainter {
         let color: CGColor = style.draft || dashed ? ink.fg : c.title.cg
         // `.adi { padding: 0 8px 0 calc(6px + bar + 1px) }`; a chip continued from the left (`.adi.cont`) has no bar and 8 pt.
         let x = r.minX + (openLeft ? 8 : EventPainter.textInset(dark: style.isDark) + 1)
-        EventPainter.truncated(cg, title, .title, x: x, top: r.minY, box: r.height, color: color, maxWidth: max(1, r.maxX - 8 - x), strike: c.strike && !style.draft)
+        // `.adi .t`: an 18 pt line box centred in the 19 pt chip; Chrome snaps its 0.5 pt offset to the next whole point.
+        EventPainter.truncated(cg, title, .title, x: x, top: r.minY + ((r.height - TypeSize.textLine) / 2).rounded(.up), box: TypeSize.textLine, color: color, maxWidth: max(1, r.maxX - 8 - x), strike: c.strike && !style.draft)
     }
 }

@@ -161,6 +161,12 @@ extension Font {
     static let smallTabMedium = geist(TypeSize.small, 500, tabular: true)
     static let smallTabSemibold = geist(TypeSize.small, 600, tabular: true)
 
+    /// Chrome labels that are 500 in Dark and 400 in Paper (mockup theme.css `.desk:not(.light) :is(.lab2, .ad .g .lbl, .mm .wd,
+    /// .mm .wkn, .tcol .end, .dh .c) { font-weight: 500 }`): "Later today", "all-day", the mini month's weekday letters and week
+    /// numbers, the end time of a right-column card. `smallLabelTab` is the tabular one.
+    static func smallLabel(dark: Bool) -> Font { dark ? smallMedium : small }
+    static func smallLabelTab(dark: Bool) -> Font { dark ? smallTabMedium : smallTab }
+
     /// Event titles: Geist 12 / 500.
     static let event = geist(TypeSize.event, 500)
     /// Event times: Geist 11 tabular.

@@ -3,7 +3,7 @@ import Foundation
 /// The command menu's commands (design/mockup-v4 `cmdHTML`, which keeps the v3 `COMMANDS`).
 public enum CommandID: String, CaseIterable, Sendable {
     case newEvent, today, goToDate, nextPeriod, previousPeriod
-    case viewDay, viewWeek, viewMonth, toggleSidebar, switchAppearance
+    case viewDay, viewWeek, viewMonth, toggleSidebar, toggleRightColumn, switchAppearance
     case searchEvents, meetWith, undo, deleteSelected, settings, fitWeek, shortcuts
 }
 
@@ -34,6 +34,7 @@ public enum CommandRegistry {
         Command(.viewWeek, "Week view", group: "View", keys: ["W"]),
         Command(.viewMonth, "Month view", group: "View", keys: ["M"]),
         Command(.toggleSidebar, "Toggle sidebar", group: "View", keys: ["`"]),
+        Command(.toggleRightColumn, "Toggle right column", group: "View", keys: ["\u{2325}", "\u{2318}", "I"]),
         Command(.switchAppearance, "Switch appearance", group: "View"),
         Command(.searchEvents, "Search events", group: "Find", keys: ["/"], more: true),
         Command(.meetWith, "Meet with", group: "Find", keys: ["F"], more: true),

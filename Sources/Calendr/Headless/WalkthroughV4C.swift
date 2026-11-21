@@ -216,7 +216,8 @@ extension WalkthroughV4 {
         m.gridState.pointer.hoveredAllDayMore = nil
 
         d.section("Expand")
-        let toggle = CGPoint(x: f().minX - Theme.gutterWidth / 2, y: f().minY + 5 + Dim.iconButtonSmall / 2)
+        // v5 I: the toggle sits under the right-aligned "all-day" label, 4 pt from the first day.
+        let toggle = CGPoint(x: f().minX - (AllDayView.labelInset - 4) - Dim.iconButtonSmall / 2, y: f().minY + AllDayView.labelTop + AllDayView.labelLine + 2 + Dim.iconButtonSmall / 2)
         let collapsedH = f().height
         d.say("Expand from the gutter")
         d.clickPoint(toggle, seconds: 0.6)

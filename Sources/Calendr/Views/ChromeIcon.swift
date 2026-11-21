@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// The mockup's stroke icons used by the command menu and the header (app-views.js `I`), drawn from the same path data
-/// as `PanelIcon`: 16-unit box, 1.4 stroke, round caps and joins.
+/// The mockup's stroke icons used by the command menu, the header, the sidebar and the right column (mockup-v11 app.js `P`),
+/// drawn from the same path data as `PanelIcon`: 16-unit box, 1.5 stroke (`icStroke`), round caps and joins.
 struct ChromeIcon: View {
     enum Name: Hashable {
-        case plus, cal, left, right, side, moon, search, users, ret, trash, gear, clock, keys
+        case plus, cal, left, right, side, sideRight, moon, search, users, ret, trash, gear, clock, keys, down, eye, eyeOff
     }
     let name: Name
     var size: CGFloat?
@@ -15,7 +15,7 @@ struct ChromeIcon: View {
         Canvas { ctx, sz in
             let k = sz.width / 16
             ctx.stroke(Self.path(name).applying(CGAffineTransform(scaleX: k, y: k)), with: .color(color),
-                       style: StrokeStyle(lineWidth: 1.4 * k, lineCap: .round, lineJoin: .round))
+                       style: StrokeStyle(lineWidth: 1.5 * k, lineCap: .round, lineJoin: .round))
         }
         .frame(width: s, height: s)
     }
@@ -38,12 +38,22 @@ struct ChromeIcon: View {
         case .left: PanelIcon.svg(&p, "M10 3.5 5.5 8l4.5 4.5")
         case .right: PanelIcon.svg(&p, "M6 3.5 10.5 8 6 12.5")
         case .side:
-            p.addRoundedRect(in: CGRect(x: 1.8, y: 2.8, width: 12.4, height: 10.4), cornerSize: CGSize(width: 2.2, height: 2.2))
-            PanelIcon.svg(&p, "M6 2.8v10.4")
+            p.addRoundedRect(in: CGRect(x: 2, y: 3, width: 12, height: 10), cornerSize: CGSize(width: 2, height: 2))
+            PanelIcon.svg(&p, "M6 3v10")
+        case .sideRight:
+            p.addRoundedRect(in: CGRect(x: 2, y: 3, width: 12, height: 10), cornerSize: CGSize(width: 2, height: 2))
+            PanelIcon.svg(&p, "M10 3v10")
+        case .down: PanelIcon.svg(&p, "m4.5 6.5 3.5 3.5 3.5-3.5")
+        case .eye:
+            PanelIcon.svg(&p, "M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z")
+            p.addEllipse(in: CGRect(x: 6, y: 6, width: 4, height: 4))
+        case .eyeOff:
+            PanelIcon.svg(&p, "M6.3 3.8A6.6 6.6 0 0 1 8 3.5C12 3.5 14.5 8 14.5 8a11 11 0 0 1-1.8 2.4M10.2 11.9A5.6 5.6 0 0 1 8 12.5C4 12.5 1.5 8 1.5 8a11.5 11.5 0 0 1 2.6-3.1")
+            PanelIcon.svg(&p, "M6.6 6.6a2 2 0 0 0 2.8 2.8M2 2l12 12")
         case .moon: PanelIcon.svg(&p, "M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z")
         case .search:
-            p.addEllipse(in: CGRect(x: 7 - 4.4, y: 7 - 4.4, width: 8.8, height: 8.8))
-            PanelIcon.svg(&p, "m10.4 10.4 3.2 3.2")
+            p.addEllipse(in: CGRect(x: 7 - 4.5, y: 7 - 4.5, width: 9, height: 9))
+            PanelIcon.svg(&p, "M10.5 10.5 14 14")
         case .ret: PanelIcon.svg(&p, "M13 3v4a2 2 0 0 1-2 2H3.4M6 6.2 3.2 9 6 11.8")
         case .gear:
             p.addEllipse(in: CGRect(x: 8 - 2.1, y: 8 - 2.1, width: 4.2, height: 4.2))

@@ -56,18 +56,59 @@ struct ChromeV4Tests {
         #expect(m.searchText == "walk" && m.columnResults.count == 4)
     }
 
-    @Test func usefulShortcutsRunTheirActions() {
+    /// v8 decision C: the right column has no shortcut list; the shortcuts stay behind ⌘K and ?.
+    @Test func shortcutsStayBehindCommandKAndQuestionMark() {
         let m = makeModelV4()
-        #expect(m.usefulShortcuts.map(\.title) == Shortcuts.useful.map(\.title))
-        m.runUseful(Shortcuts.useful[0])
+        m.handle(.commandMenu)
         #expect(m.overlay == .command)
         m.overlay = nil
-        m.runUseful(Shortcuts.useful.last!)
+        m.handle(.showShortcuts)
         #expect(m.overlay == .shortcuts)
         m.overlay = nil
         let visible = m.sidebarVisible
-        m.runUseful(Shortcuts.useful.first { $0.action == .toggleSidebar }!)
+        m.handle(.toggleSidebar)
         #expect(m.sidebarVisible != visible)
+    }
+
+    /// The header's right-column button (⌥⌘I, mockup C6): hides the column; selecting an event or searching shows it again.
+    @Test func rightColumnHidesAndComesBackForTheEditorAndSearch() {
+        let m = makeModelV4()
+        #expect(m.rightColumnVisible)
+        m.handle(.toggleRightColumn)
+        #expect(!m.rightColumnVisible)
+        let e = m.layout.timed.flatMap { $0 }.first?.event.id
+        m.select(eventID: e)
+        #expect(m.rightColumnVisible, "selecting opens the column (the editor lives there)")
+        m.deselect()
+        m.toggleRightColumn()
+        #expect(!m.rightColumnVisible)
+        m.focusColumnSearch()
+        #expect(m.rightColumnVisible, "search opens the column")
+        #expect(CommandRegistry.all.contains { $0.id == .toggleRightColumn && $0.keys == ["\u{2325}", "\u{2318}", "I"] })
+    }
+
+    /// v8 decisions D and E: a group header folds its calendars (their visibility stays); hiding is explicit and kept in the list.
+    @Test func sidebarGroupsFoldAndHiddenCalendarsStay() {
+        let m = makeModelV4()
+        let acc = m.store.accounts[0]
+        m.toggleGroup(acc.id)
+        #expect(m.collapsedGroups == [acc.id] && m.hiddenCalendars.isDisjoint(with: acc.calendars.map(\.id)))
+        m.toggleGroup(acc.id)
+        #expect(m.collapsedGroups.isEmpty)
+        let cal = acc.calendars[0]
+        m.toggleCalendar(cal.id)
+        #expect(m.hiddenCalendars.contains(cal.id) && m.store.accounts[0].calendars.contains { $0.id == cal.id })
+        #expect(!m.layout.timed.flatMap { $0 }.contains { $0.event.calendarID == cal.id })
+    }
+
+    /// ⌘J joins the call of the running event, else the next one's, as the right column's Join buttons show.
+    @Test func commandJJoinsTheLeadCall() {
+        let m = makeModelV4()
+        m.setNow(m.math.date(on: m.math.startOfDay(m.now), minutes: 18 * 60 + 40))
+        #expect(ShortcutResolver.resolve(KeyInput(characters: "j", command: true), textFocused: true) == .joinCall)
+        #expect(m.leadCallEvent?.title == "Flat dinner")     // (not run here: outside a headless run it opens the browser)
+        m.setNow(m.math.date(on: m.math.startOfDay(m.now), minutes: 23 * 60 + 50))
+        #expect(m.leadCallEvent == nil && !m.handle(.joinCall), "no call: the key is not consumed")
     }
 
     @Test func sidebarAccountsShowTheirNameWithoutTheDomain() {
