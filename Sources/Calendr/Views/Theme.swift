@@ -126,6 +126,8 @@ enum Theme {
     /// Edges of the chrome's raised buttons (Join, Today).
     static let joinEdge = Color.dyn(InkRGB.joinEdgeDark.color, InkRGB.joinEdgeLight.color)
     static let buttonEdge = Color.dyn(.clear, InkRGB.buttonEdgeLight.color)
+    /// Keycap edge (v12 keycaps, round 1): bg → fg1 21 % in Dark (#3A3A3C), 18.5 % in Paper (#D2D2D4).
+    static let capEdge = Color.dyn(InkRGB.dark.bg.mixed(with: InkRGB.dark.fg, 0.21).color, InkRGB.light.bg.mixed(with: InkRGB.light.fg, 0.185).color)
     /// The right column's search field edge: none in Dark, hair2 in Paper (`.srch label`).
     static let searchEdge = Color.dyn(.clear, InkRGB.light.hairStrong.color)
     /// The sidebar eye under the pointer (`.cal .eye:hover`: fg1 8 % over the row's rail hover).

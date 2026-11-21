@@ -78,33 +78,54 @@ struct ChromeIconButton: View {
     }
 }
 
-/// A shortcut hint (round 3): grey small tabular text, no box.
+/// One keycap (v12 keycaps, round 1: `design/mockup-v12-keycaps`): 16 pt tall, at least 16 wide, 4 pt sides, radius 4, the raised
+/// fill with a 1 pt `capEdge`, the key in small / 400 fg3. On a filled button (`onAct`) it has no fill, its edge and glyph in the
+/// button ink at 30 % and 62 %. One cap holds a whole shortcut ("⌘Z"); alternatives ("↑", "↓") are separate caps.
 struct Keycap: View {
     let text: String
     var onAct = false
     var body: some View {
-        Group {
+        let shape = RoundedRectangle(cornerRadius: 4)
+        HStack(spacing: 1) {
             // Geist draws ↩ as a thin squiggle: the SF Symbol, at the cap's text size, reads as the Return key.
-            if text == "\u{21A9}" { Image(systemName: "return").font(.system(size: TypeSize.small - 1, weight: .semibold)) }
-            else { Text(text).font(.smallTab) }
+            ForEach(Array(Self.parts(text).enumerated()), id: \.offset) { _, p in
+                if p == "\u{21A9}" { Image(systemName: "return").font(.system(size: TypeSize.small - 1, weight: .semibold)) }
+                else { Text(p).font(.smallTab) }
+            }
         }
-        .foregroundStyle(onAct ? Theme.onAct.opacity(0.6) : Theme.fg3).fixedSize()
+        .foregroundStyle(onAct ? Theme.onAct.opacity(0.62) : Theme.fg3)
+        .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 16, maxHeight: 16)
+        .background(shape.fill(onAct ? Color.clear : Theme.bg2))
+        .overlay(shape.strokeBorder(onAct ? Theme.onAct.opacity(0.3) : Theme.capEdge, lineWidth: 1))
+        .fixedSize()
+    }
+    /// The return glyph is drawn as a symbol, so a shortcut is split around it ("⌘↩" → "⌘", "↩").
+    static func parts(_ s: String) -> [String] {
+        var out: [String] = [], run = ""
+        for ch in s { if ch == "\u{21A9}" { if !run.isEmpty { out.append(run); run = "" }; out.append("\u{21A9}") } else { run.append(ch) } }
+        if !run.isEmpty { out.append(run) }
+        return out
     }
 }
 
+/// One shortcut in one cap: the keys of a combination are joined ("⌘", "Z" → "⌘Z"). "or" splits alternatives.
 struct Keycaps: View {
     let keys: [String]
     var onAct = false
-    /// 3 pt between caps; inside a flex row of the mockup the row's gap adds to it.
+    /// Between alternatives (and around "or").
     var spacing: CGFloat = 3
     var body: some View {
         HStack(spacing: spacing) {
-            ForEach(Array(keys.enumerated()), id: \.offset) { _, k in
-                if k == "or" { Text("or").font(.small).foregroundStyle(Theme.fg3) } else { Keycap(text: Self.glyph(k), onAct: onAct) }
+            ForEach(Array(Self.groups(keys).enumerated()), id: \.offset) { i, g in
+                if i > 0 { Text("or").font(.small).foregroundStyle(Theme.fg3) }
+                Keycap(text: g, onAct: onAct)
             }
         }
     }
     static func glyph(_ k: String) -> String { k == "command" ? "\u{2318}" : k }
+    static func groups(_ keys: [String]) -> [String] {
+        keys.split(separator: "or").map { $0.map(glyph).joined() }
+    }
 }
 
 /// `.btn`: 32 pt (28 small), radius 8, 12.5 / 500. Plain is fg2 with a hover wash, line adds a hair2 edge and fg text,
