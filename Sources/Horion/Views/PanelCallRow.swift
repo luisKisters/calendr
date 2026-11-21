@@ -134,11 +134,15 @@ struct LinkField: View {
                 .editorField(focused: focused, editable: editable, key: "field:link")
                 .padding(.trailing, 8)
             if unsentAdded { UnsentDot(removed: false) }
+            // Remove shows on hover, left of Copy; Copy always sits on the right edge, in line with Join's.
+            if let remove, h { PanelIconButton(icon: .x, action: remove).help("Remove call").transition(.opacity) }
             if let copy { CopyLinkButton(copy: copy) }
-            if let remove { PanelIconButton(icon: .x, action: remove).help("Remove call").opacity(h ? 1 : 0) }
         }
+        // The icons' glyphs (not their hover boxes) line up with Join's right edge.
+        .padding(.trailing, -4)
         .frame(height: 26)
         .onHover { hover = $0 }
+        .animation(Motion.fast, value: h)
         .onAppear { text = value }
         .onChange(of: value) { _, v in if !focused { text = v } }
         .onChange(of: focused) { _, f in if !f && text != value { if !commit(text) { text = value } } }

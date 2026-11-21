@@ -211,7 +211,7 @@ struct PanelNextCard: View {
                 // design/call-link round 3: Copy beside the wide Join.
                 HStack(spacing: Space.xs) {
                     JoinCallButton(event: event, call: call)
-                    CopyLinkButton { model.copyCallLink(event) }
+                    CopyLinkButton { model.copyCallLink(event) }.padding(.trailing, -4)   // the glyph on the column's edge
                 }
                 .padding(.top, Space.m).padding(.leading, textEdge)
             }
