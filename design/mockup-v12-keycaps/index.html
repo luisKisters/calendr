@@ -197,10 +197,10 @@ const DESK = { w: 1440, h: 900 };            // the real window size
 const SCENES = [['all', 'Everywhere · Dark'], ['paper', 'Everywhere · Paper'], ['zoom', 'Close-up 3×'], ['system', 'Design system']];
 const HOWTO = ['Every keycap the app draws today, at real size, with the v11 tokens.', 'Press the keys (↩, esc, /, C, ⌫, arrows, ⌘, ⌥, ⇧) and the matching caps light up.', 'Keys: G alignment guides.', 'Notes on one element: turn on Agentation below, click the element, write. "Copy my picks" takes the notes.'];
 const READ = 'Read: a quiet native Mac calendar for keyboard people. Caps are wayfinding: present on every control that has a key, never louder than the label. Dials: VARIANCE 2 · MOTION 2 · DENSITY 6.';
-const LOCKED = {};
+const LOCKED = { look: 'keyface', onfill: 'line', group: 'one' };  // round 1, 2026-11-21
 const BEFORE = {};
 const DECISIONS = [
-  { g: 'Round 1', id: 'look', name: 'Keycap look',
+  { g: 'Round 1', id: 'look', lock: true, name: 'Keycap look',
     fb: 'i think having like an outline thing around it perhaps would be nice lets generally better define how we have kbds',
     note: 'Everywhere: the dialog, the editor foot, the toast, search, the command menu, the shortcuts sheet, the sidebar foot. Close-up shows them at 3×.',
     scene: 'all', hl: '.kbd', opts: [
@@ -210,13 +210,13 @@ const DECISIONS = [
     ['tint', 'Fill only, no edge', 'A soft grey fill and no line. Calm, but on cards and in the toast it nearly vanishes.'],
     ['bare', 'Bare glyph (now)', 'What the app draws today: the glyph alone in fg3.'],
   ] },
-  { g: 'Round 1', id: 'onfill', name: 'Keycap on a filled button',
+  { g: 'Round 1', id: 'onfill', lock: true, name: 'Keycap on a filled button',
     note: 'This event ↩ in the dialog, Save ↩ in the editor foot.', scene: 'all', hl: '.fill .kbd', opts: [
     ['line', 'Outline in the button ink', 'The same cap shape, its edge and glyph in the button text colour at about 30 % and 62 %. It matches the caps elsewhere.'],
     ['tint', 'Soft fill in the button ink', 'No edge, a 9 % fill of the button text colour.'],
     ['bare', 'Bare glyph (now)', 'The glyph alone at 60 %.'],
   ] },
-  { g: 'Round 1', id: 'group', name: 'Shortcuts with a modifier',
+  { g: 'Round 1', id: 'group', lock: true, name: 'Shortcuts with a modifier',
     note: 'Undo ⌘ Z in the toast, ⌘ , in the sidebar, the command-menu rows, the shortcuts sheet.', scene: 'all', hl: '.kbdc', opts: [
     ['each', 'One cap per key, 3 pt apart', '⌘ and Z each get their own cap, as on the keyboard and in the macOS menus’ spirit. Today the app mixes both (⌘ , apart, ⌘J together).'],
     ['one', 'One cap per shortcut', '⌘Z in a single cap. Shorter rows, fewer boxes.'],

@@ -81,7 +81,7 @@ struct ToastView: View {
                 Button { model.dismissToast(); model.undo() } label: {
                     HStack(spacing: 7) {
                         Text("Undo").font(.textSemibold).foregroundStyle(Theme.fg)
-                        Keycaps(keys: ["\u{2318}", "Z"], spacing: 10)
+                        Keycaps(keys: ["\u{2318}", "Z"])
                     }
                     .padding(.leading, 9).padding(.trailing, 5).frame(height: 26)
                     .background(RoundedRectangle(cornerRadius: Radius.control).fill(hoverUndo ? Theme.hoverPop : .clear))
@@ -207,7 +207,7 @@ struct Hint: View {
     let text: String
     var body: some View {
         HStack(spacing: 6) {
-            Keycaps(keys: keys, spacing: 9)
+            HStack(spacing: 3) { ForEach(keys, id: \.self) { Keycap(text: $0) } }
             Text(text).font(.small).foregroundStyle(Theme.fg3)
         }
     }
@@ -299,13 +299,14 @@ struct ShortcutsSheet: View {
     static func groups(meetWith: Bool) -> [(String, [(String, String)])] {
         all.map { g in (g.0, g.1.filter { meetWith || $0.1 != "Meet with" }) }
     }
+    /// One string per row: alternatives separated by two spaces, each a whole shortcut (one cap).
     static let all: [(String, [(String, String)])] = [
         ("Move around", [("T", "Today"), ("J  \u{2192}", "Next period"), ("K  \u{2190}", "Previous period"), ("D  W  M", "Day, week, month"),
                          (".", "Go to date"), ("`", "Sidebar")]),
         ("Events", [("C", "New event at the next free slot"), ("\u{21E5}  \u{21E7}\u{21E5}", "Select next, previous event"),
-                    ("\u{2191} \u{2193} \u{2190} \u{2192}", "Move the selection"), ("\u{21A9}", "Edit the title"), ("\u{2325} \u{2191} \u{2193}", "Move by 15 minutes"),
-                    ("\u{2325} \u{2190} \u{2192}", "Move by a day"), ("\u{232B}", "Delete"), ("\u{2318} Z", "Undo")]),
-        ("Find", [("\u{2318} K", "Command menu"), ("/", "Search events"), ("F", "Meet with"), ("\u{2318} ,", "Settings"), ("?", "This sheet"),
+                    ("\u{2191}  \u{2193}  \u{2190}  \u{2192}", "Move the selection"), ("\u{21A9}", "Edit the title"), ("\u{2325}\u{2191}  \u{2325}\u{2193}", "Move by 15 minutes"),
+                    ("\u{2325}\u{2190}  \u{2325}\u{2192}", "Move by a day"), ("\u{232B}", "Delete"), ("\u{2318}Z", "Undo")]),
+        ("Find", [("\u{2318}K", "Command menu"), ("/", "Search events"), ("F", "Meet with"), ("\u{2318},", "Settings"), ("?", "This sheet"),
                   ("esc", "Close, then deselect")]),
     ]
     var body: some View {
@@ -320,7 +321,7 @@ struct ShortcutsSheet: View {
                                 Text(t).font(.text).foregroundStyle(Theme.fg).lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading).layoutPriority(1)
                                 HStack(spacing: 11) {
-                                    ForEach(Array(k.split(separator: " ").enumerated()), id: \.offset) { Keycap(text: String($0.element)) }
+                                    ForEach(Array(k.components(separatedBy: "  ").enumerated()), id: \.offset) { Keycap(text: $0.element) }
                                 }
                                 .fixedSize()
                             }
